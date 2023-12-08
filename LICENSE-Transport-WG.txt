@@ -1,0 +1,27 @@
+Licenses for Transport Working Group of Ultra Ethernet Consortium (UEC).
+
+The following describes the licenses for various materials in this repository.
+For specific details, see the Working Group's Charter, which is available at:
+https://ultraethernet.org/wp-content/uploads/sites/20/2023/10/Ultra_Ethernet_Consortium_Charter_v.1.3-COPY-NOT-FOR-SIGNATURE.pdf
+
+Materials in this repository other than source code are provided as follows:
+
+Copyright (c) 2023 Joint Development Foundation Projects, LLC, Consortium for 
+HPC/AI/ML Ethernet Series and its contributors. 
+All rights reserved. THESE MATERIALS ARE PROVIDED "AS IS." The
+owners and contributors expressly disclaim any warranties (express, implied, or
+otherwise), including implied warranties of merchantability, non-infringement,
+fitness for a particular purpose, or title, related to the materials. The entire
+risk as to implementing or otherwise using the materials is assumed by the
+implementer and user. IN NO EVENT WILL THE OWNERS AND CONTRIBUTORS BE LIABLE TO
+ANY OTHER PARTY FOR LOST PROFITS OR ANY FORM OF INDIRECT, SPECIAL, INCIDENTAL,
+OR CONSEQUENTIAL DAMAGES OF ANY CHARACTER FROM ANY CAUSES OF ACTION OF ANY KIND
+WITH RESPECT TO THIS DELIVERABLE OR ITS GOVERNING AGREEMENT, WHETHER BASED ON
+BREACH OF CONTRACT, TORT (INCLUDING NEGLIGENCE), OR OTHERWISE, AND WHETHER OR
+NOT THE OTHER MEMBER HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+The patent mode selected for materials developed by this Working Group (other
+than source code) is RAND Mode.
+
+= = = = =
+
