@@ -232,7 +232,8 @@ PriorityQueue::getPriority(Packet& pkt) {
         // the packet to say what queue service it desires.
         abort();
     }
-        
+    // can't get here
+    abort();
 }
 
 simtime_picosec
@@ -404,6 +405,8 @@ FairPriorityQueue::getPriority(Packet& pkt) {
         // the packet to say what queue service it desires.
         abort();
     }
+    // can't get here
+    abort();
 }
 
 //this is inaccurate!

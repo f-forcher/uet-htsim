@@ -1047,30 +1047,24 @@ void EqdsSrc::sendIfPermitted() {
         }
     }
 
-    // how large will the packet be?
-    mem_b pkt_size = 0;
     if (_rtx_queue.empty()) {
         if (_backlog == 0) {
             // nothing to retransmit, and no backlog.  Nothing to do here.
             if (_credit_pull > 0) {
-                if (_debug_src)
+                if (_debug_src) {
                     cout << "we have " << _credit_pull
                          << " bytes of credit, but nothing to use it on"
                          << " flow " << _flow.str() << endl;
+                }
             }
             return;
         }
-        mem_b payload_size = _mss;
-        if (_unsent == 0)
-            return;
 
-        if (_unsent < payload_size) {
-            payload_size = _unsent;
+        if (_unsent == 0) {
+            return;
         }
-        pkt_size = payload_size + _hdr_size;
-    } else {
-        pkt_size = _rtx_queue.begin()->second;
-    }
+    } 
+
 
     if (_send_blocked_on_nic) {
         // the NIC already knows we want to send
