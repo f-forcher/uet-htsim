@@ -1,8 +1,8 @@
 // -*- c-basic-offset: 4; indent-tabs-mode: nil -*-
-#include "eqds.h"
 #include <math.h>
-#include "circular_buffer.h"
+#include "eqds.h"
 #include "eqds_logger.h"
+#include "circular_buffer.h"
 
 using namespace std;
 

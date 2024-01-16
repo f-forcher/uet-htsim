@@ -2,14 +2,15 @@
 #ifndef EQDS_H
 #define EQDS_H
 
-#include <list>
 #include <memory>
 #include <tuple>
+#include <list>
 
-#include "circular_buffer.h"
-#include "eqdspacket.h"
 #include "eventlist.h"
 #include "trigger.h"
+#include "eqdspacket.h"
+#include "circular_buffer.h"
+
 
 #define timeInf 0
 // min RTO bound in us
