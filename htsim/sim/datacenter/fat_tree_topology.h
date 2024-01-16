@@ -72,6 +72,13 @@ public:
 
     static void set_tier_parameters(int tier, int radix_up, int radix_down, mem_b queue_up, mem_b queue_down, int bundlesize, linkspeed_bps downlink_speed, int oversub);
 
+    static void set_ecn_parameters(bool enable_ecn, bool enable_on_tor_downlink, mem_b ecn_low, mem_b ecn_high){
+        _enable_ecn = enable_ecn;
+        _enable_on_tor_downlink = enable_on_tor_downlink;
+        _ecn_low = ecn_low;
+        _ecn_high = ecn_high;
+    }
+
     void init_network();
     virtual vector<const Route*>* get_bidir_paths(uint32_t src, uint32_t dest, bool reverse);
 
@@ -216,6 +223,12 @@ private:
 
     // number of hosts in a pod.  
     static uint32_t _hosts_per_pod; 
+
+    //ecn parameters
+    static bool _enable_ecn;
+    static bool _enable_on_tor_downlink;
+    static mem_b _ecn_low;
+    static mem_b _ecn_high;
     
     uint32_t _no_of_nodes;
     simtime_picosec _hop_latency,_switch_latency;

@@ -29,12 +29,12 @@
 
 int DEFAULT_NODES = 128;
 #define DEFAULT_QUEUE_SIZE 35
-#define DEFAULT_CWND 50
+#define DEFAULT_CWND 64
 
 EventList eventlist;
 
 void exit_error(char* progr) {
-    cout << "Usage " << progr << " [-nodes N]\n\t[-conns C]\n\t[-cwnd cwnd_size]\n\t[-q queue_size]\n\t[-oversubscribed_cc] Use receiver-driven AIMD to reduce total window when trims are not last hop\n\t[-queue_type composite|random|lossless|lossless_input|]\n\t[-tm traffic_matrix_file]\n\t[-strat route_strategy (single,rand,perm,pull,ecmp,\n\tecmp_host path_count,ecmp_ar,ecmp_rr,\n\tecmp_host_ar ar_thresh)]\n\t[-log log_level]\n\t[-seed random_seed]\n\t[-end end_time_in_usec]\n\t[-mtu MTU]\n\t[-hop_latency x] per hop wire latency in us,default 1\n\t[-switch_latency x] switching latency in us, default 0\n\t[-host_queue_type  swift|prio|fair_prio]\n\t[-logtime dt] sample time for sinklogger, etc" << endl;
+    cout << "Usage " << progr << " [-nodes N]\n\t[-conns C]\n\t[-cwnd cwnd_size]\n\t[-q queue_size]\n\t[-recv_oversub_cc] Use receiver-driven AIMD to reduce total window when trims are not last hop\n\t[-queue_type composite|random|lossless|lossless_input|]\n\t[-tm traffic_matrix_file]\n\t[-strat route_strategy (single,rand,perm,pull,ecmp,\n\tecmp_host path_count,ecmp_ar,ecmp_rr,\n\tecmp_host_ar ar_thresh)]\n\t[-log log_level]\n\t[-seed random_seed]\n\t[-end end_time_in_usec]\n\t[-mtu MTU]\n\t[-hop_latency x] per hop wire latency in us,default 1\n\t[-switch_latency x] switching latency in us, default 0\n\t[-host_queue_type  swift|prio|fair_prio]\n\t[-logtime dt] sample time for sinklogger, etc" << endl;
     exit(1);
 }
 
@@ -62,13 +62,18 @@ int main(int argc, char **argv) {
     bool log_queue_usage = false;
     double ecn_thresh = 0.5; // default marking threshold for ECN load balancing
 
+    bool ecn = false;
+    mem_b ecn_low = 0, ecn_high = 0;
+
+    bool receiver_driven = true;
+
     RouteStrategy route_strategy = NOT_SET;
     
     int seed = 13;
     int path_burst = 1;
     int i = 1;
 
-    bool oversubscribed_congestion_control = false;
+    bool receiver_oversubscribed_cc = false;
 
     filename << "logout.dat";
     int end_time = 1000;//in microseconds
@@ -87,10 +92,8 @@ int main(int argc, char **argv) {
             filename.str(std::string());
             filename << argv[i+1];
             i++;
-        /*
-        } else if (!strcmp(argv[i],"-oversubscribed_cc")) {
-            oversubscribed_congestion_control = true;
-        */
+        } else if (!strcmp(argv[i],"-recv_oversub_cc")) {
+            receiver_oversubscribed_cc = true;
         } else if (!strcmp(argv[i],"-conns")) {
             no_of_conns = atoi(argv[i+1]);
             cout << "no_of_conns "<<no_of_conns << endl;
@@ -108,7 +111,27 @@ int main(int argc, char **argv) {
             cout << "tiers "<< tiers << endl;
             assert(tiers == 2 || tiers == 3);
             i++;
-        } else if (!strcmp(argv[i],"-queue_type")) {
+        } else if (!strcmp(argv[i],"-sender_cc_only")) {
+            EqdsSrc::_sender_based_cc = true;
+            receiver_driven = false;
+            cout << "sender based CC enabled ONLY" << endl;
+
+        } else if (!strcmp(argv[i],"-sender_cc_algo")) {
+            EqdsSrc::_sender_based_cc = true;
+            
+            if (!strcmp(argv[i+1],"dctcp")) 
+                EqdsSrc::_sender_cc_algo = EqdsSrc::DCTCP;
+            else {
+                cout << "UNKNOWN CC ALGO " << argv[i+1] << endl;
+                exit(1);
+            }    
+            cout << "sender based algo "<< argv[i+1] << endl;
+            i++;
+        } else if (!strcmp(argv[i],"-sender_cc")) {
+            EqdsSrc::_sender_based_cc = true;
+            cout << "sender based CC enabled "<< tiers << endl;
+        }
+         else if (!strcmp(argv[i],"-queue_type")) {
             if (!strcmp(argv[i+1], "composite")) {
                 qt = COMPOSITE;
             } 
@@ -187,12 +210,20 @@ int main(int argc, char **argv) {
             i++;
         }/* else if (!strcmp(argv[i],"-pci")){
             EqdsSink::_modelPCIbandwidth = true;
-        }*/
+        }
         else if (!strcmp(argv[i],"-ecn_thresh")){
             // fraction of queuesize, between 0 and 1
             ecn_thresh = atof(argv[i+1]); 
             i++;
-        } else if (!strcmp(argv[i],"-logtime")){
+        }*/
+        else if (!strcmp(argv[i],"-ecn")){
+            // fraction of queuesize, between 0 and 1
+            ecn = true;
+            ecn_low = atoi(argv[i+1]); 
+            ecn_high = atoi(argv[i+2]);
+            i+=2;
+        }
+         else if (!strcmp(argv[i],"-logtime")){
             double log_ms = atof(argv[i+1]);            
             logtime = timeFromMs(log_ms);
             cout << "logtime "<< logtime << " ms" << endl;
@@ -328,12 +359,25 @@ int main(int argc, char **argv) {
         FatTreeSwitch::set_strategy(FatTreeSwitch::ECMP);
     }
 
+
+    EqdsPullPacer::_oversubscribed_cc = receiver_oversubscribed_cc;
+
+    if (EqdsSrc::_sender_based_cc){
+        EqdsSink::_bytes_unacked_threshold = 4000;
+    };
+
+    if (ecn){
+        ecn_low = memFromPkt(ecn_low);
+        ecn_high = memFromPkt(ecn_high);
+        FatTreeTopology::set_ecn_parameters(true, false, ecn_low,ecn_high);
+    }
+
     /*
     EqdsSink::_oversubscribed_congestion_control = oversubscribed_congestion_control;
-
-    if (oversubscribed_congestion_control)
-        cout << "Using oversubscribed congestion control " << endl;
     */
+
+    if (receiver_oversubscribed_cc)
+        cout << "Using experimental receiver-based oversubscribed congestion control " << endl;
 
     FatTreeSwitch::_ar_sticky = ar_sticky;
     FatTreeSwitch::_sticky_delta = timeFromUs(ar_sticky_delta);
@@ -446,7 +490,7 @@ int main(int argc, char **argv) {
         top = FatTreeTopology::load(topo_file, qlf, eventlist, queuesize, qt, snd_type);
         if (top->no_of_nodes() != no_of_nodes) {
             cerr << "Mismatch between connection matrix (" << no_of_nodes << " nodes) and topology ("
-                 << top->no_of_nodes() << " nodes)" << endl;
+                                                        << top->no_of_nodes() << " nodes)" << endl;
             exit(1);
         }
     } else {
@@ -493,6 +537,7 @@ int main(int argc, char **argv) {
 
         eqds_src = new EqdsSrc(traffic_logger, eventlist, *nics.at(src));
         eqds_src->setCwnd(cwnd*Packet::data_packet_size());
+        eqds_src->setMaxWnd(cwnd*Packet::data_packet_size());
         eqds_srcs.push_back(eqds_src);
         eqds_src->setDst(dest);
 
@@ -500,7 +545,11 @@ int main(int argc, char **argv) {
             eqds_src->logFlowEvents(*event_logger);
         }
         
-        eqds_snk = new EqdsSink(NULL,pacers[dest],*nics.at(dest));
+        if (receiver_driven)
+            eqds_snk = new EqdsSink(NULL,pacers[dest],*nics.at(dest));
+        else //each connection has its own pacer, so receiver driven mode does not kick in! 
+            eqds_snk = new EqdsSink(NULL,linkspeed,0.99,EqdsSrc::_mtu,eventlist,*nics.at(dest));
+
         eqds_src->setName("Eqds_" + ntoa(src) + "_" + ntoa(dest));
         logfile.writeName(*eqds_src);
         eqds_snk->setSrc(src);
@@ -552,7 +601,6 @@ int main(int argc, char **argv) {
                 dsttotor->push_back(top->queues_ns_nlp[dest][top->HOST_POD_SWITCH(dest)][0]);
                 dsttotor->push_back(top->pipes_ns_nlp[dest][top->HOST_POD_SWITCH(dest)][0]);
                 dsttotor->push_back(top->queues_ns_nlp[dest][top->HOST_POD_SWITCH(dest)][0]->getRemoteEndpoint());
-
 
                 eqds_src->connect(*srctotor, *dsttotor, *eqds_snk, crt->start);
                 //eqds_src->setPaths(path_entropy_size);

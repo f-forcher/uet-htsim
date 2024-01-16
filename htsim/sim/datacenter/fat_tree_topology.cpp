@@ -34,6 +34,12 @@ uint32_t FatTreeTopology::_bundlesize[] = {1,1,1};
 uint32_t FatTreeTopology::_oversub[] = {1,1,1};
 linkspeed_bps FatTreeTopology::_downlink_speeds[] = {0,0,0};
 
+bool FatTreeTopology::_enable_ecn = false;
+bool FatTreeTopology::_enable_on_tor_downlink = false;
+mem_b FatTreeTopology::_ecn_low = 0;
+mem_b FatTreeTopology::_ecn_high = 0;
+
+
 void
 FatTreeTopology::set_tier_parameters(int tier, int radix_up, int radix_down, mem_b queue_up, mem_b queue_down, int bundlesize, linkspeed_bps linkspeed, int oversub) {
     // tier is 0 for ToR, 1 for agg switch, 2 for core switch
@@ -204,6 +210,10 @@ FatTreeTopology* FatTreeTopology::load(istream& file, QueueLoggerFactory* logger
                 exit(1);
             }
             _link_latencies[current_tier] = timeFromNs(stoi(tokens[1])); 
+        } else {
+            cerr << "Error: Unknown attribute " << tokens[0] << " at line " << linecount << endl;
+            cerr << "Allowed attributes are: tier, downlink_speed_gbps, radix_up, radix_down, queue_up, queue_down, oversubscribed, bundle, switch_latency_ns, downlink_latency_ns" << endl;
+            exit(1);
         }
     } while (std::getline(file, line));
     for (uint32_t tier = 0; tier < _tiers; tier++) {
@@ -245,7 +255,12 @@ FatTreeTopology* FatTreeTopology::load(istream& file, QueueLoggerFactory* logger
 
 FatTreeTopology::FatTreeTopology(uint32_t no_of_nodes, linkspeed_bps linkspeed, mem_b queuesize,
                                  QueueLoggerFactory* logger_factory,
-                                 EventList* ev,FirstFit * fit,queue_type q, simtime_picosec latency, simtime_picosec switch_latency, queue_type snd){
+                                 EventList* ev,
+                                 FirstFit * fit,
+                                 queue_type q, 
+                                 simtime_picosec latency, 
+                                 simtime_picosec switch_latency, 
+                                 queue_type snd){
     
     set_linkspeeds(linkspeed);
     set_queue_sizes(queuesize);
@@ -656,7 +671,17 @@ FatTreeTopology::alloc_queue(QueueLogger* queueLogger, linkspeed_bps speed, mem_
     case RANDOM:
         return new RandomQueue(speed, queuesize, *_eventlist, queueLogger, memFromPkt(RANDOM_BUFFER));
     case COMPOSITE:
-        return new CompositeQueue(speed, queuesize, *_eventlist, queueLogger);
+        {
+            CompositeQueue* q = new CompositeQueue(speed, queuesize, *_eventlist, queueLogger);
+
+            if (_enable_ecn){
+                if (!tor || dir == UPLINK || _enable_on_tor_downlink) {
+                        // don't use ECN on ToR downlinks unless configured so.
+                        q->set_ecn_thresholds(_ecn_low, _ecn_high);
+                }
+            }
+            return q;
+        }
     case CTRL_PRIO:
         return new CtrlPrioQueue(speed, queuesize, *_eventlist, queueLogger);
     case AEOLUS:
