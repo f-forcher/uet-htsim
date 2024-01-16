@@ -1900,16 +1900,18 @@ EqdsBasePacket::seq_t EqdsSink::sackBitmapBase(EqdsBasePacket::seq_t epsn) {
 
 EqdsBasePacket::seq_t EqdsSink::sackBitmapBaseIdeal() {
     uint8_t lowest_value = UINT8_MAX;
-    EqdsBasePacket::seq_t lowest_position;
+    EqdsBasePacket::seq_t lowest_position = UINT64_MAX;
 
     // find the lowest non-zero value in the sack bitmap; that is the candidate for the base, since
     // it is the oldest packet that we are yet to sack. on sack bitmap construction that covers a
     // given seqno, the value is incremented.
-    for (EqdsBasePacket::seq_t crt = _expected_epsn; crt <= _high_epsn; crt++)
+    for (EqdsBasePacket::seq_t crt = _expected_epsn; crt <= _high_epsn; crt++) {
         if (_epsn_rx_bitmap[crt] && _epsn_rx_bitmap[crt] < lowest_value) {
             lowest_value = _epsn_rx_bitmap[crt];
             lowest_position = crt;
         }
+    }
+    assert(lowest_position != UINT64_MAX);
 
     if (lowest_position + 64 > _high_epsn)
         lowest_position = _high_epsn - 64;
