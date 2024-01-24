@@ -2,34 +2,32 @@
 #ifndef EQDS_H
 #define EQDS_H
 
+#include <list>
 #include <memory>
 #include <tuple>
-#include <list>
 
+#include "circular_buffer.h"
+#include "eqdspacket.h"
 #include "eventlist.h"
 #include "trigger.h"
-#include "eqdspacket.h"
-#include "circular_buffer.h"
-
 
 #define timeInf 0
 // min RTO bound in us
 //  *** don't change this default - override it by calling EqdsSrc::setMinRTO()
 #define DEFAULT_EQDS_RTO_MIN 100
 
-template <typename T, unsigned Size>
-class ModularVector {
+template <typename T, unsigned Size> class ModularVector {
     // Size is a power of 2 (because of seqno wrap-around)
     // static_assert(!(Size & (Size - 1)));
     T buf[Size];
 
-   public:
+  public:
     ModularVector(T default_value) {
         for (uint i = 0; i < Size; i++) {
             buf[i] = default_value;
         }
     }
-    T& operator[](unsigned idx) { return buf[idx & (Size - 1)]; }
+    T &operator[](unsigned idx) { return buf[idx & (Size - 1)]; }
 };
 
 static const unsigned eqdsMaxInFlightPkts = 1 << 12;
@@ -44,23 +42,23 @@ class EqdsLogger;
 // building an output queue like the old NDP simulator did, and so
 // better models what happens in a h/w NIC.
 class EqdsNIC : public EventSource {
-   public:
-    EqdsNIC(EventList& eventList, linkspeed_bps linkspeed);
+  public:
+    EqdsNIC(EventList &eventList, linkspeed_bps linkspeed);
 
     // handle traffic sources.
-    bool requestSending(EqdsSrc& src);
-    void startSending(EqdsSrc& src, mem_b pkt_size);
-    void cantSend(EqdsSrc& src);
+    bool requestSending(EqdsSrc &src);
+    void startSending(EqdsSrc &src, mem_b pkt_size);
+    void cantSend(EqdsSrc &src);
 
     // handle control traffic from receivers.
-    bool sendControlPacket(EqdsBasePacket* pkt);
+    bool sendControlPacket(EqdsBasePacket *pkt);
     void doNextEvent();
 
     int activeSources() const { return _active_srcs.size(); }
 
-   private:
-    list<EqdsSrc*> _active_srcs;
-    list<EqdsBasePacket*> _control;
+  private:
+    list<EqdsSrc *> _active_srcs;
+    list<EqdsBasePacket *> _control;
     mem_b _control_size;
 
     linkspeed_bps _linkspeed;
@@ -72,7 +70,7 @@ class EqdsNIC : public EventSource {
 };
 
 class EqdsSrc : public EventSource, public PacketSink, public TriggerTarget {
-   public:
+  public:
     struct Stats {
         uint64_t sent;
         uint64_t timeouts;
@@ -80,11 +78,15 @@ class EqdsSrc : public EventSource, public PacketSink, public TriggerTarget {
         uint64_t pulls;
         uint64_t rts_nacks;
     };
-    EqdsSrc(TrafficLogger* trafficLogger, EventList& eventList, EqdsNIC& nic, bool rts = false);
-    void logFlowEvents(FlowEventLogger& flow_logger) { _flow_logger = &flow_logger; }
-    virtual void connect(Route& routeout, Route& routeback, EqdsSink& sink, simtime_picosec start);
+    EqdsSrc(TrafficLogger *trafficLogger, EventList &eventList, EqdsNIC &nic,
+            bool rts = false);
+    void logFlowEvents(FlowEventLogger &flow_logger) {
+        _flow_logger = &flow_logger;
+    }
+    virtual void connect(Route &routeout, Route &routeback, EqdsSink &sink,
+                         simtime_picosec start);
     void timeToSend();
-    void receivePacket(Packet& pkt);
+    void receivePacket(Packet &pkt);
     void doNextEvent();
     void setDst(uint32_t dst) { _dstaddr = dst; }
     static void setMinRTO(uint32_t min_rto_in_us) {
@@ -101,18 +103,19 @@ class EqdsSrc : public EventSource, public PacketSink, public TriggerTarget {
 
     mem_b maxWnd() const { return _maxwnd; }
 
-    const Stats& stats() const { return _stats; }
+    const Stats &stats() const { return _stats; }
 
-    void setEndTrigger(Trigger& trigger);
+    void setEndTrigger(Trigger &trigger);
     // called from a trigger to start the flow.
     virtual void activate();
 
-    static uint32_t _path_entropy_size;  // now many paths do we include in our path set
+    static uint32_t
+            _path_entropy_size; // now many paths do we include in our path set
     static int _global_node_count;
     static simtime_picosec _min_rto;
     static uint16_t _hdr_size;
-    static uint16_t _mss;  // does not include header
-    static uint16_t _mtu;  // does include header
+    static uint16_t _mss; // does not include header
+    static uint16_t _mtu; // does include header
 
     static bool _sender_based_cc;
     enum Sender_CC { DCTCP, SMARTT };
@@ -123,11 +126,15 @@ class EqdsSrc : public EventSource, public PacketSink, public TriggerTarget {
     static double _alpha, _beta, _gamma_g, _gamma, _md, _mi;
     static simtime_picosec _target_Qdelay;
 
-    virtual const string& nodename() { return _nodename; }
+    virtual const string &nodename() { return _nodename; }
     inline void setFlowId(flowid_t flow_id) { _flow.set_flowid(flow_id); }
     void setFlowsize(uint64_t flow_size_in_bytes);
     mem_b flowsize() { return _flow_size; }
-    inline PacketFlow* flow() { return &_flow; }
+    inline PacketFlow *flow() { return &_flow; }
+    // Added for SMaRTT
+    static void set_exp_avg_ecn(bool value) { use_exp_avg_ecn = value; }
+    static void set_exp_avg_rtt(bool value) { use_exp_avg_rtt = value; }
+    static void set_reps(bool value) { useReps = value; }
 
     inline flowid_t flowId() const { return _flow.flow_id(); }
 
@@ -141,23 +148,25 @@ class EqdsSrc : public EventSource, public PacketSink, public TriggerTarget {
     bool _debug_src;
     bool debug() const { return _debug_src; }
 
-   private:
-    EqdsNIC& _nic;
+  private:
+    EqdsNIC &_nic;
     struct sendRecord {
         // need a constructor to be able to put this in a map
-        sendRecord(mem_b psize, simtime_picosec stime) : pkt_size(psize), send_time(stime){};
+        sendRecord(mem_b psize, simtime_picosec stime)
+                : pkt_size(psize), send_time(stime){};
         mem_b pkt_size;
         simtime_picosec send_time;
     };
-    EqdsLogger* _logger;
-    TrafficLogger* _pktlogger;
-    FlowEventLogger* _flow_logger;
-    Trigger* _end_trigger;
+    EqdsLogger *_logger;
+    TrafficLogger *_pktlogger;
+    FlowEventLogger *_flow_logger;
+    Trigger *_end_trigger;
 
     // TODO in-flight packet storage - acks and sacks clear it
     // list<EqdsDataPacket*> _activePackets;
 
-    // we need to access the in_flight packet list quickly by sequence number, or by send time.
+    // we need to access the in_flight packet list quickly by sequence number,
+    // or by send time.
     map<EqdsDataPacket::seq_t, sendRecord> _tx_bitmap;
     map<simtime_picosec, EqdsDataPacket::seq_t> _send_times;
 
@@ -170,12 +179,14 @@ class EqdsSrc : public EventSource, public PacketSink, public TriggerTarget {
     mem_b sendNewPacket();
     mem_b sendRtxPacket();
     void sendRTS();
+    void quick_adapt(bool trimmed);
+    void check_limits_cwnd();
     void createSendRecord(EqdsDataPacket::seq_t seqno, mem_b pkt_size);
     void queueForRtx(EqdsBasePacket::seq_t seqno, mem_b pkt_size);
     void recalculateRTO();
     void startRTO(simtime_picosec send_time);
-    void clearRTO();   // timer just expired, clear the state
-    void cancelRTO();  // cancel running timer and clear state
+    void clearRTO();  // timer just expired, clear the state
+    void cancelRTO(); // cancel running timer and clear state
 
     // not used, except for debugging timer issues
     void checkRTO() {
@@ -192,60 +203,73 @@ class EqdsSrc : public EventSource, public PacketSink, public TriggerTarget {
     void handlePull(EqdsBasePacket::pull_quanta pullno);
     mem_b handleAckno(EqdsDataPacket::seq_t ackno);
     mem_b handleCumulativeAck(EqdsDataPacket::seq_t cum_ack);
-    void processAck(const EqdsAckPacket& pkt);
-    void processNack(const EqdsNackPacket& pkt);
-    void processPull(const EqdsPullPacket& pkt);
+    void processAck(const EqdsAckPacket &pkt);
+    void processNack(const EqdsNackPacket &pkt);
+    void processPull(const EqdsPullPacket &pkt);
 
-    void updateCwndOnAck_SmaRTT(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
-    void updateCwndOnNack_SmaRTT(bool skip, simtime_picosec delay, mem_b nacked_bytes);
+    void updateCwndOnAck_SmaRTT(bool skip, simtime_picosec delay,
+                                mem_b newly_acked_bytes);
+    void updateCwndOnNack_SmaRTT(bool skip, simtime_picosec delay,
+                                 mem_b nacked_bytes);
 
-    void updateCwndOnAck_DCTCP(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
-    void updateCwndOnNack_DCTCP(bool skip, simtime_picosec delay, mem_b nacked_bytes);
+    void updateCwndOnAck_DCTCP(bool skip, simtime_picosec delay,
+                               mem_b newly_acked_bytes);
+    void updateCwndOnNack_DCTCP(bool skip, simtime_picosec delay,
+                                mem_b nacked_bytes);
 
-    void (EqdsSrc::*updateCwndOnAck)(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
-    void (EqdsSrc::*updateCwndOnNack)(bool skip, simtime_picosec delay, mem_b nacked_bytes);
+    void (EqdsSrc::*updateCwndOnAck)(bool skip, simtime_picosec delay,
+                                     mem_b newly_acked_bytes);
+    void (EqdsSrc::*updateCwndOnNack)(bool skip, simtime_picosec delay,
+                                      mem_b nacked_bytes);
 
     bool checkFinished(EqdsDataPacket::seq_t cum_ack);
     inline void penalizePath(uint16_t path_id, uint8_t penalty);
     Stats _stats;
-    EqdsSink* _sink;
+    EqdsSink *_sink;
 
     // unlike in the NDP simulator, we maintain all the main quantities in bytes
     mem_b _flow_size;
-    bool _done_sending;  // make sure we only trigger once
-    mem_b _backlog;      // how much we need to send, including retransmissions
-    mem_b _unsent;       // how much new stuff we need to send, ignoring retransmissions
+    bool _done_sending; // make sure we only trigger once
+    mem_b _backlog;     // how much we need to send, including retransmissions
+    mem_b _unsent;      // how much new stuff we need to send, ignoring
+                        // retransmissions
     mem_b _cwnd;
     mem_b _maxwnd;
     EqdsBasePacket::pull_quanta _pull_target;
     EqdsBasePacket::pull_quanta _pull;
-    mem_b _credit_pull;  // receive request credit in pull_quanta, but consume it in bytes
+    mem_b _credit_pull; // receive request credit in pull_quanta, but consume it
+                        // in bytes
     mem_b _credit_spec;
     inline mem_b credit() const;
     void stopSpeculating();
-    // spendCredit returns true if we can send, and sets whether the send is speculative
-    bool spendCredit(mem_b pktsize, bool& speculative);
+    // spendCredit returns true if we can send, and sets whether the send is
+    // speculative
+    bool spendCredit(mem_b pktsize, bool &speculative);
     EqdsDataPacket::seq_t _highest_sent;
     mem_b _in_flight;
     bool _send_blocked_on_nic;
 
     // entropy value calculation
-    uint16_t _no_of_paths;       // must be a power of 2
-    uint16_t _path_random;       // random upper bits of EV, set at startup and never changed
-    uint16_t _path_xor;          // random value set each time we wrap the entropy values - XOR with
-                                 // _current_ev_index
-    uint16_t _current_ev_index;  // count through _no_of_paths and then wrap.  XOR with _path_xor to
-                                 // get EV
-    vector<uint8_t> _ev_skip_bitmap;  // paths scores for load balancing
-    uint8_t _max_penalty;             // max value we allow in _path_penalties (typically 1 or 2).
+    uint16_t _no_of_paths; // must be a power of 2
+    uint16_t _path_random; // random upper bits of EV, set at startup and never
+                           // changed
+    uint16_t _path_xor; // random value set each time we wrap the entropy values
+                        // - XOR with _current_ev_index
+    uint16_t _current_ev_index; // count through _no_of_paths and then wrap. XOR
+                                // with _path_xor to get EV
+    vector<uint8_t> _ev_skip_bitmap; // paths scores for load balancing
+    uint8_t _max_penalty; // max value we allow in _path_penalties (typically 1
+                          // or 2).
 
     // RTT estimate data for RTO and sender based CC.
     simtime_picosec _rtt, _mdev, _rto, _base_rtt, _raw_rtt;
     uint32_t _fi_count;
-    bool _rtx_timeout_pending;       // is the RTO running?
-    simtime_picosec _rto_send_time;  // when we sent the oldest packet that the RTO is waiting on.
-    simtime_picosec _rtx_timeout;    // when the RTO is currently set to expire
-    simtime_picosec _last_rts;       // time when we last sent an RTS (or zero if never sent)
+    bool _rtx_timeout_pending;      // is the RTO running?
+    simtime_picosec _rto_send_time; // when we sent the oldest packet that the
+                                    // RTO is waiting on.
+    simtime_picosec _rtx_timeout;   // when the RTO is currently set to expire
+    simtime_picosec
+            _last_rts; // time when we last sent an RTS (or zero if never sent)
     EventList::Handle _rto_timer_handle;
 
     simtime_picosec _last_credit_move;
@@ -264,11 +288,35 @@ class EqdsSrc : public EventSource, public PacketSink, public TriggerTarget {
     string _nodename;
     int _node_num;
     uint32_t _dstaddr;
-    const Route* _route;  // we're only going to support ECMP_HOST for now.
+    const Route *_route; // we're only going to support ECMP_HOST for now.
+
+    // Added for SMaRTT
+    uint32_t acked_bytes = 0;
+    uint32_t saved_acked_bytes = 0;
+    uint32_t saved_trimmed_bytes = 0;
+    uint64_t _next_check_window;
+    uint64_t next_window_end = 0;
+    bool update_next_window = true;
+    bool _start_timer_window = true;
+    bool need_quick_adapt = false;
+    uint64_t previous_window_end = 0;
+    int ignore_for = 0;
+    int count_received = 0;
+    double exp_avg_ecn = 0;
+    double exp_avg_rtt = 0;
+    double exp_avg_ecn_value = 0.3;
+    double exp_avg_rtt_value = 0.3;
+    double exp_avg_alpha = 0.05;
+    uint16_t _crt_path;
+    int _next_pathid;
+    static bool useReps;
+    static bool use_exp_avg_ecn;
+    static bool use_exp_avg_rtt;
+    uint32_t target_window;
 };
 
 class EqdsSink : public PacketSink, public DataReceiver {
-   public:
+  public:
     struct Stats {
         uint64_t received;
         uint64_t bytes_received;
@@ -279,39 +327,37 @@ class EqdsSink : public PacketSink, public DataReceiver {
         uint64_t rts;
     };
 
-    EqdsSink(TrafficLogger* trafficLogger, EqdsPullPacer* pullPacer, EqdsNIC& nic);
-    EqdsSink(TrafficLogger* trafficLogger,
-             linkspeed_bps linkSpeed,
-             double rate_modifier,
-             uint16_t mtu,
-             EventList& eventList,
-             EqdsNIC& nic);
-    virtual void receivePacket(Packet& pkt);
+    EqdsSink(TrafficLogger *trafficLogger, EqdsPullPacer *pullPacer,
+             EqdsNIC &nic);
+    EqdsSink(TrafficLogger *trafficLogger, linkspeed_bps linkSpeed,
+             double rate_modifier, uint16_t mtu, EventList &eventList,
+             EqdsNIC &nic);
+    virtual void receivePacket(Packet &pkt);
 
-    void processData(const EqdsDataPacket& pkt);
-    void processRts(const EqdsRtsPacket& pkt);
-    void processTrimmed(const EqdsDataPacket& pkt);
+    void processData(const EqdsDataPacket &pkt);
+    void processRts(const EqdsRtsPacket &pkt);
+    void processTrimmed(const EqdsDataPacket &pkt);
 
     void handlePullTarget(EqdsBasePacket::seq_t pt);
 
-    virtual const string& nodename() { return _nodename; }
+    virtual const string &nodename() { return _nodename; }
     virtual uint64_t cumulative_ack() { return _expected_epsn; }
     virtual uint32_t drops() { return 0; }
 
     inline flowid_t flowId() const { return _flow.flow_id(); }
 
-    EqdsPullPacket* pull();
+    EqdsPullPacket *pull();
 
     bool shouldSack();
     uint16_t unackedPackets();
-    void setEndTrigger(Trigger& trigger);
+    void setEndTrigger(Trigger &trigger);
 
     EqdsBasePacket::seq_t sackBitmapBase(EqdsBasePacket::seq_t epsn);
     EqdsBasePacket::seq_t sackBitmapBaseIdeal();
     uint64_t buildSackBitmap(EqdsBasePacket::seq_t ref_epsn);
-    EqdsAckPacket* sack(uint16_t path_id, EqdsBasePacket::seq_t seqno, bool ce);
+    EqdsAckPacket *sack(uint16_t path_id, EqdsBasePacket::seq_t seqno, bool ce);
 
-    EqdsNackPacket* nack(uint16_t path_id, EqdsBasePacket::seq_t seqno);
+    EqdsNackPacket *nack(uint16_t path_id, EqdsBasePacket::seq_t seqno);
 
     EqdsBasePacket::pull_quanta backlog() {
         if (_highest_pull_target > _latest_pull)
@@ -327,8 +373,8 @@ class EqdsSink : public PacketSink, public DataReceiver {
     }
 
     EqdsBasePacket::pull_quanta rtx_backlog() { return _retx_backlog; }
-    const Stats& stats() const { return _stats; }
-    void connect(EqdsSrc*, Route* routeback);
+    const Stats &stats() const { return _stats; }
+    void connect(EqdsSrc *, Route *routeback);
     void setSrc(uint32_t s) { _srcaddr = s; }
     inline void setFlowId(flowid_t flow_id) { _flow.set_flowid(flow_id); }
 
@@ -345,48 +391,50 @@ class EqdsSink : public PacketSink, public DataReceiver {
         _in_pull = false;
         _in_slow_pull = false;
     }
-    inline EqdsNIC* getNIC() const { return &_nic; }
+    inline EqdsNIC *getNIC() const { return &_nic; }
 
     uint16_t nextEntropy();
 
-    EqdsSrc* getSrc() { return _src; }
+    EqdsSrc *getSrc() { return _src; }
     uint32_t getMaxCwnd() { return _src->maxWnd(); };
 
     static mem_b _bytes_unacked_threshold;
     static EqdsBasePacket::pull_quanta _credit_per_pull;
     static int TGT_EV_SIZE;
 
-    static bool _receiver_oversubscribed_cc;  // experimental option, not for eEQDS at this stage
+    static bool _receiver_oversubscribed_cc; // experimental option, not for
+                                             // eEQDS at this stage
 
     // for sink logger
     inline mem_b total_received() const { return _stats.bytes_received; }
-    uint32_t reorder_buffer_size();  // count is in packets
-   private:
+    uint32_t reorder_buffer_size(); // count is in packets
+  private:
     uint32_t _srcaddr;
-    EqdsNIC& _nic;
-    EqdsSrc* _src;
+    EqdsNIC &_nic;
+    EqdsSrc *_src;
     PacketFlow _flow;
-    EqdsPullPacer* _pullPacer;
+    EqdsPullPacer *_pullPacer;
     EqdsBasePacket::seq_t _expected_epsn;
     EqdsBasePacket::seq_t _high_epsn;
-    EqdsBasePacket::seq_t
-        _ref_epsn;  // used for SACK bitmap calculation in spec, unused here for NOW.
+    EqdsBasePacket::seq_t _ref_epsn; // used for SACK bitmap calculation in
+                                     // spec, unused here for NOW.
     EqdsBasePacket::pull_quanta _retx_backlog;
     EqdsBasePacket::pull_quanta _latest_pull;
     EqdsBasePacket::pull_quanta _highest_pull_target;
 
-    bool _in_pull;       // this tunnel is in the pull queue.
-    bool _in_slow_pull;  // this tunnel is in the slow pull queue.
+    bool _in_pull;      // this tunnel is in the pull queue.
+    bool _in_slow_pull; // this tunnel is in the slow pull queue.
 
-    const Route* _route;
+    const Route *_route;
 
     mem_b _received_bytes;
 
     uint16_t _accepted_bytes;
 
-    Trigger* _end_trigger;
+    Trigger *_end_trigger;
     ModularVector<uint8_t, eqdsMaxInFlightPkts>
-        _epsn_rx_bitmap;  // list of packets above a hole, that we've received
+            _epsn_rx_bitmap; // list of packets above a hole, that we've
+                             // received
 
     uint32_t _out_of_order_count;
     bool _ack_request;
@@ -398,26 +446,24 @@ class EqdsSink : public PacketSink, public DataReceiver {
 };
 
 class EqdsPullPacer : public EventSource {
-   public:
-    EqdsPullPacer(linkspeed_bps linkSpeed,
-                  double pull_rate_modifier,
-                  uint16_t mtu,
-                  EventList& eventList);
+  public:
+    EqdsPullPacer(linkspeed_bps linkSpeed, double pull_rate_modifier,
+                  uint16_t mtu, EventList &eventList);
     void doNextEvent();
-    void requestPull(EqdsSink* sink);
-    void requestRetransmit(EqdsSink* sink);
+    void requestPull(EqdsSink *sink);
+    void requestRetransmit(EqdsSink *sink);
 
-    bool isActive(EqdsSink* sink);
-    bool isRetransmitting(EqdsSink* sink);
-    bool isIdle(EqdsSink* sink);
+    bool isActive(EqdsSink *sink);
+    bool isRetransmitting(EqdsSink *sink);
+    bool isIdle(EqdsSink *sink);
 
     void updateReceiverCc(bool ecn, bool trim);
     static bool _oversubscribed_cc;
 
-   private:
-    list<EqdsSink*> _rtx_senders;     // TODO priorities?
-    list<EqdsSink*> _active_senders;  // TODO priorities?
-    list<EqdsSink*> _idle_senders;    // TODO priorities?
+  private:
+    list<EqdsSink *> _rtx_senders;    // TODO priorities?
+    list<EqdsSink *> _active_senders; // TODO priorities?
+    list<EqdsSink *> _idle_senders;   // TODO priorities?
 
     const simtime_picosec _pktTime;
     bool _active;
@@ -430,8 +476,9 @@ class EqdsPullPacer : public EventSource {
         simtime_picosec arrival_time;
         bool ecn;
     };
-    list<struct ReceiptRecord> _receipt_records;  // rewrite this as a circular buffer for speed
+    list<struct ReceiptRecord>
+            _receipt_records; // rewrite this as a circular buffer for speed
     int _receipt_ecn_count;
 };
 
-#endif  // EQDS_H
+#endif // EQDS_H
