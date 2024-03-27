@@ -57,11 +57,11 @@ void FatTreeSwitch::receivePacket(Packet& pkt){
     }
 };
 
-void FatTreeSwitch::addHostPort(int addr, int flowid, PacketSink* transport){
+void FatTreeSwitch::addHostPort(int addr, int flowid, PacketSink* transport_port){
     Route* rt = new Route();
     rt->push_back(_ft->queues_nlp_ns[_ft->HOST_POD_SWITCH(addr)][addr][0]);
     rt->push_back(_ft->pipes_nlp_ns[_ft->HOST_POD_SWITCH(addr)][addr][0]);
-    rt->push_back(transport);
+    rt->push_back(transport_port);
     _fib->addHostRoute(addr,rt,flowid);
 }
 
@@ -314,9 +314,10 @@ FatTreeSwitch::routing_strategy FatTreeSwitch::_strategy = FatTreeSwitch::NIX;
 uint16_t FatTreeSwitch::_ar_fraction = 0;
 uint16_t FatTreeSwitch::_ar_sticky = FatTreeSwitch::PER_PACKET;
 simtime_picosec FatTreeSwitch::_sticky_delta = timeFromUs((uint32_t)10);
-double FatTreeSwitch::_ecn_threshold_fraction = 1.0;
+double FatTreeSwitch::_ecn_threshold_fraction = 0.2;
 double FatTreeSwitch::_speculative_threshold_fraction = 0.2;
 int8_t (*FatTreeSwitch::fn)(FibEntry*,FibEntry*)= &FatTreeSwitch::compare_queuesize;
+uint16_t FatTreeSwitch::_trim_size = 64;
 
 Route* FatTreeSwitch::getNextHop(Packet& pkt, BaseQueue* ingress_port){
     vector<FibEntry*> * available_hops = _fib->getRoutes(pkt.dst());
@@ -332,6 +333,11 @@ Route* FatTreeSwitch::getNextHop(Packet& pkt, BaseQueue* ingress_port){
                 ecmp_choice = freeBSDHash(pkt.flow_id(),pkt.pathid(),_hash_salt) % available_hops->size();
                 break;
             case ADAPTIVE_ROUTING:
+                if (pkt.size() < 100) {
+                    // don't bother adaptive routing the small packets - don't want to pollute the tables
+                    ecmp_choice = freeBSDHash(pkt.flow_id(),pkt.pathid(),_hash_salt) % available_hops->size();
+                    break;
+                }
                 if (_ar_sticky==FatTreeSwitch::PER_PACKET){
                     ecmp_choice = adaptive_route(available_hops,fn); 
                 } 
@@ -372,12 +378,16 @@ Route* FatTreeSwitch::getNextHop(Packet& pkt, BaseQueue* ingress_port){
                     ecmp_choice = replace_worst_choice(available_hops,fn, ecmp_choice);
                 break;
             case RR:
-                if (_crt_route>=5 * available_hops->size()){
-                    _crt_route = 0;
-                    permute_paths(available_hops);
+                if (pkt.size()<128)
+                    ecmp_choice = freeBSDHash(pkt.flow_id(),pkt.pathid(),_hash_salt) % available_hops->size();
+                else {
+                    if (_crt_route>=1*available_hops->size()){
+                        _crt_route = 0;
+                        permute_paths(available_hops);
+                    }
+                    ecmp_choice = _crt_route % available_hops->size();
+                    _crt_route ++;
                 }
-                ecmp_choice = _crt_route % available_hops->size();
-                _crt_route ++;
                 break;
             case RR_ECMP:
                 if (_type == TOR){

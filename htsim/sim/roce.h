@@ -43,6 +43,7 @@ public:
 
     inline void set_flowid(flowid_t flow_id) { _flow.set_flowid(flow_id);}
 
+    inline void update_spacing(){_packet_spacing = (simtime_picosec)((Packet::data_packet_size()+RocePacket::ACKSIZE) * (pow(10.0,12.0) * 8) / _pacing_rate);}
 
     static void setMinRTO(uint32_t min_rto_in_us) {_min_rto = timeFromUs((uint32_t)min_rto_in_us);}
 
@@ -120,10 +121,12 @@ public:
 
     PacketFlow _flow;
 
-private:
+protected:
     // Housekeeping
     RoceLogger* _logger;
     Trigger* _end_trigger;
+
+    linkspeed_bps _pacing_rate;
 
     TrafficLogger* _pktlogger;
 
@@ -167,7 +170,7 @@ public:
 
     uint32_t _srcaddr;
     
-private:
+protected:
  
     // Connectivity
     void connect(RoceSrc& src, Route* route);
@@ -179,6 +182,8 @@ private:
     const Route* _route;
 
     string _nodename;
+
+    bool _nack_sent; 
  
     RocePacket::seq_t _last_packet_seqno; //sequence number of the last
     //packet in the connection (or 0 if not known)

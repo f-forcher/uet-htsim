@@ -6,9 +6,10 @@
 #include "ecn.h"
 
 CompositeQueue::CompositeQueue(linkspeed_bps bitrate, mem_b maxsize, EventList& eventlist, 
-                               QueueLogger* logger)
+                               QueueLogger* logger, uint16_t trim_size)
     : Queue(bitrate, maxsize, eventlist, logger)
 {
+    _trim_size = trim_size;
     _ratio_high = 100000;
     _ratio_low = 1;
     _crt = 0;
@@ -160,7 +161,8 @@ CompositeQueue::receivePacket(Packet& pkt)
 
                 //cout << "A [ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ] STRIP" << endl;
                 //cout << "booted_pkt->size(): " << booted_pkt->size();
-                booted_pkt->strip_payload();
+                booted_pkt->strip_payload(_trim_size);
+                //cout << "CQ trim at " << _nodename << endl;
                 _num_stripped++;
                 booted_pkt->flow().logTraffic(*booted_pkt,*this,TrafficLogger::PKT_TRIM);
                 if (_logger) _logger->logQueue(*this, QueueLogger::PKT_TRIM, pkt);
@@ -214,7 +216,8 @@ CompositeQueue::receivePacket(Packet& pkt)
         } else {
             //strip packet the arriving packet - low priority queue is full
             //cout << "B [ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ] STRIP" << endl;
-            pkt.strip_payload();
+            pkt.strip_payload(_trim_size);
+            //cout << "CQ trim at " << _nodename << endl;
             _num_stripped++;
             pkt.flow().logTraffic(pkt,*this,TrafficLogger::PKT_TRIM);
             if (_logger) _logger->logQueue(*this, QueueLogger::PKT_TRIM, pkt);

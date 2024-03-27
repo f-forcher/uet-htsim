@@ -22,6 +22,8 @@ using namespace std;
 
 #include "loggers.h"
 #include "eqds_logger.h"
+#include "uec_logger.h"
+#include "dcqcn_logger.h"
 
 struct eqint
 {
@@ -292,6 +294,8 @@ int main(int argc, char** argv){
             case Logger::ROCE_TRAFFIC: //10
                 out = RoceTrafficLogger::event_to_str(event);
                 break;
+            case Logger::DCQCN_TRAFFIC: //??
+                out = DCQCNTrafficLogger::event_to_str(event);
                 break;                
             case Logger::HPCC_TRAFFIC: //10
                 out = HPCCTrafficLogger::event_to_str(event);
@@ -324,15 +328,29 @@ int main(int argc, char** argv){
                 // not currently used, so use default logger
                 out = Logger::event_to_str(event);
                 break;
+            case Logger::UEC_EVENT: 
+            case Logger::UEC_STATE: 
+            case Logger::UEC_RECORD:
+            case Logger::UEC_MEMORY:
+            case Logger::UEC_TRAFFIC:
+                // not currently used, so use default logger
+                out = Logger::event_to_str(event);
+                break;
             case Logger::NDP_SINK: //18
                 out = NdpSinkLoggerSampling::event_to_str(event);
                 break;
             case Logger::EQDS_SINK: //18
                 out = EqdsSinkLoggerSampling::event_to_str(event);
                 break;
+            case Logger::UEC_SINK: //18
+                out = UecSinkLoggerSampling::event_to_str(event);
+                break;
             case Logger::ROCE_SINK: //18
                 out = RoceSinkLoggerSampling::event_to_str(event);
                 break;
+            case Logger::DCQCN_SINK: //18
+                out = DCQCNSinkLoggerSampling::event_to_str(event);
+                break;                                
             case Logger::HPCC_SINK: //18
                 out = HPCCSinkLoggerSampling::event_to_str(event);
                 break;                
@@ -375,6 +393,8 @@ int main(int argc, char** argv){
             case Logger::FLOW_EVENT:
                 out = FlowEventLoggerSimple::event_to_str(event);
                 break;
+            case Logger::NIC_EVENT:
+                out = NicLoggerSampling::event_to_str(event);
             }
             bool do_output = true;
             for (size_t f=0; f < filters.size(); f++) {

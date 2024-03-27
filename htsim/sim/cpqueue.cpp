@@ -49,7 +49,7 @@ CutPayloadQueue::receivePacket(Packet& pkt)
     pkt.flow().logTraffic(pkt,*this,TrafficLogger::PKT_ARRIVE);
     if (_queuesize+pkt.size() > _threshold) {
         //strip packet the arriving packet
-        pkt.strip_payload();
+        pkt.strip_payload(64);
         _num_stripped++;
         pkt.flow().logTraffic(pkt,*this,TrafficLogger::PKT_TRIM);
         if (_logger) _logger->logQueue(*this, QueueLogger::PKT_TRIM, pkt);

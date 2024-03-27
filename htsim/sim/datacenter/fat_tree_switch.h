@@ -116,7 +116,7 @@ public:
 
     static int8_t (*fn)(FibEntry*,FibEntry*);
 
-    virtual void addHostPort(int addr, int flowid, PacketSink* transport);
+    virtual void addHostPort(int addr, int flowid, PacketSink* transport_port);
 
     virtual void permute_paths(vector<FibEntry*>* uproutes);
 
@@ -129,6 +129,7 @@ public:
     static simtime_picosec _sticky_delta;
     static double _ecn_threshold_fraction;
     static double _speculative_threshold_fraction;
+    static uint16_t _trim_size;
 private:
     switch_type _type;
     Pipe* _pipe;

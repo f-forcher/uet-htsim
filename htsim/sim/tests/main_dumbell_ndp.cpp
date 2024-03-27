@@ -54,8 +54,10 @@ int main(int argc, char **argv) {
             filename.str(std::string());
             filename << argv[i+1];
             i++;
+        /*
         } else if (!strcmp(argv[i],"-oversubscribed_cc")) {
-            NdpSink::_oversubscribed_congestion_control = true;
+              NdpSink::_oversubscribed_congestion_control = true;
+        */
         } else if (!strcmp(argv[i],"-conns")) {
             flow_count = atoi(argv[i+1]);
             cout << "no_of_conns "<<flow_count << endl;
@@ -117,7 +119,12 @@ int main(int argc, char **argv) {
     Pipe pipe1(RTT1, eventlist); pipe1.setName("pipe1"); logfile.writeName(pipe1);
     Pipe pipe2(RTT1, eventlist); pipe2.setName("pipe2"); logfile.writeName(pipe2);
 
-    CompositeQueue queue(SERVICE1, queuesize, eventlist,NULL); queue.setName("Queue1"); logfile.writeName(queue);
+    CompositeQueue queue(SERVICE1, queuesize, eventlist,NULL, NdpPacket::ACKSIZE);
+    queue.setName("Queue1"); logfile.writeName(queue);
+    queue.set_ecn_threshold(ecn_threshold);
+    
+    CompositeQueue queue2(SERVICE1, queuesize, eventlist,NULL, NdpPacket::ACKSIZE);
+    queue2.setName("Queue2"); logfile.writeName(queue2);
     queue.set_ecn_threshold(ecn_threshold);
 
     NdpSrc* ndpSrc;
@@ -128,7 +135,7 @@ int main(int argc, char **argv) {
     route_t* routeout;
     route_t* routein;
 
-    NdpSink::_oversubscribed_congestion_control = true; 
+    //NdpSink::_oversubscribed_congestion_control = true; 
  
     vector<NdpSrc*> ndp_srcs;
 
@@ -155,12 +162,13 @@ int main(int argc, char **argv) {
         routeout->push_back(new FairPriorityQueue(SERVICE1, memFromPkt(1000),eventlist, NULL));
         routeout->push_back(&queue); 
         routeout->push_back(&pipe1);
-        routeout->push_back(new CompositeQueue(SERVICE1, queuesize, eventlist,NULL));
+        routeout->push_back(new CompositeQueue(SERVICE1, queuesize, eventlist,NULL, NdpPacket::ACKSIZE));
         routeout->push_back(new Pipe(RTT1, eventlist));
         routeout->push_back(ndpSnk);
         
         routein  = new route_t();
-        routein->push_back(&pipe2);
+        routeout->push_back(&queue2); 
+        routein->push_back(&pipe1);
         routein->push_back(ndpSrc); 
 
         ndpSrc->connect(routeout, routein, *ndpSnk,timeFromUs(0.0));

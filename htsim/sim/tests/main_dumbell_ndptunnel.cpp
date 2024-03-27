@@ -22,19 +22,7 @@ int main(int argc, char **argv) {
     eventlist.setEndtime(timeFromSec(5));
     Clock c(timeFromSec(50/100.), eventlist);
 
-    unsigned seed = time(NULL);
-
-    int i = 1;
-    while (i < argc) {
-        if (!strcmp(argv[i], "-seed")) {
-            seed = atoi(argv[i + 1]);
-            cout << "random seed " << seed << endl;
-            i++;
-        }
-        i++;
-    }
-
-    srand(seed);
+    srand(time(NULL));
 
     Packet::set_packet_size(9000);    
     linkspeed_bps SERVICE1 = speedFromMbps((uint64_t)10000);
@@ -57,7 +45,10 @@ int main(int argc, char **argv) {
     Pipe pipe1(RTT1, eventlist); pipe1.setName("pipe1"); logfile.writeName(pipe1);
     Pipe pipe2(RTT1, eventlist); pipe2.setName("pipe2"); logfile.writeName(pipe2);
 
-    CompositeQueue queue(SERVICE1, BUFFER, eventlist,NULL); queue.setName("Queue1"); logfile.writeName(queue);
+    CompositeQueue queue(SERVICE1, BUFFER, eventlist, NULL, ACKSIZE);
+    queue.setName("Queue1"); logfile.writeName(queue);
+    CompositeQueue queue2(SERVICE1, BUFFER, eventlist, NULL, ACKSIZE);
+    queue2.setName("Queue2"); logfile.writeName(queue2);
 
     Queue queue3(SERVICE1, BUFFER*20, eventlist,NULL); queue3.setName("Queue3"); logfile.writeName(queue3);
     
@@ -110,7 +101,8 @@ int main(int argc, char **argv) {
         routeout->push_back(ndpSnk);
         
         routein  = new route_t();
-        routein->push_back(&pipe2);
+        routeout->push_back(&queue2); 
+        routein->push_back(&pipe1);
         routein->push_back(ndpSrc); 
 
         ndpSrc->connect(*routeout, *routein, *ndpSnk,0);

@@ -176,6 +176,22 @@ class MultiQueueLoggerSampling : public QueueLogger, public EventSource {
     int _currentQueueSizePkts;
 };
 
+class NicLoggerSampling: public Logger, public EventSource {
+public:    
+    NicLoggerSampling(simtime_picosec period, EventList& eventlist);
+    virtual void doNextEvent();
+    void monitorNic(NIC* nic);
+    static string event_to_str(RawLogEvent& event);
+    
+protected:
+    vector<NIC*> _nics;
+    vector<mem_b> _last_new_data;
+    vector<mem_b> _last_total_data;
+    vector<mem_b> _last_trim;
+    simtime_picosec _last_time;
+    simtime_picosec _period;
+};
+
 class SinkLoggerSampling : public Logger, public EventSource {
  public:
     SinkLoggerSampling(simtime_picosec period, EventList& eventlist,

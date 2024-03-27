@@ -49,8 +49,11 @@ int main(int argc, char **argv) {
     Pipe pipe1(RTT1, eventlist); pipe1.setName("pipe1"); logfile.writeName(pipe1);
     Pipe pipe2(RTT1, eventlist); pipe2.setName("pipe2"); logfile.writeName(pipe2);
 
-    CompositeQueue queue(SERVICE1, BUFFER, eventlist,NULL); queue.setName("Queue1"); logfile.writeName(queue);
-
+    CompositeQueue queue(SERVICE1, BUFFER, eventlist, NULL, NdpPacket::ACKSIZE);
+    queue.setName("Queue1"); logfile.writeName(queue);
+    CompositeQueue queue2(SERVICE1, BUFFER, eventlist,NULL, NdpPacket::ACKSIZE);
+    queue2.setName("Queue2"); logfile.writeName(queue2);
+    
     NdpSrc* ndpSrc[2];
     NdpSink* ndpSnk;
     NdpSinkLoggerSampling sinkLogger(timeFromUs((uint32_t)10),eventlist);
@@ -82,7 +85,8 @@ int main(int argc, char **argv) {
         routeout->push_back(ndpSnk);
         
         routein  = new route_t();
-        routein->push_back(&pipe2);
+        routeout->push_back(&queue2); 
+        routein->push_back(&pipe1);
         routein->push_back(ndpSrc[i]); 
         simtime_picosec starttime = 0;
         if (i == 1) {

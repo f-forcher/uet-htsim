@@ -27,6 +27,7 @@ def run_experiments(input_filename):
         targetTailFCT = 0
         params = []
         targetFCT = {}
+        binary = "./htsim_eqds"
 
         #figure out parameters.
         while i<len(inputlines):
@@ -38,7 +39,10 @@ def run_experiments(input_filename):
             p = str(inputlines[i])
             i = i + 1
 
-            if ("Param" in p):
+            if ("Binary" in p):
+                binary = (p.split(" ",1)[1]).rstrip()
+                print ("Using binary:", binary)
+            elif ("Param" in p):
                 params.append(p.split(" ",1)[1])
                 #print ("Found param",p.split(" ",1)[1])
             elif ("tailFCT" in p):
@@ -47,6 +51,7 @@ def run_experiments(input_filename):
             elif ("FCT" in p):
                 q = p.split()
                 targetFCT[q[1]] = int(q[2])
+                #print ("Found targetTailFCT",targetFCT[q[1]],"for flow",q[1])                
             elif ("Experiment" in p):
                 experiment_name = p.split(" ",1)[1]
 
@@ -54,7 +59,7 @@ def run_experiments(input_filename):
             print ("\n=================================\n!!!!Cannot find traffic matrix file ", filename, "- skipping to next experiment\n================================")
             continue
 
-        cmdline = "./htsim_eqds -tm "+filename+" "
+        cmdline = binary + " -tm "+filename+" "
         for p in params:
             cmdline = cmdline + p.rstrip() + " "
 
@@ -66,6 +71,10 @@ def run_experiments(input_filename):
 
         if (debug):
             print (conncountcmd)
+
+        if (dryrun):
+            continue
+        
         process = subprocess.Popen(conncountcmd,shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         # Get the output and errors from the process
@@ -137,6 +146,7 @@ def run_experiments(input_filename):
             print("Error processing file ",filename,errors.decode())
 
 debug = False
+dryrun = False
 
 # total arguments
 n = len(sys.argv)
@@ -147,6 +157,8 @@ filename='validate.txt'
 while (i<n):
     if (sys.argv[i]=="-debug"):
         debug = True;
+    elif (sys.argv[i]=="-dryrun"):
+        dryrun = True;
     else:
         filename = sys.argv[i]
         print ("Using " + filename +" as experiment plan")

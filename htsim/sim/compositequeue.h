@@ -21,7 +21,7 @@
 class CompositeQueue : public Queue {
  public:
     CompositeQueue(linkspeed_bps bitrate, mem_b maxsize, 
-                   EventList &eventlist, QueueLogger* logger);
+                   EventList &eventlist, QueueLogger* logger, uint16_t trim_size);
     virtual void receivePacket(Packet& pkt);
     virtual void doNextEvent();
     // should really be private, but loggers want to see
@@ -72,6 +72,8 @@ class CompositeQueue : public Queue {
     // marking.
     mem_b _ecn_minthresh; 
     mem_b _ecn_maxthresh;
+
+    uint16_t _trim_size;
 
     bool _return_to_sender;
 

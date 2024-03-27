@@ -207,6 +207,9 @@ Packet::str() const {
     case ROCE:
         s = "ROCE";
         break;
+    case CNP:
+        s = "CNP";
+        break;
     case ROCEACK:
         s = "ROCEACK";
         break;
@@ -236,6 +239,21 @@ Packet::str() const {
         break;
     case EQDSRTS:
         s = "EQDSRTS";
+        break;
+    case UECDATA:
+        s = "UECDATA";
+        break;
+    case UECNACK:
+        s = "UECNACK";
+        break;
+    case UECACK:
+        s = "UECACK";
+        break;
+    case UECPULL:
+        s = "UECPULL";
+        break;
+    case UECRTS:
+        s = "UECRTS";
         break;
     }
     return s;
@@ -268,6 +286,28 @@ void
 PacketFlow::logTraffic(Packet& pkt, Logged& location, TrafficLogger::TrafficEvent ev) {
     if (_logger)
         _logger->logTraffic(pkt, location, ev);
+}
+
+NIC::NIC(id_t src_id) :
+    _src_id(src_id)
+{
+    _total_data_received = 0;
+    _new_data_received = 0;
+    _trim_received = 0;
+    _ctrl_received = 0;
+}
+
+void NIC::logReceivedData(mem_b tot_bytes, mem_b new_bytes) {
+    _total_data_received += tot_bytes;
+    _new_data_received += new_bytes;
+}
+
+void NIC::logReceivedTrim(mem_b bytes) {
+    _trim_received += bytes;
+}
+
+void NIC::logReceivedCtrl(mem_b bytes) {
+    _ctrl_received += bytes;
 }
 
 void print_route(const Route& route) {

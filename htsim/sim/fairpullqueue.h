@@ -49,12 +49,14 @@ class FairPullQueue : public BasePullQueue<PullPkt>{
     virtual void enqueue(PullPkt& pkt, int priority = 0);
     virtual PullPkt* dequeue();
     virtual void flush_flow(flowid_t flow_id, int priority = 0);
- protected:
-    map<flowid_t, CircularBuffer<PullPkt*>*> _queue_map;  // map flow id to pull queue
+ protected: 
+	map<flowid_t, CircularBuffer<PullPkt*>*> _queue_map;  // map flow id to pull queue
     bool queue_exists(const PullPkt& pkt);
     CircularBuffer<PullPkt*>* find_queue(const PullPkt& pkt);
     CircularBuffer<PullPkt*>* create_queue(const PullPkt& pkt);
     typename map<flowid_t, CircularBuffer<PullPkt*>*>::iterator _current_queue;
+    
+	int _scheduled;
 };
 
 #endif

@@ -42,31 +42,12 @@ int main(int argc, char **argv) {
   
     logfile.setStartTime(timeFromSec(0.0));
 
-    uint64_t low_pfc = 12, high_pfc = 15;
-
-    int i = 1;
-    while (i < argc) {
-        if (!strcmp(argv[i], "-pfc_low")) {
-            low_pfc = atoi(argv[i + 1]);
-            cout << "pfc_low " << low_pfc << endl;
-            i++;
-        }
-        else if (!strcmp(argv[i], "-pfc_high")) {
-            high_pfc = atoi(argv[i + 1]);
-            cout << "pfc_high " << high_pfc << endl;
-            i++;
-        }
-        i++;
-    }
-
-    LosslessInputQueue::_low_threshold = memFromPkt(low_pfc);
-    LosslessInputQueue::_high_threshold = memFromPkt(high_pfc);
-
     Pipe pipe1(RTT1, eventlist); pipe1.setName("pipe1"); logfile.writeName(pipe1);
     Pipe pipe2(RTT1, eventlist); pipe2.setName("pipe2"); logfile.writeName(pipe2);
 
     LosslessOutputQueue queue(SERVICE1, BUFFER, eventlist,NULL); queue.setName("Queue1"); logfile.writeName(queue);
-
+    LosslessOutputQueue queue2(SERVICE1, BUFFER, eventlist,NULL); queue2.setName("Queue2"); logfile.writeName(queue2);
+    
     RoceSrc* roceSrc;
     RoceSink* roceSnk;
     RoceSinkLoggerSampling sinkLogger(timeFromUs((uint32_t)100),eventlist);
@@ -93,7 +74,8 @@ int main(int argc, char **argv) {
         routeout->push_back(roceSnk);
         
         routein  = new route_t();
-        routein->push_back(&pipe2);
+        routeout->push_back(&queue2); 
+        routein->push_back(&pipe1);
         routein->push_back(roceSrc); 
 
         roceSrc->connect(routeout, routein, *roceSnk,0);

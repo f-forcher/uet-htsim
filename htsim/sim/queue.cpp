@@ -232,7 +232,7 @@ PriorityQueue::getPriority(Packet& pkt) {
         // the packet to say what queue service it desires.
         abort();
     }
-    // can't get here
+    // unreachable, but shut up g++ warnings
     abort();
 }
 
@@ -405,8 +405,6 @@ FairPriorityQueue::getPriority(Packet& pkt) {
         // the packet to say what queue service it desires.
         abort();
     }
-    // can't get here
-    abort();
 }
 
 //this is inaccurate!
@@ -426,6 +424,8 @@ FairPriorityQueue::serviceTime(Packet& pkt) {
     default:
         abort();
     }
+    // unreachable, but shut up g++ warnings
+    abort();
 }
 
 void
@@ -452,7 +452,7 @@ FairPriorityQueue::receivePacket(Packet& pkt)
             //cout << timeAsMs(eventlist().now()) << " FPQ " << _name << " GO "<<endl;
 
             //start transmission if we have packets to send!
-            if(queuesize()>0)
+            if(queuesize()>0 && _sending == NULL)
                 beginService();
         }
 
@@ -477,7 +477,7 @@ FairPriorityQueue::receivePacket(Packet& pkt)
 
     if (queuesize() > _maxsize && queuesize()/1000000 != (queuesize()+pkt.size())/1000000){
         //pkt.free();
-        cout << "Host Queue size " << queuesize() << endl;
+        //cout << "Host Queue size " << queuesize() << endl;
         //return;
     }
 
@@ -486,7 +486,7 @@ FairPriorityQueue::receivePacket(Packet& pkt)
 
     if (_logger) _logger->logQueue(*this, QueueLogger::PKT_ENQUEUE, pkt);
 
-    if (queueWasEmpty && _state_send==LosslessQueue::READY) {
+    if (queueWasEmpty && _state_send==LosslessQueue::READY && _sending == NULL) {
         /* schedule the dequeue event */
         beginService();
     }

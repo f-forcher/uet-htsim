@@ -48,7 +48,9 @@ typedef enum {IP, TCP, TCPACK, TCPNACK, SWIFT, SWIFTACK, STRACK, STRACKACK,
               ETH_PAUSE, TOFINO_TRIM,
               ROCE, ROCEACK, ROCENACK,
               HPCC, HPCCACK, HPCCNACK,
-              EQDSDATA, EQDSPULL, EQDSACK, EQDSNACK, EQDSRTS} packet_type;
+              CNP,
+              EQDSDATA, EQDSPULL, EQDSACK, EQDSNACK, EQDSRTS,
+              UECDATA, UECPULL, UECACK, UECNACK, UECRTS} packet_type;
 
 typedef enum {NONE, UP, DOWN} packet_direction;
 
@@ -119,7 +121,12 @@ class Packet {
 
     inline void set_next_hop(PacketSink* snk) { _next_routed_hop = snk;}
 
-    virtual void strip_payload() { assert(!_is_header); _is_header = true;};
+    virtual void strip_payload(uint16_t trim_size) {
+        assert(trim_size >= 64);
+        assert(!_is_header);
+        _is_header = true;
+        _size = trim_size;
+    }
     virtual void bounce();
     virtual void unbounce(uint16_t pktsize);
     inline uint32_t path_len() const {return _path_len;}
@@ -215,6 +222,30 @@ class PacketSink {
     virtual const string& nodename()=0;
 
     PacketSink* _remoteEndpoint;
+};
+
+// NIC mostly exists to enable logging of an EqdsNIC, particularly
+// when we want aggregate stats for all the incoming flows from
+// different sources.
+class NIC {
+public:
+    NIC(id_t src_id);
+
+    virtual const string& nodename() const =0;
+    id_t _src_id;
+    id_t get_id() const {return _src_id;}
+
+    void logReceivedData(mem_b tot_bytes, mem_b new_bytes);
+    void logReceivedTrim(mem_b bytes);
+    void logReceivedCtrl(mem_b bytes);
+    mem_b _total_data_received;  // stats collection - total amount of
+                                 // data bytes received (inc pkt
+                                 // headers)
+    mem_b _new_data_received;  // stats collection - amount of new
+                               // unique data bytes received (inc pkt
+                               // headers, but not duplicates)
+    mem_b _trim_received;  // stats collection
+    mem_b _ctrl_received;  // stats collection, plus pull pacing reduction
 };
 
 

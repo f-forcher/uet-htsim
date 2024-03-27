@@ -66,9 +66,12 @@ FifoPullQueue<PullPkt>::flush_flow(flowid_t flow_id, int /*priority*/) {
     assert((size_t)this->_pull_count == _pull_queue.size());
 }
 
+int _packets_per_burst = 1;
+
 template<class PullPkt>
 FairPullQueue<PullPkt>::FairPullQueue() {
     _current_queue = _queue_map.begin();
+    _scheduled = 0;
 }
 
 
@@ -96,7 +99,13 @@ FairPullQueue<PullPkt>::dequeue() {
         if (_current_queue == _queue_map.end())
             _current_queue = _queue_map.begin();
         CircularBuffer <PullPkt*>* pull_queue = _current_queue->second;
-        _current_queue++;
+        
+        _scheduled++;
+
+        if (_scheduled >= _packets_per_burst){
+            _current_queue++;
+            _scheduled = 0;
+        }
         if (!pull_queue->empty()) {
             //we add packets to the front,remove them from the back
             PullPkt* packet = pull_queue->pop();

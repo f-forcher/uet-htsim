@@ -16,7 +16,7 @@
 
 class LosslessOutputQueue : public Queue {
 public:
-    LosslessOutputQueue(linkspeed_bps bitrate, mem_b maxsize, EventList &eventlist, QueueLogger* logger, int ECN=0, int K=0);
+    LosslessOutputQueue(linkspeed_bps bitrate, mem_b maxsize, EventList &eventlist, QueueLogger* logger);
 
     void receivePacket(Packet& pkt);
     void receivePacket(Packet& pkt,VirtualQueue* q);
@@ -35,8 +35,9 @@ private:
     int _sending;
     uint64_t _txbytes;
 
-    int _ecn_enabled;
-    int _K;
+public:
+    static int _ecn_enabled;
+    static int _K;
 };
 
 #endif

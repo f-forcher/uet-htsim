@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
         } else {
             //queueLogger = new QueueLoggerSampling(timeFromUs((uint32_t)50), eventlist);
             //logfile.addLogger(*queueLogger);
-            queue[i] = new CompositeQueue(SERVICE1, BUFFER, eventlist, NULL);
+            queue[i] = new CompositeQueue(SERVICE1, BUFFER, eventlist, NULL, ACKSIZE);
         }
         //queue[i] = new Queue(SERVICE1, BUFFER, eventlist, ql);
         s = "queue" + std::to_string(i);

@@ -108,7 +108,7 @@ Queue* DragonFlyTopology::alloc_queue(QueueLogger* queueLogger, uint64_t speed, 
     if (qt==RANDOM)
         return new RandomQueue(speedFromMbps(speed), queuesize, *_eventlist, queueLogger, memFromPkt(RANDOM_BUFFER));
     else if (qt==COMPOSITE)
-        return new CompositeQueue(speedFromMbps(speed), queuesize, *_eventlist, queueLogger);
+        return new CompositeQueue(speedFromMbps(speed), queuesize, *_eventlist, queueLogger, 64);
     else if (qt==CTRL_PRIO)
         return new CtrlPrioQueue(speedFromMbps(speed), queuesize, *_eventlist, queueLogger);
     else if (qt==ECN)
@@ -118,10 +118,10 @@ Queue* DragonFlyTopology::alloc_queue(QueueLogger* queueLogger, uint64_t speed, 
     else if (qt==LOSSLESS_INPUT)
         return new LosslessOutputQueue(speedFromMbps(speed), memFromPkt(200), *_eventlist, queueLogger);    
     else if (qt==LOSSLESS_INPUT_ECN)
-        return new LosslessOutputQueue(speedFromMbps(speed), memFromPkt(10000), *_eventlist, queueLogger,1,memFromPkt(16));
+        return new LosslessOutputQueue(speedFromMbps(speed), memFromPkt(10000), *_eventlist, queueLogger);
     else if (qt==COMPOSITE_ECN){
         if (tor) 
-            return new CompositeQueue(speedFromMbps(speed), queuesize, *_eventlist, queueLogger);
+            return new CompositeQueue(speedFromMbps(speed), queuesize, *_eventlist, queueLogger, 64);
         else
             return new ECNQueue(speedFromMbps(speed), memFromPkt(2*SWITCH_BUFFER), *_eventlist, queueLogger, memFromPkt(15));
     }

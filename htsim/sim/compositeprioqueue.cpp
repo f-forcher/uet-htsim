@@ -6,9 +6,10 @@
 #include <sstream>
 
 CompositePrioQueue::CompositePrioQueue(linkspeed_bps bitrate, mem_b maxsize, EventList& eventlist, 
-                                       QueueLogger* logger)
+                                       QueueLogger* logger, uint16_t trim_size)
     : Queue(bitrate, maxsize, eventlist, logger)
 {
+    _trim_size = trim_size;
     _ratio_high = 10;
     _ratio_low = 1;
     _crt = 0;
@@ -148,7 +149,7 @@ CompositePrioQueue::receivePacket(Packet& pkt)
         } else {
             //strip packet the arriving packet - low priority queue is full
             cout << "B [ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ] STRIP" << endl;
-            pkt.strip_payload();
+            pkt.strip_payload(_trim_size);
             _stripped++;
             pkt.flow().logTraffic(pkt,*this,TrafficLogger::PKT_TRIM);
             if (_logger) _logger->logQueue(*this, QueueLogger::PKT_TRIM, pkt);
@@ -300,7 +301,7 @@ CompositePrioQueue::trim_low_priority_packet(uint32_t prio) {
             cout << "C [ " << _enqueued_low.size() << " " << _enqueued_high.size() 
                  << " ] STRIP" << endl;
             cout << "Arriving: " << prio << " booted: " << booted_pkt->path_len() << " posn: " << c << endl;
-            booted_pkt->strip_payload();
+            booted_pkt->strip_payload(_trim_size);
             if (_queuesize_high+booted_pkt->size() > _maxsize){
                 // there's no space in the header queue either
                 _dropped++;

@@ -79,6 +79,10 @@ public:
         _ecn_high = ecn_high;
     }
 
+    static void set_failed_links(int num_failed_links) {
+        _num_failed_links = num_failed_links;
+    }
+
     void init_network();
     virtual vector<const Route*>* get_bidir_paths(uint32_t src, uint32_t dest, bool reverse);
 
@@ -229,6 +233,9 @@ private:
     static bool _enable_on_tor_downlink;
     static mem_b _ecn_low;
     static mem_b _ecn_high;
+
+    //failed links hack
+    static int _num_failed_links;
     
     uint32_t _no_of_nodes;
     simtime_picosec _hop_latency,_switch_latency;

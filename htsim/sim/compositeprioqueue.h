@@ -22,7 +22,7 @@
 class CompositePrioQueue : public Queue {
  public:
     CompositePrioQueue(linkspeed_bps bitrate, mem_b maxsize, 
-                   EventList &eventlist, QueueLogger* logger);
+                       EventList &eventlist, QueueLogger* logger, uint16_t trim_size);
     virtual void receivePacket(Packet& pkt);
     virtual void doNextEvent();
     // should really be private, but loggers want to see
@@ -45,6 +45,7 @@ class CompositePrioQueue : public Queue {
     void beginService(); // start serving the item at the head of the queue
     void completeService(); // wrap up serving the item at the head of the queue
 
+    int _trim_size; // size of a trimmed packet in bytes
     int _serv;
     int _ratio_high, _ratio_low, _crt;
     int _num_packets;

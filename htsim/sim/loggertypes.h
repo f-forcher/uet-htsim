@@ -66,9 +66,12 @@ class Logger {
                      HPCC_TRAFFIC=27,HPCC_SINK=28,
                      STRACK_EVENT=29, STRACK_STATE=30, STRACK_TRAFFIC=31,
                      STRACK_SINK=32, STRACK_MEMORY=33,
+                     DCQCN_TRAFFIC=34, DCQCN_SINK=35,
                      EQDS_EVENT=38, EQDS_STATE=39, EQDS_RECORD=40,
                      EQDS_SINK = 41, EQDS_MEMORY = 42, EQDS_TRAFFIC = 43,
-                     FLOW_EVENT = 44 };
+                     UEC_EVENT=44, UEC_STATE=45, UEC_RECORD=46,
+                     UEC_SINK = 47, UEC_MEMORY = 48, UEC_TRAFFIC = 49,
+                     FLOW_EVENT = 50, NIC_EVENT = 51 };
     static string event_to_str(RawLogEvent& event);
     Logger() {};
     virtual ~Logger(){};

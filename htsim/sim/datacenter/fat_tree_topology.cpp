@@ -38,6 +38,7 @@ bool FatTreeTopology::_enable_ecn = false;
 bool FatTreeTopology::_enable_on_tor_downlink = false;
 mem_b FatTreeTopology::_ecn_low = 0;
 mem_b FatTreeTopology::_ecn_high = 0;
+int FatTreeTopology::_num_failed_links = 0;
 
 
 void
@@ -269,18 +270,25 @@ FatTreeTopology::FatTreeTopology(uint32_t no_of_nodes, linkspeed_bps linkspeed, 
     ff = fit;
     _qt = q;
     _sender_qt = snd;
-    failed_links = 0;
-    if ((latency != 0 || switch_latency != 0) && _link_latencies[TOR_TIER] != 0) {
-        cerr << "Don't set latencies using both the constructor and set_latencies - use only one of the two\n";
-        exit(1);
+    failed_links = _num_failed_links;
+    if ((latency != 0 || switch_latency != 0)) {
+        for (int tier = TOR_TIER; tier <= CORE_TIER; tier++) {
+            if ((_link_latencies[tier] != 0 && _link_latencies[tier] != latency)
+                || (_switch_latencies[tier] != 0 && _switch_latencies[tier] != switch_latency)) {
+                cerr << "Tier " << tier << " Link latency " << _link_latencies[tier] << " Switch Latency " << _switch_latencies[tier] << endl;
+                cerr << "Global " << " Latency " << latency << " Switch Latency " << switch_latency << endl;
+                cerr << "Don't set latencies using both the constructor and set_latencies - use only one of the two\n";
+                exit(1);
+            }
+        }
     }
     _hop_latency = latency;
     _switch_latency = switch_latency;
 
     if (_link_latencies[TOR_TIER] == 0) {
-        cout << "Fat Tree topology with " << timeAsUs(_hop_latency) << "us links and " << timeAsUs(_switch_latency) <<"us switching latency." <<endl;
+        cout << "Fat Tree topology (0) with " << timeAsUs(_hop_latency) << "us links and " << timeAsUs(_switch_latency) <<"us switching latency." <<endl;
     } else {
-        cout << "Fat Tree topology with "
+        cout << "Fat Tree topology (0) with "
              << timeAsUs(_link_latencies[TOR_TIER]) << "us Src-ToR links, "
              << timeAsUs(_link_latencies[AGG_TIER]) << "us ToR-Agg links, ";
         if (_tiers == 3) {
@@ -377,7 +385,7 @@ FatTreeTopology::FatTreeTopology(uint32_t no_of_nodes, linkspeed_bps linkspeed, 
 }
 
 void FatTreeTopology::set_linkspeeds(linkspeed_bps linkspeed) {
-    if (linkspeed != 0 && _downlink_speeds[TOR_TIER] != 0) {
+    if (linkspeed != 0 && _downlink_speeds[TOR_TIER] != 0 && linkspeed != _downlink_speeds[TOR_TIER]) {
         cerr << "Don't set linkspeeds using both the constructor and set_tier_parameters - use only one of the two\n";
         exit(1);
     }
@@ -672,7 +680,8 @@ FatTreeTopology::alloc_queue(QueueLogger* queueLogger, linkspeed_bps speed, mem_
         return new RandomQueue(speed, queuesize, *_eventlist, queueLogger, memFromPkt(RANDOM_BUFFER));
     case COMPOSITE:
         {
-            CompositeQueue* q = new CompositeQueue(speed, queuesize, *_eventlist, queueLogger);
+            CompositeQueue* q = new CompositeQueue(speed, queuesize, *_eventlist, queueLogger,
+                                                   FatTreeSwitch::_trim_size);
 
             if (_enable_ecn){
                 if (!tor || dir == UPLINK || _enable_on_tor_downlink) {
@@ -707,15 +716,16 @@ FatTreeTopology::alloc_queue(QueueLogger* queueLogger, linkspeed_bps speed, mem_
     case LOSSLESS_INPUT:
         return new LosslessOutputQueue(speed, queuesize, *_eventlist, queueLogger);
     case LOSSLESS_INPUT_ECN: 
-        return new LosslessOutputQueue(speed, memFromPkt(10000), *_eventlist, queueLogger,1,memFromPkt(16));
+        return new LosslessOutputQueue(speed, memFromPkt(10000), *_eventlist, queueLogger);
     case COMPOSITE_ECN:
         if (tor && dir == DOWNLINK) 
-            return new CompositeQueue(speed, queuesize, *_eventlist, queueLogger);
+            return new CompositeQueue(speed, queuesize, *_eventlist, queueLogger, FatTreeSwitch::_trim_size);
         else
             return new ECNQueue(speed, memFromPkt(2*SWITCH_BUFFER), *_eventlist, queueLogger, memFromPkt(15));
     case COMPOSITE_ECN_LB:
         {
-            CompositeQueue* q = new CompositeQueue(speed, queuesize, *_eventlist, queueLogger);
+            CompositeQueue* q = new CompositeQueue(speed, queuesize, *_eventlist, queueLogger,
+                                                   FatTreeSwitch::_trim_size);
             if (!tor || dir == UPLINK) {
                 // don't use ECN on ToR downlinks
                 q->set_ecn_threshold(FatTreeSwitch::_ecn_threshold_fraction * queuesize);
@@ -818,7 +828,7 @@ void FatTreeTopology::init_network(){
 
                 if (_qt==LOSSLESS_INPUT || _qt == LOSSLESS_INPUT_ECN){
                     //no virtual queue needed at server
-                    new LosslessInputQueue(*_eventlist, queues_ns_nlp[srv][tor][b], switches_lp[tor], _hop_latency);
+                    new LosslessInputQueue(*_eventlist, queues_ns_nlp[srv][tor][b], switches_lp[tor], hop_latency);
                 }
         
                 pipes_ns_nlp[srv][tor][b] = new Pipe(hop_latency, *_eventlist);
@@ -885,8 +895,8 @@ void FatTreeTopology::init_network(){
                   ((LosslessQueue*)queues_nup_nlp[agg][tor])->setRemoteEndpoint(queues_nlp_nup[tor][agg]);
                   }else */
                 if (_qt==LOSSLESS_INPUT || _qt == LOSSLESS_INPUT_ECN){            
-                    new LosslessInputQueue(*_eventlist, queues_nlp_nup[tor][agg][b],switches_up[agg],_hop_latency);
-                    new LosslessInputQueue(*_eventlist, queues_nup_nlp[agg][tor][b],switches_lp[tor],_hop_latency);
+                    new LosslessInputQueue(*_eventlist, queues_nlp_nup[tor][agg][b],switches_up[agg], hop_latency);
+                    new LosslessInputQueue(*_eventlist, queues_nup_nlp[agg][tor][b],switches_lp[tor], hop_latency);
                 }
         
                 pipes_nlp_nup[tor][agg][b] = new Pipe(hop_latency, *_eventlist);
@@ -962,8 +972,8 @@ void FatTreeTopology::init_network(){
                       }
                       else*/
                     if (_qt == LOSSLESS_INPUT || _qt == LOSSLESS_INPUT_ECN){
-                        new LosslessInputQueue(*_eventlist, queues_nup_nc[agg][core][b], switches_c[core], _hop_latency);
-                        new LosslessInputQueue(*_eventlist, queues_nc_nup[core][agg][b], switches_up[agg], _hop_latency);
+                        new LosslessInputQueue(*_eventlist, queues_nup_nc[agg][core][b], switches_c[core], hop_latency);
+                        new LosslessInputQueue(*_eventlist, queues_nc_nup[core][agg][b], switches_up[agg], hop_latency);
                     }
                     //if (logfile) logfile->writeName(*(queues_nc_nup[core][agg]));
             

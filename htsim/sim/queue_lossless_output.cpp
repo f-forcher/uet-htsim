@@ -7,8 +7,11 @@
 #include "queue_lossless_output.h"
 #include "queue_lossless_input.h"
 
+int LosslessOutputQueue::_ecn_enabled = false;
+int LosslessOutputQueue::_K = 0;
+
 LosslessOutputQueue::LosslessOutputQueue(linkspeed_bps bitrate, mem_b maxsize, 
-                                         EventList& eventlist, QueueLogger* logger, int ECN, int K)
+                                         EventList& eventlist, QueueLogger* logger)
     : Queue(bitrate,maxsize,eventlist,logger), 
       _state_send(READY)
 {
@@ -18,8 +21,6 @@ LosslessOutputQueue::LosslessOutputQueue(linkspeed_bps bitrate, mem_b maxsize,
 
     _sending = 0;
 
-    _ecn_enabled = ECN;
-    _K = K;
     _txbytes = 0;
 
     stringstream ss;

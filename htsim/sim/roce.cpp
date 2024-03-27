@@ -62,7 +62,7 @@ RoceSrc::RoceSrc(RoceLogger* logger, TrafficLogger* pktlogger, EventList &eventl
     _node_num = _global_node_count++;
     _nodename = "rocesrc " + to_string(_node_num);
 
-    srand(time(NULL));
+    //srand(time(NULL));
     _pathid = random()%256;
 
     //cout << _nodename << " path id is " << _pathid << endl;
@@ -74,7 +74,10 @@ RoceSrc::RoceSrc(RoceLogger* logger, TrafficLogger* pktlogger, EventList &eventl
 
     _state_send = READY;
     _time_last_sent = 0;
-    _packet_spacing = (simtime_picosec)((Packet::data_packet_size()+RocePacket::ACKSIZE) * (pow(10.0,12.0) * 8) / _bitrate);
+    
+    _pacing_rate = rate;
+    
+    update_spacing();
 }
 
 /*mem_b RoceSrc::queuesize(){
@@ -127,10 +130,11 @@ void RoceSrc::connect(Route* routeout, Route* routeback, RoceSink& sink, simtime
     _sink->connect(*this, routeback);
 
     if (starttime != TRIGGER_START) {
-        //eventlist().sourceIsPending(*this,starttime);
-        startflow();
+        //cout << "scheduling start at " << starttime << " now is " << timeAsUs(eventlist().now())<< endl;
+        eventlist().sourceIsPending(*this,timeFromUs((double)starttime));
+        //startflow();
     }
-    //else cout << "TRIGGER START " << _nodename << endl; 
+    else cout << "TRIGGER START " << _nodename << endl; 
 }
 
 /* Process a NACK.  Generally this involves queuing the NACKed packet
@@ -220,7 +224,7 @@ void RoceSrc::processPause(const EthPausePacket& p) {
         //we are allowed to send!
         //assert(_state_send != READY);
         _state_send = READY;
-        //cout << "Source " << str() << " RESUME " << timeAsUs(eventlist().now()) << endl;
+        cout << "Source " << str() << " RESUME " << timeAsUs(eventlist().now()) << endl;
         eventlist().sourceIsPendingRel(*this,0);
     }
 }
@@ -303,10 +307,10 @@ void RoceSrc::send_packet() {
 }
 
 void RoceSrc::doNextEvent() {
-    /*if (!_flow_started){
+    if (!_flow_started){
       startflow();
       return;
-      }*/
+    }
 
     assert(_flow_started);
     if (_log_me) 
@@ -316,6 +320,8 @@ void RoceSrc::doNextEvent() {
     if (_state_send==PAUSED) {
         if (_log_me) 
             cout << "Src " << get_id() << " paused\n";
+
+        cout << "PAUSE" << endl;
         return;
     }
 
@@ -352,6 +358,7 @@ RoceSink::RoceSink()
     //if (get_id() == 144214)
     //    _log_me = true;
     _total_received = 0;
+    _nack_sent = false;
 }
 
 void RoceSink::log_me() {
@@ -403,12 +410,17 @@ void RoceSink::receivePacket(Packet& pkt) {
     //bool last_packet = ((RocePacket*)&pkt)->last_packet();
 
     if (seqno > _cumulative_ack+1){
-        send_nack(ts,_cumulative_ack);  
+
+        if (!_nack_sent){
+            send_nack(ts,_cumulative_ack);  
+            _nack_sent = true;
+            cout << "Wrong seqno received at Roce SINK " << seqno << " expecting " << _cumulative_ack << endl;
+        }
         pkt.flow().logTraffic(pkt,*this,TrafficLogger::PKT_RCVDESTROY);
 
         p->free();
 
-        //cout << "Wrong seqno received at Roce SINK " << seqno << " expecting " << _cumulative_ack << endl;
+
         return;
     }
 
@@ -416,6 +428,9 @@ void RoceSink::receivePacket(Packet& pkt) {
 
     if (seqno == _cumulative_ack+1) { // it's the next expected seq no
         _cumulative_ack = seqno + size - 1;
+        if (_nack_sent) 
+            _nack_sent = false;
+
     } else if (seqno < _cumulative_ack+1) {
         //must have been a bad retransmit
     }

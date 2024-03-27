@@ -9,6 +9,7 @@
 #include "network.h"
 #include "randomqueue.h"
 #include "queue_lossless_input.h"
+#include "queue_lossless_output.h"
 #include "shortflows.h"
 #include "pipe.h"
 #include "eventlist.h"
@@ -16,15 +17,17 @@
 #include "loggers.h"
 #include "clock.h"
 #include "roce.h"
+#include "dcqcn.h"
 #include "compositequeue.h"
 #include "firstfit.h"
 #include "topology.h"
 #include "connection_matrix.h"
-
 #include "fat_tree_topology.h"
 #include "fat_tree_switch.h"
 
 #include <list>
+
+extern int _packets_per_burst;
 
 // Simulation params
 
@@ -64,6 +67,9 @@ int main(int argc, char **argv) {
     queue_type qt = LOSSLESS_INPUT;
     float ar_sticky_delta = 10;
 
+    bool dcqcn = false;
+    int ecn_threshold = 0;
+
     queue_type snd_type = FAIR_PRIO;
 
     uint64_t high_pfc = 15, low_pfc = 12;
@@ -99,6 +105,11 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i],"-nodes")) {
             no_of_nodes = atoi(argv[i+1]);
             cout << "no_of_nodes "<<no_of_nodes << endl;
+            i++;
+        } else if (!strcmp(argv[i],"-dcqcn")) {
+            dcqcn = true;
+            ecn_threshold = atoi (argv[i+1]);
+            cout << "dcqcn ecn threshold "<< ecn_threshold << endl;
             i++;
         } else if (!strcmp(argv[i],"-tiers")) {
             tiers = atoi(argv[i+1]);
@@ -217,6 +228,10 @@ int main(int argc, char **argv) {
             high_pfc = atoi(argv[i+2]);
             cout << "PFC thresholds high " << high_pfc << " low " << low_pfc << endl;
             i+=2;
+        } else if (!strcmp(argv[i],"-nic_burst")){
+            _packets_per_burst = atoi(argv[i+1]);
+            cout << "NIC burst " << _packets_per_burst << endl;
+            i++;
         } else if (!strcmp(argv[i],"-ar_method")){
             if (!strcmp(argv[i+1],"pause")){
                 cout << "Adaptive routing based on pause state " << endl;
@@ -303,6 +318,11 @@ int main(int argc, char **argv) {
 
     LosslessInputQueue::_high_threshold = Packet::data_packet_size()*high_pfc;
     LosslessInputQueue::_low_threshold = Packet::data_packet_size()*low_pfc;
+
+    if (dcqcn){
+        LosslessOutputQueue::_ecn_enabled = true;
+        LosslessOutputQueue::_K = ecn_threshold * Packet::data_packet_size();
+    }
 
     eventlist.setEndtime(timeFromUs((uint32_t)end_time));
     queuesize = memFromPkt(queuesize);
@@ -470,7 +490,10 @@ int main(int argc, char **argv) {
         int dest = crt->dst;
         cout << "Connection " << crt->src << "->" <<crt->dst << " starting at " << timeAsUs(crt->start) << " size " << crt->size << endl;
 
-        roceSrc = new RoceSrc(NULL, NULL, eventlist,linkspeed);
+        if (dcqcn)
+            roceSrc = new DCQCNSrc(NULL, NULL, eventlist,linkspeed);
+        else
+            roceSrc = new RoceSrc(NULL, NULL, eventlist,linkspeed);
 
         roce_srcs.push_back(roceSrc);
         roceSrc->set_dst(dest);
@@ -494,7 +517,11 @@ int main(int argc, char **argv) {
             roceSrc->set_end_trigger(*trig);
         }
 
-        roceSnk = new RoceSink();
+        if (dcqcn)
+            roceSnk = new DCQCNSink(eventlist);
+        else
+            roceSnk = new RoceSink();
+        
                         
         roceSrc->setName("Roce_" + ntoa(src) + "_" + ntoa(dest));
 

@@ -21,34 +21,19 @@
 
 int main(int argc, char **argv) {
     EventList eventlist;
-    eventlist.setEndtime(timeFromSec(5));
+    eventlist.setEndtime(timeFromSec(15));
     Clock c(timeFromSec(50/100.), eventlist);
 
     int cnt = 10;
     int qs = 100;
-    unsigned seed = time(NULL);
 
-    int i = 1;
-    while (i < argc)  {
-        if (!strcmp(argv[i], "-qs")) {
-            qs = atoi(argv[i + 1]);
-            cout << "queue_size " << qs << endl;
-            i++;
-        }
-        else if (!strcmp(argv[i], "-conns")) {
-            cnt = atoi(argv[i + 1]);
-            cout << "no_of_conns " << cnt << endl;
-            i++;
-        }
-        else if (!strcmp(argv[i], "-seed")) {
-            seed = atoi(argv[i + 1]);
-            cout << "random seed " << seed << endl;
-            i++;
-        }
-        i++;
-    }
+    if (argc>1)
+        cnt = atoi(argv[1]);
 
-    srand(seed);
+    if (argc>2)
+        qs = atoi(argv[2]);
+    
+    srand(time(NULL));
 
     Packet::set_packet_size(9000);    
     linkspeed_bps SERVICE1 = speedFromMbps((uint64_t)10000);
@@ -74,7 +59,6 @@ int main(int argc, char **argv) {
     RandomQueue queue3(SERVICE1, BUFFER, eventlist,NULL,memFromPkt(5)); queue3.setName("Queue3"); logfile.writeName(queue3);
     RandomQueue queue4(SERVICE1/3, BUFFER/3, eventlist,NULL,memFromPkt(0)); queue3.setName("Queue4"); logfile.writeName(queue4);
     
-    
     TcpSrc* tcpSrc;
     TcpSink* tcpSnk;
     
@@ -91,7 +75,8 @@ int main(int argc, char **argv) {
 
         tcpSrc->setName("TCP"+ntoa(i)); logfile.writeName(*tcpSrc);
         tcpSnk = new TcpSink();
-        //tcpSnk = new TcpSinkTransfer();
+
+	tcpSrc->set_flowsize(1000000);
         tcpSnk->setName("TCPSink"+ntoa(i)); logfile.writeName(*tcpSnk);
 
         tcpRtxScanner.registerTcp(*tcpSrc);

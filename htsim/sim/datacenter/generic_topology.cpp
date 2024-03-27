@@ -203,6 +203,7 @@ void GenericTopology::parse_queue(std::vector<std::string>& tokens, int pass, st
     string queuetype;
     linkspeed_bps linkspeed = 0;
     mem_b queuesize = 0;
+    mem_b trimsize = 64;
     QueueLogger* queuelogger = 0;
     uint32_t ix = 3;
     while (get_attribute(tokens, ix, attribute)) {
@@ -221,6 +222,9 @@ void GenericTopology::parse_queue(std::vector<std::string>& tokens, int pass, st
         } else if (pass == 0 && attribute[0] == "size") {
             assert(attribute.size() == 2);
             queuesize = stoi(attribute[1]);
+        } else if (pass == 0 && attribute[0] == "trimsize") {
+            assert(attribute.size() == 2);
+            trimsize = stoi(attribute[1]);
         } else if (pass == 0 && attribute[0] == "log") {
             string logtype = lowercase(attribute[1]);
             if (logtype == "sampling") {
@@ -268,7 +272,7 @@ void GenericTopology::parse_queue(std::vector<std::string>& tokens, int pass, st
         } else if (queuetype == "random") {
             q = new RandomQueue(linkspeed, queuesize, *_eventlist, queuelogger, memFromPkt(RANDOM_BUFFER));
         } else if (queuetype == "composite") {
-            q = new CompositeQueue(linkspeed, queuesize, *_eventlist, queuelogger);
+            q = new CompositeQueue(linkspeed, queuesize, *_eventlist, queuelogger, trimsize);
         } else if (queuetype == "fairscheduler") {
             q = new FairScheduler(linkspeed, *_eventlist, queuelogger);
         } else {

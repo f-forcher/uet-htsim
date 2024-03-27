@@ -64,8 +64,9 @@ public:
         return p;
     }
   
-    virtual inline void  strip_payload() {
-        Packet::strip_payload(); _size = ACKSIZE;
+    virtual inline void  strip_payload(uint16_t trim_size = ACKSIZE) {
+        Packet::strip_payload(trim_size);
+        _size = ACKSIZE;
     };
 
     void free() {_encap_packet->free();_packetdb.freePacket(this);}

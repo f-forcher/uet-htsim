@@ -74,10 +74,10 @@ Queue* BCubeTopology::alloc_queue(QueueLogger* queueLogger, uint64_t speed){
                                *eventlist, queueLogger, memFromPkt(RANDOM_BUFFER));
     } else if (qt==COMPOSITE) {
         return new CompositeQueue(speedFromMbps(speed), memFromPkt(8), 
-                                  *eventlist, queueLogger);
+                                  *eventlist, queueLogger, 64);
     } else if (qt==COMPOSITE_PRIO) {
         return new CompositePrioQueue(speedFromMbps(speed), memFromPkt(8), 
-                                      *eventlist, queueLogger);
+                                      *eventlist, queueLogger, 64);
     } 
     
     assert(0);

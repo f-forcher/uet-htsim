@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iomanip>
 #include "loggers.h"
+#include "eqds_logger.h"
 
 
 // LoggedManager is a way to keep track of all the Logged instances
@@ -1190,6 +1191,55 @@ string MemoryLoggerSampling::event_to_str(RawLogEvent& event) {
     return ss.str();
 }
 
+
+
+NicLoggerSampling::NicLoggerSampling(simtime_picosec period, EventList& eventlist):
+    EventSource(eventlist,"NicSampling"), _last_time(0), _period(period)
+{
+    eventlist.sourceIsPendingRel(*this,0);
+}
+
+void NicLoggerSampling::monitorNic(NIC* nic) {
+    _nics.push_back(nic);
+    _last_new_data.push_back(0);
+    _last_total_data.push_back(0);
+    _last_trim.push_back(0);
+}
+
+
+void NicLoggerSampling::doNextEvent() {
+    eventlist().sourceIsPendingRel(*this,_period);
+    simtime_picosec now = eventlist().now();
+    simtime_picosec delta_t = now - _last_time;
+    _last_time = eventlist().now();
+    for (uint64_t i = 0; i<_nics.size(); i++) {
+        mem_b delta_new_data = _nics[i]->_new_data_received - _last_new_data[i];
+        mem_b delta_total_data = _nics[i]->_total_data_received - _last_total_data[i];
+        mem_b delta_trims = _nics[i]->_trim_received - _last_trim[i];
+        _last_new_data[i] = _nics[i]->_new_data_received;
+        _last_total_data[i] = _nics[i]->_total_data_received;
+        _last_trim[i] = _nics[i]->_trim_received;
+        double new_rate = (double)delta_new_data * 1000000000000.0 /delta_t;
+        double total_rate = (double)delta_total_data * 1000000000000.0 /delta_t;
+        double trim_rate = (double)delta_trims * 1000000000000.0 /delta_t;
+
+        // if we ever use this for other protocols, generalize the EqdsLogger::RATE
+        _logfile->writeRecord(Logger::NIC_EVENT, _nics[i]->get_id(),
+                              EqdsLogger::RATE, new_rate, total_rate, trim_rate); 
+    }
+}
+
+string NicLoggerSampling::event_to_str(RawLogEvent& event) {
+    stringstream ss;
+    ss << fixed << setprecision(9) << event._time;
+    assert(event._type == Logger::NIC_EVENT);
+    assert(event._ev == EqdsLogger::RATE);
+    ss << " Type NIC_EVENT ID " << event._id;
+    ss << " Data " << (uint64_t)event._val1 
+       << " Total " << (uint64_t)event._val2 
+       << " Trim " << (uint64_t)event._val3;
+    return ss.str();
+}
 
 SinkLoggerSampling::SinkLoggerSampling(simtime_picosec period, 
                                        EventList& eventlist,

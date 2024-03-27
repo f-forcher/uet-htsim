@@ -9,6 +9,7 @@
 #include "queue.h"
 #include "compositequeue.h"
 #include "ecnqueue.h"
+#include "fat_tree_switch.h"
 
 string ntoa(double n);
 string itoa(uint64_t n);
@@ -40,7 +41,8 @@ Queue* OversubscribedFatTreeTopology::alloc_queue(QueueLogger* queueLogger, uint
     if (qt==RANDOM)
         return new RandomQueue(speedFromMbps(speed), _queuesize, *eventlist, queueLogger, memFromPkt(RANDOM_BUFFER));
     else if (qt==COMPOSITE)
-        return new CompositeQueue(speedFromMbps(speed), _queuesize, *eventlist, queueLogger);
+        return new CompositeQueue(speedFromMbps(speed), _queuesize, *eventlist, queueLogger, 
+                                  FatTreeSwitch::_trim_size);
     else if (qt==ECN)
         return new ECNQueue(speedFromMbps(speed), _queuesize, *eventlist, queueLogger, memFromPkt(15));
     assert(0);
