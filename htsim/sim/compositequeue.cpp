@@ -107,9 +107,9 @@ CompositeQueue::completeService(){
             //cout << "Hdr: type=" << pkt->type() << endl;
             _num_headers++;
             //ECN mark on deque of a header, if low priority queue is still over threshold
-            if (decide_ECN()) {
-                pkt->set_flags(pkt->flags() | ECN_CE);
-            }
+//            if (decide_ECN()) {
+//                pkt->set_flags(pkt->flags() | ECN_CE);
+//            }
         }
     } else {
         assert(0);
