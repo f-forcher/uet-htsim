@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Sample Python script to read filenames from an input file and launch a process for each filename to count the number of lines in that file.
 
 import subprocess
