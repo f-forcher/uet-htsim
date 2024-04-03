@@ -368,7 +368,7 @@ class NdpPullPacer : public EventSource {
 #define FAIR_PULL_QUEUE
 #ifdef FIFO_PULL_QUEUE
     FifoPullQueue<NdpPull> _pull_queue;
-#elifdef FAIR_PULL_QUEUE
+#elif defined FAIR_PULL_QUEUE
     FairPullQueue<NdpPull> _pull_queue;
 #else
     PrioPullQueue<NdpPull> _pull_queue;
