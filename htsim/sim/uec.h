@@ -309,9 +309,9 @@ private:
 
     // Smarttrack sender based CC variables.
     simtime_picosec _base_rtt;
-    uint64_t _achieved_bytes = 0;
+    mem_b _achieved_bytes = 0;
     //used to trigger SmartTrack fulfill
-    uint64_t _received_bytes = 0;
+    mem_b _received_bytes = 0;
     uint32_t _fi_count = 0;
     bool _trigger_qa = false;
     simtime_picosec _qa_endtime = 0;

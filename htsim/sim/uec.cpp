@@ -693,7 +693,7 @@ bool UecSrc::quick_adapt(bool is_loss, simtime_picosec avgqdelay) {
                     cout << "This shouldn't happen: QUICK ADAPT MIGHT INCREASE THE CWND" << endl;
                 }
                 else {
-                    _cwnd = max(_achieved_bytes, (uint64_t)_mtu) * _qa_scaling;
+                    _cwnd = max(_achieved_bytes, (mem_b)_mtu) * _qa_scaling;
                     _bytes_to_ignore = _in_flight;
                     _bytes_ignored = 0;
                     _trigger_qa = false;
@@ -1545,11 +1545,11 @@ UecSink::UecSink(TrafficLogger* trafficLogger, UecPullPacer* pullPacer, UecNIC& 
       _highest_pull_target(INIT_PULL),
       _received_bytes(0),
       _accepted_bytes(0),
+      _recvd_bytes(0),
+      _rcv_cwnd_pen(255),
       _end_trigger(NULL),
       _epsn_rx_bitmap(0),
       _out_of_order_count(0),
-      _recvd_bytes(0),
-      _rcv_cwnd_pen(255),
       _ack_request(false) {
     
     _nodename = "uecSink";  // TBD: would be nice at add nodenum to nodename
@@ -1581,11 +1581,11 @@ UecSink::UecSink(TrafficLogger* trafficLogger,
       _highest_pull_target(INIT_PULL),
       _received_bytes(0),
       _accepted_bytes(0),
+      _recvd_bytes(0),
+      _rcv_cwnd_pen(255),
       _end_trigger(NULL),
       _epsn_rx_bitmap(0),
       _out_of_order_count(0),
-      _recvd_bytes(0),
-      _rcv_cwnd_pen(255),
       _ack_request(false) {
     
     if (UecSrc::_receiver_based_cc)
