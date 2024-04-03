@@ -677,7 +677,7 @@ void UecSrc::updateCwndOnAck_DCTCP(bool skip, simtime_picosec rtt, mem_b newly_a
     }
 }
 
-void UecSrc::updateCwndOnNack_DCTCP(bool skip, simtime_picosec rtt, mem_b nacked_bytes) {
+void UecSrc::updateCwndOnNack_DCTCP(bool skip, mem_b nacked_bytes) {
     _cwnd -= nacked_bytes;
     _cwnd = max(_cwnd, (mem_b)_mtu);
 }
@@ -815,7 +815,7 @@ void UecSrc::updateCwndOnAck_SmaRTT(bool skip, simtime_picosec delay, mem_b newl
         fulfill_adjustment();
 }
 
-void UecSrc::updateCwndOnNack_SmaRTT(bool skip, simtime_picosec rtt, mem_b nacked_bytes) {
+void UecSrc::updateCwndOnNack_SmaRTT(bool skip, mem_b nacked_bytes) {
     _trigger_qa = true;
     if (_bytes_ignored >= _bytes_to_ignore)
         quick_adapt(true, get_avg_delay());
@@ -894,7 +894,7 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
     update_delay(_raw_rtt);
 
     if (_sender_based_cc)
-        (this->*updateCwndOnNack)(ev,_raw_rtt,pkt_size);
+        (this->*updateCwndOnNack)(ev, pkt_size);
 
     if (_debug_src)
         cout << _flow.str() << " " << _nodename << " erasing send record, seqno: " << seqno << " flow " << _flow.str()

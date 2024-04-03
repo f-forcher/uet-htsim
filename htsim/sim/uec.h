@@ -220,13 +220,13 @@ public:
     //added for SmaRTT
     void quick_adapt(bool trimmed);
     void updateCwndOnAck_SmaRTT(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
-    void updateCwndOnNack_SmaRTT(bool skip, simtime_picosec delay, mem_b nacked_bytes);
+    void updateCwndOnNack_SmaRTT(bool skip, mem_b nacked_bytes);
 
     void updateCwndOnAck_DCTCP(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
-    void updateCwndOnNack_DCTCP(bool skip, simtime_picosec delay, mem_b nacked_bytes);
+    void updateCwndOnNack_DCTCP(bool skip, mem_b nacked_bytes);
 
     void (UecSrc::*updateCwndOnAck)(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
-    void (UecSrc::*updateCwndOnNack)(bool skip, simtime_picosec delay, mem_b nacked_bytes);
+    void (UecSrc::*updateCwndOnNack)(bool skip, mem_b nacked_bytes);
 
     bool checkFinished(UecDataPacket::seq_t cum_ack);
     inline void penalizePath(uint16_t path_id, uint8_t penalty);
