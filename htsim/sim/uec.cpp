@@ -494,7 +494,9 @@ mem_b UecSrc::handleCumulativeAck(UecDataPacket::seq_t cum_ack) {
         auto seqno = _rtx_queue.begin()->first;
 
         if (seqno < cum_ack) {
+            mem_b pkt_size = _rtx_queue.begin()->second;
             _rtx_queue.erase(_rtx_queue.begin());
+            _rtx_backlog -= pkt_size;
         } else
             break;
     }
