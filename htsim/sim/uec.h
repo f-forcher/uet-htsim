@@ -281,7 +281,8 @@ private:
     void aggressive_decrease(bool can_decrease, uint32_t newly_acked_bytes);
     void fulfill_adjustment();
     void mark_packet_for_retransmission(UecBasePacket::seq_t psn, uint16_t pktsize);
-    void update_delay(simtime_picosec delay);
+    simtime_picosec update_delay(simtime_picosec delay);
+    bool update_base_rtt(simtime_picosec raw_rtt);
     simtime_picosec get_avg_delay();
     void average_ecn_bytes(uint32_t pktsize, uint32_t newly_acked_bytes, bool skip);
 
@@ -296,7 +297,7 @@ private:
     uint8_t _max_penalty;             // max value we allow in _path_penalties (typically 1 or 2).
 
     // RTT estimate data for RTO and sender based CC.
-    simtime_picosec _rtt, _mdev, _rto, _raw_rtt;
+    simtime_picosec _rtt, _mdev, _rto;
     bool _rtx_timeout_pending;       // is the RTO running?
     simtime_picosec _rto_send_time;  // when we sent the oldest packet that the RTO is waiting on.
     simtime_picosec _rtx_timeout;    // when the RTO is currently set to expire
