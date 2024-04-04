@@ -278,7 +278,7 @@ private:
     void proportional_increase(uint32_t newly_acked_bytes,simtime_picosec delay);
     void fast_increase(uint32_t newly_acked_bytes,simtime_picosec delay);
     void fair_decrease(bool can_decrease, uint32_t newly_acked_bytes);
-    void aggressive_decrease(bool can_decrease, uint32_t newly_acked_bytes);
+    void multiplicative_decrease(bool can_decrease, uint32_t newly_acked_bytes);
     void fulfill_adjustment();
     void mark_packet_for_retransmission(UecBasePacket::seq_t psn, uint16_t pktsize);
     void update_delay(simtime_picosec delay, bool update_avg);

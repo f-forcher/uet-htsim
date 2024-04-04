@@ -771,7 +771,7 @@ void UecSrc::fair_decrease(bool can_decrease, uint32_t newly_acked_bytes){
         _dec_bytes += _fd * newly_acked_bytes;
 }
 
-void UecSrc::aggressive_decrease(bool can_decrease, uint32_t newly_acked_bytes){
+void UecSrc::multiplicative_decrease(bool can_decrease, uint32_t newly_acked_bytes){
     _increase = false;
     _fi_count = 0;
     simtime_picosec avg_delay = get_avg_delay();
@@ -832,9 +832,9 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
             cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " proportional_increase _smarttrack_cwnd " << _cwnd << endl;        
     }
     else if (skip && delay >= _target_Qdelay){    
-        aggressive_decrease(can_decrease,newly_acked_bytes);
+        multiplicative_decrease(can_decrease,newly_acked_bytes);
         if(_flow.flow_id() == DEBUG_FLOWID){
-            cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " aggressive_decrease _smarttrack_cwnd " << _cwnd << endl;
+            cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " multiplicative_decrease _smarttrack_cwnd " << _cwnd << endl;
         }
     }else if (skip && delay < _target_Qdelay){
         fair_decrease(can_decrease,newly_acked_bytes);
