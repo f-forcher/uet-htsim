@@ -141,7 +141,7 @@ public:
     static bool _sender_based_cc;
     static bool _receiver_based_cc;
 
-    enum Sender_CC { DCTCP, SMARTT };
+    enum Sender_CC { DCTCP, NSCC};
     static Sender_CC _sender_cc_algo;
 
     virtual const string& nodename() { return _nodename; }
@@ -217,10 +217,10 @@ public:
     void processNack(const UecNackPacket& pkt);
     void processPull(const UecPullPacket& pkt);
 
-    //added for SmaRTT
+    //added for NSCC
     void quick_adapt(bool trimmed);
-    void updateCwndOnAck_SmaRTT(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
-    void updateCwndOnNack_SmaRTT(bool skip, simtime_picosec delay, mem_b nacked_bytes);
+    void updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
+    void updateCwndOnNack_NSCC(bool skip, simtime_picosec delay, mem_b nacked_bytes);
 
     void updateCwndOnAck_DCTCP(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
     void updateCwndOnNack_DCTCP(bool skip, simtime_picosec delay, mem_b nacked_bytes);
@@ -281,7 +281,7 @@ private:
     void aggressive_decrease(bool can_decrease, uint32_t newly_acked_bytes);
     void fulfill_adjustment();
     void mark_packet_for_retransmission(UecBasePacket::seq_t psn, uint16_t pktsize);
-    void update_delay(simtime_picosec delay);
+    void update_delay(simtime_picosec delay, bool update_avg);
     simtime_picosec get_avg_delay();
     void average_ecn_bytes(uint32_t pktsize, uint32_t newly_acked_bytes, bool skip);
 
