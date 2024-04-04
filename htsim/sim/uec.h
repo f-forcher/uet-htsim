@@ -104,6 +104,7 @@ public:
         uint64_t rts_nacks;
     };
     UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, uint32_t no_of_ports, bool rts = false);
+    static void disableFairDecrease();
     void logFlowEvents(FlowEventLogger& flow_logger) { _flow_logger = &flow_logger; }
     virtual void connectPort(uint32_t portnum, Route& routeout, Route& routeback, UecSink& sink, simtime_picosec start);
     const Route* getPortRoute(uint32_t port_num) const {return _ports[port_num]->route();}
@@ -141,7 +142,7 @@ public:
     static bool _sender_based_cc;
     static bool _receiver_based_cc;
 
-    enum Sender_CC { DCTCP, SMARTT };
+    enum Sender_CC { DCTCP, NSCC};
     static Sender_CC _sender_cc_algo;
 
     virtual const string& nodename() { return _nodename; }
@@ -217,10 +218,10 @@ public:
     void processNack(const UecNackPacket& pkt);
     void processPull(const UecPullPacket& pkt);
 
-    //added for SmaRTT
+    //added for NSCC
     void quick_adapt(bool trimmed);
-    void updateCwndOnAck_SmaRTT(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
-    void updateCwndOnNack_SmaRTT(bool skip, mem_b nacked_bytes);
+    void updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
+    void updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes);
 
     void updateCwndOnAck_DCTCP(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
     void updateCwndOnNack_DCTCP(bool skip, mem_b nacked_bytes);
@@ -278,10 +279,10 @@ private:
     void proportional_increase(uint32_t newly_acked_bytes,simtime_picosec delay);
     void fast_increase(uint32_t newly_acked_bytes,simtime_picosec delay);
     void fair_decrease(bool can_decrease, uint32_t newly_acked_bytes);
-    void aggressive_decrease(bool can_decrease, uint32_t newly_acked_bytes);
+    void multiplicative_decrease(bool can_decrease, uint32_t newly_acked_bytes);
     void fulfill_adjustment();
     void mark_packet_for_retransmission(UecBasePacket::seq_t psn, uint16_t pktsize);
-    void update_delay(simtime_picosec delay);
+    void update_delay(simtime_picosec delay, bool update_avg);
     simtime_picosec get_avg_delay();
     void average_ecn_bytes(uint32_t pktsize, uint32_t newly_acked_bytes, bool skip);
 
@@ -336,6 +337,9 @@ private:
     string _nodename;
     int _node_num;
     uint32_t _dstaddr;
+
+    //debug
+    static flowid_t _debug_flowid;
 };
 
 // Packets are received on ports, but then passed to the Sink for handling

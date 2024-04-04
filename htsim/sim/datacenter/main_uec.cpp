@@ -124,7 +124,9 @@ int main(int argc, char **argv) {
             UecSrc::_receiver_based_cc = false;
             receiver_driven = false;
             cout << "sender based CC enabled ONLY" << endl;
-
+        } else if (!strcmp(argv[i],"-disable_fair_decrease")) {
+            UecSrc::disableFairDecrease();
+            cout << "fair_decrease disabled" << endl;
         } else if (!strcmp(argv[i],"-sender_cc_algo")) {
             UecSrc::_sender_based_cc = true;
             
