@@ -605,15 +605,13 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
         simtime_picosec send_time = i->second.send_time;
         pkt_size = i->second.pkt_size;
 
-        simtime_picosec raw_rtt = eventlist().now() - send_time;
-        delay = update_delay(raw_rtt);
-        cout << " send_time " << timeAsUs(send_time) << " now " << timeAsUs(eventlist().now()) << " sample " << timeAsUs(raw_rtt) << endl;
+        _raw_rtt = eventlist().now() - send_time;
+        cout << " send_time " << timeAsUs(send_time) << " now " << timeAsUs(eventlist().now()) << " sample " << timeAsUs(_raw_rtt) << endl;
     } else {
         // this can happen when the ACK arrives later than a cumulative ACK covering the NACKed
         // packet.
         cout << "Can't find send record for seqno " << acked_psn << endl;
         pkt_size = _mtu;
-        delay = get_avg_delay(); // we don't have a sample, so use the average
     }
 
     handleCumulativeAck(cum_ack);
@@ -639,6 +637,8 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
         bitmap >>= 1;
     }
 
+    update_delay(_raw_rtt);
+    delay = _raw_rtt - _base_rtt;     
 
     // handle ECN echo only if the path is bad for now. Will update to match full spec afterwards. 
     if (pkt.ecn_echo()) {
@@ -651,7 +651,7 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
         (this->*updateCwndOnAck)(pkt.ecn_echo(), delay, newly_recvd_bytes);
     }
 
-    cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " " << _nodename << " processAck: " << cum_ack << " flow " << _flow.str() << " cwnd " << _cwnd << " flightsize " << _in_flight << " delay " << timeAsUs(delay) << " newlyrecvd " << newly_recvd_bytes << " skip " << pkt.ecn_echo() <<  " ecn avg " << _exp_avg_ecn << endl;
+    cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " " << _nodename << " processAck: " << cum_ack << " flow " << _flow.str() << " cwnd " << _cwnd << " flightsize " << _in_flight << " delay " << timeAsUs(delay) << " newlyrecvd " << newly_recvd_bytes << " skip " << pkt.ecn_echo() << " raw rtt " << _raw_rtt <<  " ecn avg " << _exp_avg_ecn << endl;
 
     stopSpeculating();
 
@@ -821,31 +821,24 @@ void UecSrc::updateCwndOnNack_SmaRTT(bool skip, mem_b nacked_bytes) {
         quick_adapt(true, get_avg_delay());
 }
 
-bool UecSrc::update_base_rtt(simtime_picosec raw_rtt){
+void UecSrc::update_delay(simtime_picosec raw_rtt){
     bool new_base_rtt = false;
 
-    if (_base_rtt == 0 || _base_rtt > raw_rtt){
-        _base_rtt = raw_rtt;
-	new_base_rtt = true;
+    if (_base_rtt == 0 || _base_rtt > _raw_rtt){
+        _base_rtt = _raw_rtt;
+        new_base_rtt = true;
     }
-    return new_base_rtt;
-}
-
-
-simtime_picosec UecSrc::update_delay(simtime_picosec raw_rtt){
-    bool new_base_rtt = update_base_rtt(raw_rtt);
 
     if (_bdp == 0 || new_base_rtt){
         //reinitialize BDP, we have new RTT sample.
-        _bdp = raw_rtt * _nic.linkspeed() / 8000000000000;
+        _bdp = _raw_rtt * _nic.linkspeed() / 8000000000000;
         _maxwnd = 2 * _bdp;
     }
 
-    simtime_picosec delay = raw_rtt - _base_rtt;
+    simtime_picosec delay = _raw_rtt - _base_rtt;
 
     _avg_delay = _delay_alpha * delay + (1-_delay_alpha) * _avg_delay;
     cout << "Update delay with sample " << timeAsUs(delay) << " avg is " << timeAsUs(_avg_delay) << " base rtt is " << _base_rtt << endl;
-    return delay;
 }
 
 simtime_picosec UecSrc::get_avg_delay(){
@@ -897,8 +890,8 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
     auto seqno = i->first;
     simtime_picosec send_time = i->second.send_time;
 
-    simtime_picosec raw_rtt = eventlist().now() - send_time;
-    update_base_rtt(raw_rtt);
+    _raw_rtt = eventlist().now() - send_time;
+    update_delay(_raw_rtt);
 
     if (_sender_based_cc)
         (this->*updateCwndOnNack)(ev, pkt_size);
