@@ -47,28 +47,22 @@ double UecSrc::_ecn_alpha = 0.125;
 double UecSrc::_delay_alpha = 0.125;
 
 simtime_picosec UecSrc::_adjust_period_threshold = timeFromUs(12u);
+simtime_picosec UecSrc::_target_Qdelay = timeFromUs(6u);
+uint32_t UecSrc::_adjust_bytes_threshold = 32000*(_target_Qdelay/timeFromUs(12u));
 
-#define FAIR_DECREASE
-
-#ifdef FAIR_DECREASE
-    double UecSrc::_eta = 0;
-    double UecSrc::_fd = 0.8; //fair_decrease constant
-    simtime_picosec UecSrc::_target_Qdelay = timeFromUs(6u);
-    double UecSrc::_ecn_thresh = 0.2;
-    uint32_t UecSrc::_adjust_bytes_threshold = 32000*(_target_Qdelay/timeFromUs(12u));
-
-#else
-    double UecSrc::_fd = 0.0; //fair_decrease constant
-    simtime_picosec UecSrc::_target_Qdelay = timeFromUs(6u);
-    double UecSrc::_eta = 0.15*(_target_Qdelay/timeFromUs(12u)) * 4000 * UecSrc::_scaling_factor_a;
-    double UecSrc::_ecn_thresh = 0;
-    uint32_t UecSrc::_adjust_bytes_threshold = 32000*(_target_Qdelay/timeFromUs(12u));
-
-    
-#endif
+// constants for when FairDecrease is used
+double UecSrc::_fd = 0.8; //fair_decrease constant
+double UecSrc::_eta = 0;
+double UecSrc::_ecn_thresh = 0.2;
+void UecSrc::disableFairDecrease() {
+    // constants for when FairDecrease is not used
+    _fd = 0.0; //fair_decrease constant
+    _eta = 0.15 * (_target_Qdelay/timeFromUs(12u)) * 4000 * UecSrc::_scaling_factor_a;
+    _ecn_thresh = 0;
+}
 
 double UecSrc::_qa_threshold = 4 * UecSrc::_target_Qdelay; 
-#define DEBUG_FLOWID (-1)
+flowid_t UecSrc::_debug_flowid = UINT_MAX;
 
 #define INIT_PULL 10000000  // needs to be large enough we don't map
                             // negative pull targets (where
@@ -509,7 +503,9 @@ mem_b UecSrc::handleCumulativeAck(UecDataPacket::seq_t cum_ack) {
         auto seqno = _rtx_queue.begin()->first;
 
         if (seqno < cum_ack) {
+            mem_b pkt_size = _rtx_queue.begin()->second;
             _rtx_queue.erase(_rtx_queue.begin());
+            _rtx_backlog -= pkt_size;
         } else
             break;
     }
@@ -661,7 +657,7 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
     }
 
     average_ecn_bytes(pkt_size,newly_recvd_bytes, pkt.ecn_echo());
-    if(_flow.flow_id() == DEBUG_FLOWID  ){
+    if(_flow.flow_id() == _debug_flowid  ){
         cout <<  timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " track_avg_rtt " << timeAsUs(get_avg_delay())
             << " rtt " << timeAsUs(_raw_rtt) << " skip " << pkt.ecn_echo()
             << endl;
@@ -696,7 +692,7 @@ void UecSrc::updateCwndOnAck_DCTCP(bool skip, simtime_picosec rtt, mem_b newly_a
     }
 }
 
-void UecSrc::updateCwndOnNack_DCTCP(bool skip, simtime_picosec rtt, mem_b nacked_bytes) {
+void UecSrc::updateCwndOnNack_DCTCP(bool skip, mem_b nacked_bytes) {
     _cwnd -= nacked_bytes;
     _cwnd = max(_cwnd, (mem_b)_mtu);
 }
@@ -714,8 +710,8 @@ bool UecSrc::quick_adapt(bool is_loss, simtime_picosec avgqdelay) {
                     cout << "This shouldn't happen: QUICK ADAPT MIGHT INCREASE THE CWND" << endl;
                 }
                 else {
-                    _cwnd = max(_achieved_bytes, (uint64_t)_mtu) * _qa_scaling;
-                    if(_flow.flow_id() == DEBUG_FLOWID)
+                    _cwnd = max(_achieved_bytes, (mem_b)_mtu) * _qa_scaling;
+                    if(_flow.flow_id() == _debug_flowid)
                         cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " quick_adapt  _cwnd " << _cwnd << endl;
                     _bytes_to_ignore = _in_flight;
                     _bytes_ignored = 0;
@@ -822,44 +818,48 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
     if (quick_adapt(false,avg_delay))
         return;
 
-    if (!skip && delay >= _target_Qdelay){
+    if (!skip && delay >= _target_Qdelay) {
         fair_increase(newly_acked_bytes);
-        if(_flow.flow_id() == DEBUG_FLOWID)
-            cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " fair_increase  _smarttrack_cwnd " << _cwnd << endl;
-    }else if (!skip && delay < _target_Qdelay){
-        proportional_increase(newly_acked_bytes,delay);
-        if(_flow.flow_id() == DEBUG_FLOWID)
-            cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " proportional_increase _smarttrack_cwnd " << _cwnd << endl;        
-    }
-    else if (skip && delay >= _target_Qdelay){    
-        multiplicative_decrease(can_decrease,newly_acked_bytes);
-        if(_flow.flow_id() == DEBUG_FLOWID){
-            cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " multiplicative_decrease _smarttrack_cwnd " << _cwnd << endl;
+        if (_flow.flow_id() == _debug_flowid) {
+            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " fair_increase  _nscc_cwnd " << _cwnd << endl;
         }
-    }else if (skip && delay < _target_Qdelay){
+    } else if (!skip && delay < _target_Qdelay) {
+        proportional_increase(newly_acked_bytes,delay);
+        if (_flow.flow_id() == _debug_flowid) {
+            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " proportional_increase _nscc_cwnd " << _cwnd << endl;
+        }
+    } else if (skip && delay >= _target_Qdelay) {    
+        multiplicative_decrease(can_decrease,newly_acked_bytes);
+        if (_flow.flow_id() == _debug_flowid) {
+            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " multiplicative_decrease _nscc_cwnd " << _cwnd << endl;
+        }
+    } else if (skip && delay < _target_Qdelay) {
         fair_decrease(can_decrease,newly_acked_bytes);
-        if(_flow.flow_id() == DEBUG_FLOWID)
-            cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " fair_decrease _smarttrack_cwnd " << _cwnd << endl;        
+        if (_flow.flow_id() == _debug_flowid) {
+            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " fair_decrease _nscc_cwnd " << _cwnd << endl;
+        }
     }
 
-    if ( _received_bytes > _adjust_bytes_threshold){
+    if ( _received_bytes > _adjust_bytes_threshold) {
         fulfill_adjustment();
-        if(_flow.flow_id() == DEBUG_FLOWID)
-            cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " fulfill_adjustment _smarttrack_cwnd " << _cwnd << endl;
+        if (_flow.flow_id() == _debug_flowid) {
+            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " fulfill_adjustment _nscc_cwnd " << _cwnd << endl;
+        }
     }
 
-    if (eventlist().now() - _last_adjust_time > _adjust_period_threshold ){
+    if (eventlist().now() - _last_adjust_time > _adjust_period_threshold ) {
         _cwnd += _eta;
         _last_adjust_time = eventlist().now();
-        if(_flow.flow_id() == DEBUG_FLOWID)
-            cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " eta _smarttrack_cwnd " << _cwnd << endl;
+        if (_flow.flow_id() == _debug_flowid) {
+            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " eta _nscc_cwnd " << _cwnd << endl;
+        }
     }
 
-    if(_flow.flow_id() == DEBUG_FLOWID)
-        cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " final _smarttrack_cwnd " << _cwnd << endl;
+    if (_flow.flow_id() == _debug_flowid)
+        cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " final _nscc_cwnd " << _cwnd << endl;
 }
 
-void UecSrc::updateCwndOnNack_NSCC(bool skip, simtime_picosec rtt, mem_b nacked_bytes) {
+void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes) {
     _trigger_qa = true;
     if (_bytes_ignored >= _bytes_to_ignore)
         quick_adapt(true, get_avg_delay());
@@ -939,7 +939,7 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
     update_delay(_raw_rtt, false);
 
     if (_sender_based_cc)
-        (this->*updateCwndOnNack)(ev,_raw_rtt,pkt_size);
+        (this->*updateCwndOnNack)(ev, pkt_size);
 
     if (_debug_src)
         cout << _flow.str() << " " << _nodename << " erasing send record, seqno: " << seqno << " flow " << _flow.str()
@@ -1592,11 +1592,11 @@ UecSink::UecSink(TrafficLogger* trafficLogger, UecPullPacer* pullPacer, UecNIC& 
       _highest_pull_target(INIT_PULL),
       _received_bytes(0),
       _accepted_bytes(0),
+      _recvd_bytes(0),
+      _rcv_cwnd_pen(255),
       _end_trigger(NULL),
       _epsn_rx_bitmap(0),
       _out_of_order_count(0),
-      _recvd_bytes(0),
-      _rcv_cwnd_pen(255),
       _ack_request(false) {
     
     _nodename = "uecSink";  // TBD: would be nice at add nodenum to nodename
@@ -1628,11 +1628,11 @@ UecSink::UecSink(TrafficLogger* trafficLogger,
       _highest_pull_target(INIT_PULL),
       _received_bytes(0),
       _accepted_bytes(0),
+      _recvd_bytes(0),
+      _rcv_cwnd_pen(255),
       _end_trigger(NULL),
       _epsn_rx_bitmap(0),
       _out_of_order_count(0),
-      _recvd_bytes(0),
-      _rcv_cwnd_pen(255),
       _ack_request(false) {
     
     if (UecSrc::_receiver_based_cc)

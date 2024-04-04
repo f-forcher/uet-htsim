@@ -546,13 +546,11 @@ NdpTunnelSrc::update_rtx_time() {
     }
     map<NdpTunnelPacket::seq_t, simtime_picosec>::iterator i;
     simtime_picosec first_senttime = timeInf;
-    int c = 0;
     for (i = _sent_times.begin(); i != _sent_times.end(); i++) {
         simtime_picosec sent = i->second;
         if (sent < first_senttime || first_senttime == timeInf) {
             first_senttime = sent;
         }
-        c++;
     }
     _rtx_timeout = first_senttime + _rto;
 }

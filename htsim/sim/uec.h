@@ -104,6 +104,7 @@ public:
         uint64_t rts_nacks;
     };
     UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, uint32_t no_of_ports, bool rts = false);
+    static void disableFairDecrease();
     void logFlowEvents(FlowEventLogger& flow_logger) { _flow_logger = &flow_logger; }
     virtual void connectPort(uint32_t portnum, Route& routeout, Route& routeback, UecSink& sink, simtime_picosec start);
     const Route* getPortRoute(uint32_t port_num) const {return _ports[port_num]->route();}
@@ -220,13 +221,13 @@ public:
     //added for NSCC
     void quick_adapt(bool trimmed);
     void updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
-    void updateCwndOnNack_NSCC(bool skip, simtime_picosec delay, mem_b nacked_bytes);
+    void updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes);
 
     void updateCwndOnAck_DCTCP(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
-    void updateCwndOnNack_DCTCP(bool skip, simtime_picosec delay, mem_b nacked_bytes);
+    void updateCwndOnNack_DCTCP(bool skip, mem_b nacked_bytes);
 
     void (UecSrc::*updateCwndOnAck)(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
-    void (UecSrc::*updateCwndOnNack)(bool skip, simtime_picosec delay, mem_b nacked_bytes);
+    void (UecSrc::*updateCwndOnNack)(bool skip, mem_b nacked_bytes);
 
     bool checkFinished(UecDataPacket::seq_t cum_ack);
     inline void penalizePath(uint16_t path_id, uint8_t penalty);
@@ -309,9 +310,9 @@ private:
 
     // Smarttrack sender based CC variables.
     simtime_picosec _base_rtt;
-    uint64_t _achieved_bytes = 0;
+    mem_b _achieved_bytes = 0;
     //used to trigger SmartTrack fulfill
-    uint64_t _received_bytes = 0;
+    mem_b _received_bytes = 0;
     uint32_t _fi_count = 0;
     bool _trigger_qa = false;
     simtime_picosec _qa_endtime = 0;
@@ -336,6 +337,9 @@ private:
     string _nodename;
     int _node_num;
     uint32_t _dstaddr;
+
+    //debug
+    static flowid_t _debug_flowid;
 };
 
 // Packets are received on ports, but then passed to the Sink for handling

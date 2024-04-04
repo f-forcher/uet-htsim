@@ -240,7 +240,7 @@ int main(int argc, char **argv) {
 
     map<uint32_t, vector<uint32_t>*>::iterator it;
     
-    uint32_t connID = 0;
+    //uint32_t connID = 0;
     for (it = conns->connections.begin(); it!=conns->connections.end();it++){
         uint32_t src = (*it).first;
         destinations = (*it).second;
@@ -248,7 +248,7 @@ int main(int argc, char **argv) {
         vector<int> subflows_chosen;
       
         for (uint32_t dst_id = 0;dst_id<destinations->size();dst_id++){
-            connID++;
+            //connID++;
             dest = destinations->at(dst_id);
             if (!net_paths[src][dest])
                 net_paths[src][dest] = top->get_paths(src,dest);

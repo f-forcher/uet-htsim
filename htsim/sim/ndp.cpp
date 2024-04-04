@@ -766,11 +766,11 @@ int NdpSrc::choose_route() {
         }
         uint32_t path_id = _path_ids[_crt_path];
         _avoid_score[path_id] = _avoid_ratio[path_id];
-        int ctr = 0;
+        //int ctr = 0;
         while (_avoid_score[path_id] > 0 /* && ctr < 2*/) {
             printf("as[%d]: %d\n", path_id, _avoid_score[path_id]);
             _avoid_score[path_id]--;
-            ctr++;
+            //ctr++;
             //re-choosing path
             cout << "re-choosing path " << path_id << endl;
             _crt_path++;
@@ -1027,13 +1027,11 @@ NdpSrc::update_rtx_time() {
     }
     map<NdpPacket::seq_t, simtime_picosec>::iterator i;
     simtime_picosec first_senttime = timeInf;
-    int c = 0;
     for (i = _sent_times.begin(); i != _sent_times.end(); i++) {
         simtime_picosec sent = i->second;
         if (sent < first_senttime || first_senttime == timeInf) {
             first_senttime = sent;
         }
-        c++;
     }
     _rtx_timeout = first_senttime + _rto;
 }

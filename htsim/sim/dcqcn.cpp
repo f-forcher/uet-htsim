@@ -159,8 +159,6 @@ void DCQCNSrc::receivePacket(Packet& pkt)
     if (_done)
         return;
 
-    uint64_t old_last_acked;
-
     switch (pkt.type()) {
     case ETH_PAUSE:    
         processPause((const EthPausePacket&)pkt);
