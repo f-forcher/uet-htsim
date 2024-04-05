@@ -34,7 +34,7 @@ int DEFAULT_NODES = 128;
 EventList eventlist;
 
 void exit_error(char* progr) {
-    cout << "Usage " << progr << " [-nodes N]\n\t[-conns C]\n\t[-cwnd cwnd_size]\n\t[-q queue_size]\n\t[-recv_oversub_cc] Use receiver-driven AIMD to reduce total window when trims are not last hop\n\t[-queue_type composite|random|lossless|lossless_input|]\n\t[-tm traffic_matrix_file]\n\t[-strat route_strategy (single,rand,perm,pull,ecmp,\n\tecmp_host path_count,ecmp_ar,ecmp_rr,\n\tecmp_host_ar ar_thresh)]\n\t[-log log_level]\n\t[-seed random_seed]\n\t[-end end_time_in_usec]\n\t[-mtu MTU]\n\t[-hop_latency x] per hop wire latency in us,default 1\n\t[-switch_latency x] switching latency in us, default 0\n\t[-host_queue_type  swift|prio|fair_prio]\n\t[-logtime dt] sample time for sinklogger, etc" << endl;
+    cout << "Usage " << progr << " [-nodes N]\n\t[-conns C]\n\t[-cwnd cwnd_size]\n\t[-q queue_size]\n\t[-recv_oversub_cc] Use receiver-driven AIMD to reduce total window when trims are not last hop\n\t[-queue_type composite|random|lossless|lossless_input|]\n\t[-tm traffic_matrix_file]\n\t[-strat route_strategy (single,rand,perm,pull,ecmp,\n\tecmp_host path_count,ecmp_ar,ecmp_rr,\n\tecmp_host_ar ar_thresh)]\n\t[-log log_level]\n\t[-seed random_seed]\n\t[-end end_time_in_usec]\n\t[-mtu MTU]\n\t[-hop_latency x] per hop wire latency in us,default 1 \n\t[-disable_fd] disable fair decrease to get higher throught, \n\t[-target_q_delay x] target_queuing_delay in us, default is 6us \n\t[-switch_latency x] switching latency in us, default 0\n\t[-host_queue_type  swift|prio|fair_prio]\n\t[-logtime dt] sample time for sinklogger, etc" << endl;
     exit(1);
 }
 
@@ -89,6 +89,7 @@ int main(int argc, char **argv) {
 
     char* tm_file = NULL;
     char* topo_file = NULL;
+    bool disable_fair_decrease = false;
 
     while (i<argc) {
         if (!strcmp(argv[i],"-o")) {
@@ -124,9 +125,14 @@ int main(int argc, char **argv) {
             UecSrc::_receiver_based_cc = false;
             receiver_driven = false;
             cout << "sender based CC enabled ONLY" << endl;
-        } else if (!strcmp(argv[i],"-disable_fair_decrease")) {
-            UecSrc::disableFairDecrease();
+        } else if (!strcmp(argv[i],"-disable_fd")) {
+            disable_fair_decrease = true;
             cout << "fair_decrease disabled" << endl;
+            
+        } else if (!strcmp(argv[i],"-target_q_delay")) {
+            UecSrc::_target_Qdelay = timeFromUs(atof(argv[i+1]));
+            cout << "target_q_delay" << atof(argv[i+1]) << " us"<< endl;
+            i++;
         } else if (!strcmp(argv[i],"-sender_cc_algo")) {
             UecSrc::_sender_based_cc = true;
             
@@ -392,6 +398,10 @@ int main(int argc, char **argv) {
         FatTreeTopology::set_ecn_parameters(true, !receiver_driven, ecn_low,ecn_high);
     }
 
+    if(disable_fair_decrease){
+        UecSrc::disableFairDecrease();
+    }
+    UecSrc::parameterScaleToTargetQ();
     /*
     UecSink::_oversubscribed_congestion_control = oversubscribed_congestion_control;
     */

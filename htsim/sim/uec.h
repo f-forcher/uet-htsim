@@ -105,6 +105,7 @@ public:
     };
     UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, uint32_t no_of_ports, bool rts = false);
     static void disableFairDecrease();
+    static void parameterScaleToTargetQ();
     void logFlowEvents(FlowEventLogger& flow_logger) { _flow_logger = &flow_logger; }
     virtual void connectPort(uint32_t portnum, Route& routeout, Route& routeback, UecSink& sink, simtime_picosec start);
     const Route* getPortRoute(uint32_t port_num) const {return _ports[port_num]->route();}

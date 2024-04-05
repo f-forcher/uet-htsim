@@ -49,6 +49,7 @@ double UecSrc::_delay_alpha = 0.125;
 simtime_picosec UecSrc::_adjust_period_threshold = timeFromUs(12u);
 simtime_picosec UecSrc::_target_Qdelay = timeFromUs(6u);
 uint32_t UecSrc::_adjust_bytes_threshold = 32000*(_target_Qdelay/timeFromUs(12u));
+double UecSrc::_qa_threshold = 4 * UecSrc::_target_Qdelay; 
 
 // constants for when FairDecrease is used
 double UecSrc::_fd = 0.8; //fair_decrease constant
@@ -61,7 +62,13 @@ void UecSrc::disableFairDecrease() {
     _ecn_thresh = 0;
 }
 
-double UecSrc::_qa_threshold = 4 * UecSrc::_target_Qdelay; 
+void UecSrc::parameterScaleToTargetQ(){
+    double scale_factor = timeAsUs(_target_Qdelay)/12.0;
+    scale_factor = max(scale_factor, 1.0);
+    _adjust_bytes_threshold = (uint32_t)(16000*scale_factor);
+    _qa_threshold = 4 * _target_Qdelay; 
+}
+
 flowid_t UecSrc::_debug_flowid = UINT_MAX;
 
 #define INIT_PULL 10000000  // needs to be large enough we don't map
