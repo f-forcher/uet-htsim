@@ -323,6 +323,7 @@ private:
     double _exp_avg_ecn = 0;
     simtime_picosec _avg_delay = 0;
 
+    simtime_picosec _last_eta_time = 0;
     simtime_picosec _last_adjust_time = 0;
     bool _increase = false;
     simtime_picosec _last_dec_time = 0;

@@ -795,7 +795,7 @@ void UecSrc::fulfill_adjustment(){
 
     //unclear what received_bytes this is referring to. 
     _received_bytes = 0;
-
+    _last_adjust_time = eventlist().now();
     sendIfPermitted();
 }
 
@@ -840,16 +840,16 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
         }
     }
 
-    if ( _received_bytes > _adjust_bytes_threshold) {
+    if ( _received_bytes > _adjust_bytes_threshold || eventlist().now() - _last_adjust_time > _adjust_period_threshold ) {
         fulfill_adjustment();
         if (_flow.flow_id() == _debug_flowid) {
             cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " fulfill_adjustment _nscc_cwnd " << _cwnd << endl;
         }
     }
 
-    if (eventlist().now() - _last_adjust_time > _adjust_period_threshold ) {
+    if (eventlist().now() - _last_eta_time > _adjust_period_threshold ) {
         _cwnd += _eta;
-        _last_adjust_time = eventlist().now();
+        _last_eta_time = eventlist().now();
         if (_flow.flow_id() == _debug_flowid) {
             cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " eta _nscc_cwnd " << _cwnd << endl;
         }
