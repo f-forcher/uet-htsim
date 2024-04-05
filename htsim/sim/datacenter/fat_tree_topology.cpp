@@ -35,7 +35,7 @@ uint32_t FatTreeTopology::_oversub[] = {1,1,1};
 linkspeed_bps FatTreeTopology::_downlink_speeds[] = {0,0,0};
 
 bool FatTreeTopology::_enable_ecn = false;
-bool FatTreeTopology::_enable_on_tor_downlink = false;
+bool FatTreeTopology::_enable_ecn_on_tor_downlink = false;
 mem_b FatTreeTopology::_ecn_low = 0;
 mem_b FatTreeTopology::_ecn_high = 0;
 int FatTreeTopology::_num_failed_links = 0;
@@ -684,7 +684,7 @@ FatTreeTopology::alloc_queue(QueueLogger* queueLogger, linkspeed_bps speed, mem_
                                                    FatTreeSwitch::_trim_size);
 
             if (_enable_ecn){
-                if (!tor || dir == UPLINK || _enable_on_tor_downlink) {
+                if (!tor || dir == UPLINK || _enable_ecn_on_tor_downlink) {
                         // don't use ECN on ToR downlinks unless configured so.
                         q->set_ecn_thresholds(_ecn_low, _ecn_high);
                 }
@@ -698,8 +698,8 @@ FatTreeTopology::alloc_queue(QueueLogger* queueLogger, linkspeed_bps speed, mem_
     case AEOLUS_ECN:
         {
             AeolusQueue* q = new AeolusQueue(speed, queuesize, FatTreeSwitch::_speculative_threshold_fraction * queuesize ,  *_eventlist, queueLogger);
-            if (!tor || dir == UPLINK) {
-                // don't use ECN on ToR downlinks
+            if (!tor || dir == UPLINK || _enable_ecn_on_tor_downlink) {
+                // don't use ECN on ToR downlinks unless configured so.
                 q->set_ecn_threshold(FatTreeSwitch::_ecn_threshold_fraction * queuesize);
             }
             return q;
@@ -726,8 +726,8 @@ FatTreeTopology::alloc_queue(QueueLogger* queueLogger, linkspeed_bps speed, mem_
         {
             CompositeQueue* q = new CompositeQueue(speed, queuesize, *_eventlist, queueLogger,
                                                    FatTreeSwitch::_trim_size);
-            if (!tor || dir == UPLINK) {
-                // don't use ECN on ToR downlinks
+            if (!tor || dir == UPLINK || _enable_ecn_on_tor_downlink) {
+                // don't use ECN on ToR downlinks unless configured so.
                 q->set_ecn_threshold(FatTreeSwitch::_ecn_threshold_fraction * queuesize);
             }
             return q;
