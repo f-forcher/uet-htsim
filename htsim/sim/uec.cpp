@@ -69,7 +69,8 @@ void UecSrc::parameterScaleToTargetQ(){
     _qa_threshold = 4 * _target_Qdelay; 
 }
 
-flowid_t UecSrc::_debug_flowid = UINT_MAX;
+
+flowid_t UecSrc::_debug_flowid = UINT32_MAX;
 
 #define INIT_PULL 10000000  // needs to be large enough we don't map
                             // negative pull targets (where
@@ -1977,7 +1978,7 @@ UecBasePacket::seq_t UecSink::sackBitmapBase(UecBasePacket::seq_t epsn) {
 
 UecBasePacket::seq_t UecSink::sackBitmapBaseIdeal() {
     uint8_t lowest_value = UINT8_MAX;
-    UecBasePacket::seq_t lowest_position;
+    UecBasePacket::seq_t lowest_position = 0;
 
     // find the lowest non-zero value in the sack bitmap; that is the candidate for the base, since
     // it is the oldest packet that we are yet to sack. on sack bitmap construction that covers a
