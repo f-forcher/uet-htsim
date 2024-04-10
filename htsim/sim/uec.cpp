@@ -424,7 +424,7 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
                 assert(0);
         }
     }
-    if (_node_num == 2) _debug_src = true; // use this to enable debugging on one flow at a
+    //if (_node_num == 2) _debug_src = true; // use this to enable debugging on one flow at a
     // time
     _received_bytes = 0;
     _recvd_bytes = 0;
@@ -486,6 +486,18 @@ mem_b UecSrc::handleAckno(UecDataPacket::seq_t ackno) {
     auto i = _tx_bitmap.find(ackno);
     if (i == _tx_bitmap.end())
         return 0;
+
+    auto rtx_i = _rtx_queue.find(ackno);
+    if (rtx_i != _rtx_queue.end()) {
+        // packet was in RTX queue
+        mem_b pkt_size = rtx_i->second;
+        _rtx_queue.erase(rtx_i);
+        _rtx_backlog -= pkt_size;
+        _in_flight += pkt_size; // don't double count - we decremented when we marked for rtx
+        if (_debug_src) {
+            cout << "found pkt " << ackno << " in rtx queue\n";
+        }
+    }
     // mem_b pkt_size = i->second.pkt_size;
     simtime_picosec send_time = i->second.send_time;
 
@@ -514,8 +526,10 @@ mem_b UecSrc::handleCumulativeAck(UecDataPacket::seq_t cum_ack) {
             mem_b pkt_size = _rtx_queue.begin()->second;
             _rtx_queue.erase(_rtx_queue.begin());
             _rtx_backlog -= pkt_size;
-        } else
+            _in_flight += pkt_size; // don't double count - we decremented when we marked for rtx
+        } else {
             break;
+        }
     }
 
     auto i = _tx_bitmap.begin();
@@ -570,7 +584,7 @@ bool UecSrc::checkFinished(UecDataPacket::seq_t cum_ack) {
         cout << "Flow " << _name << " flowId " << flowId() << " " << _nodename << " finished at "
              << timeAsUs(eventlist().now()) << " total packets " << cum_ack << " RTS "
              << _rts_packets_sent << " total bytes " << ((mem_b)cum_ack - _rts_packets_sent) * _mss
-             << endl;
+             << " in_flight now " << _in_flight << endl;
         _speculating = false;
         if (_end_trigger) {
             _end_trigger->activate();
@@ -601,6 +615,10 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
         _bytes_ignored += newly_recvd_bytes;
     }
 
+    if (_debug_src) {
+        cout << "processAck " << cum_ack << " ref_epsn " << pkt.acked_psn() << " recvd_bytes " << _recvd_bytes << " newly_recvd_bytes " << newly_recvd_bytes << endl;
+    }
+
     //decrease flightsize.
     _in_flight -= newly_recvd_bytes;
     assert(_in_flight >= 0);
@@ -625,7 +643,9 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
         _raw_rtt = eventlist().now() - send_time;
         update_delay(_raw_rtt, true);
         delay = _raw_rtt - _base_rtt;     
-        cout << " send_time " << timeAsUs(send_time) << " now " << timeAsUs(eventlist().now()) << " sample " << timeAsUs(_raw_rtt) << endl;
+        if (_debug_src) {
+            cout << " send_time " << timeAsUs(send_time) << " now " << timeAsUs(eventlist().now()) << " sample " << timeAsUs(_raw_rtt) << endl;
+        }
     } else {
         // this can happen when the ACK arrives later than a cumulative ACK covering the NACKed
         // packet.
@@ -674,7 +694,9 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
         (this->*updateCwndOnAck)(pkt.ecn_echo(), delay, newly_recvd_bytes);
     }
 
-    cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " " << _nodename << " processAck: " << cum_ack << " flow " << _flow.str() << " cwnd " << _cwnd << " flightsize " << _in_flight << " delay " << timeAsUs(delay) << " newlyrecvd " << newly_recvd_bytes << " skip " << pkt.ecn_echo() << " raw rtt " << _raw_rtt <<  " ecn avg " << _exp_avg_ecn << endl;
+    if (_debug_src) {
+        cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " " << _nodename << " processAck: " << cum_ack << " flow " << _flow.str() << " cwnd " << _cwnd << " flightsize " << _in_flight << " delay " << timeAsUs(delay) << " newlyrecvd " << newly_recvd_bytes << " skip " << pkt.ecn_echo() << " raw rtt " << _raw_rtt <<  " ecn avg " << _exp_avg_ecn << endl;
+    }
 
     stopSpeculating();
 
@@ -709,23 +731,29 @@ bool UecSrc::quick_adapt(bool is_loss, simtime_picosec avgqdelay) {
     if (_receiver_based_cc)
         return false;
 
-    cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " quickadapt called is loss "<< is_loss << " delay " << avgqdelay << " qa_endtime " << timeAsUs(_qa_endtime) << " trigger qa " << _trigger_qa << endl;
+    if (_debug_src){
+        cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " quickadapt called is loss "<< is_loss << " delay " << avgqdelay << " qa_endtime " << timeAsUs(_qa_endtime) << " trigger qa " << _trigger_qa << endl;
+    }
     if (eventlist().now()>_qa_endtime){
         if (_qa_endtime != 0 && (_trigger_qa || is_loss || (avgqdelay > _qa_threshold))){
+            if (_debug_src) {
                 cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " running quickadapt, CWND is " << _cwnd << " setting it to " << _achieved_bytes <<  endl;
+            }
 
-                if (_cwnd < _achieved_bytes){
+            if (_cwnd < _achieved_bytes){
+                if (_debug_src) {
                     cout << "This shouldn't happen: QUICK ADAPT MIGHT INCREASE THE CWND" << endl;
                 }
-                else {
-                    _cwnd = max(_achieved_bytes, (mem_b)_mtu) * _qa_scaling;
-                    if(_flow.flow_id() == _debug_flowid)
-                        cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " quick_adapt  _cwnd " << _cwnd << endl;
-                    _bytes_to_ignore = _in_flight;
-                    _bytes_ignored = 0;
-                    _trigger_qa = false;
-                    return true;
-                }
+            }
+            else {
+                _cwnd = max(_achieved_bytes, (mem_b)_mtu) * _qa_scaling;
+                if(_flow.flow_id() == _debug_flowid)
+                    cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " quick_adapt  _cwnd " << _cwnd << endl;
+                _bytes_to_ignore = _in_flight;
+                _bytes_ignored = 0;
+                _trigger_qa = false;
+                return true;
+            }
         }
         _achieved_bytes = 0;
         _qa_endtime = eventlist().now() + _base_rtt;
@@ -789,7 +817,9 @@ void UecSrc::multiplicative_decrease(bool can_decrease, uint32_t newly_acked_byt
 }
 
 void UecSrc::fulfill_adjustment(){
-    cout << "Running fulfill adjustment cwnd " << _cwnd << " inc " << _inc_bytes << " dec " << _dec_bytes << " bdp " << _bdp << endl;
+    if (_debug_src) {
+        cout << "Running fulfill adjustment cwnd " << _cwnd << " inc " << _inc_bytes << " dec " << _dec_bytes << " bdp " << _bdp << endl;
+    }
     _cwnd += (_inc_bytes)/_cwnd - (_dec_bytes * _cwnd / _bdp);
 
     if (_cwnd < _mtu)
@@ -891,7 +921,9 @@ void UecSrc::update_delay(simtime_picosec raw_rtt, bool update_avg){
     if(update_avg){
         _avg_delay = _delay_alpha * delay + (1-_delay_alpha) * _avg_delay;
     }
-    cout << "Update delay with sample " << timeAsUs(delay) << " avg is " << timeAsUs(_avg_delay) << " base rtt is " << _base_rtt << endl;
+    if (_debug_src) {
+        cout << "Update delay with sample " << timeAsUs(delay) << " avg is " << timeAsUs(_avg_delay) << " base rtt is " << _base_rtt << endl;
+    }
 }
 
 simtime_picosec UecSrc::get_avg_delay(){
@@ -910,9 +942,10 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
     // handlePull(pullno);
 
     auto nacked_seqno = pkt.ref_ack();
-//    if (_debug_src)
+    if (_debug_src) {
         cout << _flow.str() << " " << _nodename << " processNack nacked: " << nacked_seqno << " flow " << _flow.str()
              << endl;
+    }
 
     uint16_t ev = pkt.ev();
     // what should we do when we get a NACK with ECN_ECHO set?  Presumably ECE is superfluous?
@@ -1014,6 +1047,7 @@ void UecSrc::startFlow() {
     cout << "Flow " << _name << " flowId " << flowId() << " " << _nodename << " starting at "
          << timeAsUs(eventlist().now()) << endl;
 
+
     if (_flow_logger) {
         _flow_logger->logEvent(_flow, *this, FlowEventLogger::START, _flow_size, 0);
     }
@@ -1027,8 +1061,9 @@ void UecSrc::startFlow() {
     _rtx_backlog = 0;
     _send_blocked_on_nic = false;
     while (_send_blocked_on_nic == false && credit() > 0 && _backlog > 0) {
-        if (_debug_src)
+        if (_debug_src) {
             cout << _flow.str() << " " << "requestSending 0 "<< endl;
+        }
 
         const Route *route = _nic.requestSending(*this);
         if (route) {
@@ -1089,7 +1124,7 @@ UecBasePacket::pull_quanta UecSrc::computePullTarget() {
 
     UecBasePacket::pull_quanta quant_pull_target = UecBasePacket::quantize_ceil(pull_target);
 
-    if (_debug_src)
+    if (_debug_src) {
         cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " " << " " << nodename()
              << " pull_target: " << UecBasePacket::unquantize(quant_pull_target) << " beforequant "
              << pull_target << " pull " << UecBasePacket::unquantize(_pull) << " diff "
@@ -1097,6 +1132,7 @@ UecBasePacket::pull_quanta UecSrc::computePullTarget() {
              << _credit
              << " backlog " << _backlog << " rtx_backlog " << _rtx_backlog << " active sources "
              << _nic.activeSources() << endl;
+    }
     return quant_pull_target;
 }
 
@@ -1168,7 +1204,7 @@ void UecSrc::startRTO(simtime_picosec send_time) {
         if (_rtx_timeout < eventlist().now())
             _rtx_timeout = eventlist().now();
 
-        if (_debug)
+        if (_debug_src)
             cout << "Start timer at " << timeAsUs(eventlist().now()) << " source " << _flow.str()
                  << " expires at " << timeAsUs(_rtx_timeout) << " flow " << _flow.str() << endl;
 
@@ -1176,7 +1212,7 @@ void UecSrc::startRTO(simtime_picosec send_time) {
         if (_rto_timer_handle == eventlist().nullHandle()) {
             // this happens when _rtx_timeout is past the configured simulation end time.
             _rtx_timeout_pending = false;
-            if (_debug)
+            if (_debug_src)
                 cout << "Cancel timer because too late for flow " << _flow.str() << endl;
         }
     } else {
@@ -1194,7 +1230,7 @@ void UecSrc::clearRTO() {
     _rto_timer_handle = eventlist().nullHandle();
     _rtx_timeout_pending = false;
 
-    if (_debug)
+    if (_debug_src)
         cout << "Clear RTO " << timeAsUs(eventlist().now()) << " source " << _flow.str() << endl;
 }
 
@@ -1505,14 +1541,12 @@ void UecSrc::rtxTimerExpired() {
 
         queueForRtx(seqno, pkt_size);
 
-        if (_receiver_based_cc)
+        if (_receiver_based_cc) {
+            if (_debug_src)
+                cout << "sendRTS 1"
+                     << " flow " << _flow.str() << endl;
             sendRTS();
-
-        if (_debug_src)
-            cout << "sendRTS 1"
-                 << " flow " << _flow.str() << endl;
-        ;
-
+        }
         return;
     }
 
@@ -1522,7 +1556,10 @@ void UecSrc::rtxTimerExpired() {
     if (_sender_based_cc) {
         if (_cwnd < pkt_size + _in_flight) {
             // window won't allow us to send yet.
-            sendRTS();
+            if (_debug_src)
+                cout << "sendRTS 3"
+                     << " flow " << _flow.str() << endl;
+            sendRTS();  
             return;
         }
     }
@@ -1693,7 +1730,7 @@ void UecSink::processData(const UecDataPacket& pkt) {
     if (_src->debug())
         cout << " UecSink " << _nodename << " src " << _src->nodename()
              << " processData: " << pkt.epsn() << " time " << timeAsNs(getSrc()->eventlist().now())
-             << " when expected epsn is " << _expected_epsn << " ooo count " << _out_of_order_count
+             << " when expected epsn is " << _expected_epsn << " size " << pkt.size() << " ooo count " << _out_of_order_count
              << " flow " << _src->flow()->str() << endl;
 
     _accepted_bytes += pkt.size();
@@ -1723,7 +1760,6 @@ void UecSink::processData(const UecDataPacket& pkt) {
         // the ACK state of OOO packets.
         UecAckPacket* ack_packet =
             sack(pkt.path_id(), ecn ? pkt.epsn() : sackBitmapBase(pkt.epsn()), pkt.epsn(), ecn);
-        // ack_packet->sendOn();
         _nic.sendControlPacket(ack_packet, NULL, this);
 
         _accepted_bytes = 0;  // careful about this one.
@@ -1739,9 +1775,12 @@ void UecSink::processData(const UecDataPacket& pkt) {
     _nic.logReceivedData(pkt.size(), pkt.size());
 
     _recvd_bytes += pkt.size();
+    if (_src->debug()) {
+        cout << _nodename << " recvd_bytes: " << _recvd_bytes << endl;
+    }
 
     assert(_received_bytes <= _src->flowsize());
-    if (_src->debug() && _received_bytes == _src->flowsize())
+    if (_src->debug() && _received_bytes >= _src->flowsize())
         cout << _nodename << " received " << _received_bytes << " at "
              << timeAsUs(EventList::getTheEventList().now()) << endl;
 
@@ -1782,10 +1821,12 @@ void UecSink::processData(const UecDataPacket& pkt) {
         UecAckPacket* ack_packet =
             sack(pkt.path_id(), (ecn || pkt.ar()) ? pkt.epsn() : sackBitmapBase(pkt.epsn()), pkt.epsn(), ecn);
 
-        if (_src->debug())
+        if (_src->debug()) {
             cout << " UecSink " << _nodename << " src " << _src->nodename()
-                 << " send ack now: " << _expected_epsn << " ooo count " << _out_of_order_count
-                 << " flow " << _src->flow()->str() << endl;
+                 << " sendAckNow: " << _expected_epsn << " ref_epsn " << pkt.epsn()
+                 << " ooo_count " << _out_of_order_count
+                 << " recvd_bytes " << _recvd_bytes << " flow " << _src->flow()->str() << endl;
+        }
 
         _accepted_bytes = 0;
 
