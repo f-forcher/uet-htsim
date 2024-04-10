@@ -146,6 +146,10 @@ public:
     enum Sender_CC { DCTCP, NSCC};
     static Sender_CC _sender_cc_algo;
 
+    static bool _enable_qa_gate;
+    static bool _enable_avg_ecn_over_path;
+
+
     virtual const string& nodename() { return _nodename; }
     inline void setFlowId(flowid_t flow_id) { _flow.set_flowid(flow_id); }
     void setFlowsize(uint64_t flow_size_in_bytes);

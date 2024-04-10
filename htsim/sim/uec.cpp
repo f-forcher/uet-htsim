@@ -55,11 +55,15 @@ double UecSrc::_qa_threshold = 4 * UecSrc::_target_Qdelay;
 double UecSrc::_fd = 0.8; //fair_decrease constant
 double UecSrc::_eta = 0;
 double UecSrc::_ecn_thresh = 0.2;
+bool UecSrc::_enable_qa_gate = false;
+bool UecSrc::_enable_avg_ecn_over_path = false;
+
+
 void UecSrc::disableFairDecrease() {
     // constants for when FairDecrease is not used
     _fd = 0.0; //fair_decrease constant
     _eta = 0.15 * (_target_Qdelay/timeFromUs(12u)) * 4000 * UecSrc::_scaling_factor_a;
-    _ecn_thresh = 0;
+    _ecn_thresh = 0.25;
 }
 
 void UecSrc::parameterScaleToTargetQ(){
@@ -683,8 +687,17 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
     if (pkt.ecn_echo()) {
         penalizePath(pkt.ev(), 1);
     }
-
-    average_ecn_bytes(pkt_size,newly_recvd_bytes, pkt.ecn_echo());
+    if(_enable_avg_ecn_over_path){
+        int total_ecn_entropy = 0;
+        for (uint32_t i = 0; i < _no_of_paths; i++) {
+            if(_ev_skip_bitmap[i] > 0 ) {
+                total_ecn_entropy = total_ecn_entropy + 1;
+            }
+        }
+        _exp_avg_ecn = total_ecn_entropy*1.0/_no_of_paths;
+    }else{
+        average_ecn_bytes(pkt_size,newly_recvd_bytes, pkt.ecn_echo());
+    }
     if(_flow.flow_id() == _debug_flowid  ){
         cout <<  timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " track_avg_rtt " << timeAsUs(get_avg_delay())
             << " rtt " << timeAsUs(_raw_rtt) << " skip " << pkt.ecn_echo()
@@ -735,7 +748,11 @@ bool UecSrc::quick_adapt(bool is_loss, simtime_picosec avgqdelay) {
         cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " quickadapt called is loss "<< is_loss << " delay " << avgqdelay << " qa_endtime " << timeAsUs(_qa_endtime) << " trigger qa " << _trigger_qa << endl;
     }
     if (eventlist().now()>_qa_endtime){
-        if (_qa_endtime != 0 && (_trigger_qa || is_loss || (avgqdelay > _qa_threshold))){
+        bool qa_gate = true;
+        if (_enable_qa_gate ){
+            qa_gate = (_achieved_bytes < _maxwnd/8);
+        }
+        if (_qa_endtime != 0 && (_trigger_qa || is_loss || (avgqdelay > _qa_threshold)) && qa_gate ){
             if (_debug_src) {
                 cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " running quickadapt, CWND is " << _cwnd << " setting it to " << _achieved_bytes <<  endl;
             }

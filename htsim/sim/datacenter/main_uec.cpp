@@ -128,7 +128,12 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i],"-disable_fd")) {
             disable_fair_decrease = true;
             cout << "fair_decrease disabled" << endl;
-            
+        } else if (!strcmp(argv[i],"-enable_qa_gate")) {
+            UecSrc::_enable_qa_gate = true;
+            cout << "enable quick adapt gate" << endl;            
+        } else if (!strcmp(argv[i],"-_enable_avg_ecn_over_path")) {
+            UecSrc::_enable_avg_ecn_over_path = true;
+            cout << "enable avg_ecn_over_path algorithm." << endl;            
         } else if (!strcmp(argv[i],"-target_q_delay")) {
             UecSrc::_target_Qdelay = timeFromUs(atof(argv[i+1]));
             cout << "target_q_delay" << atof(argv[i+1]) << " us"<< endl;
