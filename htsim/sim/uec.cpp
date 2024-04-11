@@ -63,7 +63,7 @@ void UecSrc::disableFairDecrease() {
     // constants for when FairDecrease is not used
     _fd = 0.0; //fair_decrease constant
     _eta = 0.15 * (_target_Qdelay/timeFromUs(12u)) * 4000 * UecSrc::_scaling_factor_a;
-    _ecn_thresh = 0.25;
+    _ecn_thresh = 0.5;
 }
 
 void UecSrc::parameterScaleToTargetQ(){
@@ -74,7 +74,7 @@ void UecSrc::parameterScaleToTargetQ(){
 }
 
 
-flowid_t UecSrc::_debug_flowid = UINT32_MAX;
+flowid_t UecSrc::_debug_flowid = 1;
 
 #define INIT_PULL 10000000  // needs to be large enough we don't map
                             // negative pull targets (where
@@ -700,7 +700,8 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
     }
     if(_flow.flow_id() == _debug_flowid  ){
         cout <<  timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " track_avg_rtt " << timeAsUs(get_avg_delay())
-            << " rtt " << timeAsUs(_raw_rtt) << " skip " << pkt.ecn_echo()
+            << " rtt " << timeAsUs(_raw_rtt) << " skip " << pkt.ecn_echo() 
+            << "_exp_avg_ecn " << _exp_avg_ecn
             << endl;
     }
     if (_sender_based_cc){
