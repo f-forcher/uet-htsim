@@ -74,7 +74,7 @@ void UecSrc::parameterScaleToTargetQ(){
 }
 
 
-flowid_t UecSrc::_debug_flowid = 1;
+flowid_t UecSrc::_debug_flowid = UINT32_MAX;
 
 #define INIT_PULL 10000000  // needs to be large enough we don't map
                             // negative pull targets (where
@@ -698,7 +698,7 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
     }else{
         average_ecn_bytes(pkt_size,newly_recvd_bytes, pkt.ecn_echo());
     }
-    if(_flow.flow_id() == _debug_flowid  ){
+    if(_flow.flow_id() == _debug_flowid  || 1){
         cout <<  timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " track_avg_rtt " << timeAsUs(get_avg_delay())
             << " rtt " << timeAsUs(_raw_rtt) << " skip " << pkt.ecn_echo() 
             << "_exp_avg_ecn " << _exp_avg_ecn
