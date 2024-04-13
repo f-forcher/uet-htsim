@@ -63,7 +63,7 @@ void UecSrc::disableFairDecrease() {
     // constants for when FairDecrease is not used
     _fd = 0.0; //fair_decrease constant
     _eta = 0.15 * (_target_Qdelay/timeFromUs(12u)) * 4000 * UecSrc::_scaling_factor_a;
-    _ecn_thresh = 0.5;
+    _ecn_thresh = 0.0;
 }
 
 void UecSrc::parameterScaleToTargetQ(){
