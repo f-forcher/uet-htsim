@@ -44,7 +44,7 @@ double UecSrc::_fi = 1; //fair_increase constant
 double UecSrc::_fi_scale = .25 * UecSrc::_scaling_factor_a;
 
 double UecSrc::_ecn_alpha = 0.125;
-double UecSrc::_delay_alpha = 0.05;
+double UecSrc::_delay_alpha = 0.025;
 
 simtime_picosec UecSrc::_adjust_period_threshold = timeFromUs(12u);
 simtime_picosec UecSrc::_target_Qdelay = timeFromUs(6u);
