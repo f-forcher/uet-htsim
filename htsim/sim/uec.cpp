@@ -44,7 +44,7 @@ double UecSrc::_fi = 1; //fair_increase constant
 double UecSrc::_fi_scale = .25 * UecSrc::_scaling_factor_a;
 
 double UecSrc::_ecn_alpha = 0.125;
-double UecSrc::_delay_alpha = 0.125;
+double UecSrc::_delay_alpha = 0.0125;
 
 simtime_picosec UecSrc::_adjust_period_threshold = timeFromUs(12u);
 simtime_picosec UecSrc::_target_Qdelay = timeFromUs(6u);
@@ -64,6 +64,7 @@ void UecSrc::disableFairDecrease() {
     _fd = 0.0; //fair_decrease constant
     _eta = 0.15 * (_target_Qdelay/timeFromUs(12u)) * 4000 * UecSrc::_scaling_factor_a;
     _ecn_thresh = 0.5;
+    cout << "_eta " << _eta << endl;
 }
 
 void UecSrc::parameterScaleToTargetQ(){
@@ -74,7 +75,7 @@ void UecSrc::parameterScaleToTargetQ(){
 }
 
 
-flowid_t UecSrc::_debug_flowid = UINT32_MAX;
+flowid_t UecSrc::_debug_flowid = 16; //UINT32_MAX;
 
 #define INIT_PULL 10000000  // needs to be large enough we don't map
                             // negative pull targets (where
@@ -432,6 +433,10 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
     // time
     _received_bytes = 0;
     _recvd_bytes = 0;
+
+    _highest_recv_seqno = 0;
+    _highest_rtx_sent = 0;
+
 }
 
 void UecSrc::connectPort(uint32_t port_num,
@@ -460,9 +465,13 @@ void UecSrc::receivePacket(Packet& pkt, uint32_t portnum) {
         case UECDATA: {
             _bounces_received++;
             // TBD - this is likely a Back-to-sender packet
+            cout << "UecSrc::receivePacket receive UECDATA packets\n";
+
             abort();
         }
         case UECRTS: {
+            cout << "UecSrc::receivePacket receive UECRTS packets\n";
+
             abort();
         }
         case UECACK: {
@@ -481,6 +490,8 @@ void UecSrc::receivePacket(Packet& pkt, uint32_t portnum) {
             return;
         }
         default: {
+            cout << "UecSrc::receivePacket receive default\n";
+
             abort();
         }
     }
@@ -509,6 +520,10 @@ mem_b UecSrc::handleAckno(UecDataPacket::seq_t ackno) {
     
     if (_debug_src)
         cout << _flow.str() << " " << _nodename << " handleAck " << ackno << " flow " << _flow.str() << endl;
+    if(_flow.flow_id() == _debug_flowid ){
+        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " handleAck ackno " << ackno
+             << endl;
+    }    
     _tx_bitmap.erase(i);
     _send_times.erase(send_time);
 
@@ -550,7 +565,10 @@ mem_b UecSrc::handleCumulativeAck(UecDataPacket::seq_t cum_ack) {
 
         if (_debug_src)
             cout << _flow.str() << " " << _nodename << " handleCumAck " << seqno << " flow " << _flow.str() << endl;
-
+        if(_flow.flow_id() == _debug_flowid ){
+            cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " handleCumulativeAck seqno " << seqno
+                << endl;
+        }  
         _tx_bitmap.erase(i);
         i = _tx_bitmap.begin();
         _send_times.erase(send_time);
@@ -635,6 +653,7 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
     //compute RTT sample
     auto acked_psn = pkt.acked_psn();
     auto i = _tx_bitmap.find(acked_psn);
+    uint32_t ooo = pkt.ooo();
 
     mem_b pkt_size;
     simtime_picosec delay;
@@ -676,12 +695,15 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
                 cout << "    Sack " << ackno << " flow " << _flow.str() << endl;
 
             handleAckno(ackno);
+            if (_highest_recv_seqno < ackno){
+                _highest_recv_seqno = ackno;
+            }
         }
         ackno++;
         bitmap >>= 1;
     }
 
-
+    _loss_counter --;
 
     // handle ECN echo only if the path is bad for now. Will update to match full spec afterwards. 
     if (pkt.ecn_echo()) {
@@ -698,10 +720,15 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
     }else{
         average_ecn_bytes(pkt_size,newly_recvd_bytes, pkt.ecn_echo());
     }
-    if(_flow.flow_id() == _debug_flowid  || 1){
+    if(_flow.flow_id() == _debug_flowid ){
         cout <<  timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " track_avg_rtt " << timeAsUs(get_avg_delay())
             << " rtt " << timeAsUs(_raw_rtt) << " skip " << pkt.ecn_echo() 
-            << "_exp_avg_ecn " << _exp_avg_ecn
+            << " _exp_avg_ecn " << _exp_avg_ecn
+            << " cum_ack " << cum_ack
+            << " bitmap_base " << pkt.ref_ack()
+            << " ooo " << ooo
+            << " cwnd " << _cwnd/get_avg_pktsize()
+            << " _achieved_bytes " << _achieved_bytes
             << endl;
     }
     if (_sender_based_cc){
@@ -711,6 +738,8 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
     if (_debug_src) {
         cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " " << _nodename << " processAck: " << cum_ack << " flow " << _flow.str() << " cwnd " << _cwnd << " flightsize " << _in_flight << " delay " << timeAsUs(delay) << " newlyrecvd " << newly_recvd_bytes << " skip " << pkt.ecn_echo() << " raw rtt " << _raw_rtt <<  " ecn avg " << _exp_avg_ecn << endl;
     }
+
+    sackLossDetection(ooo, cum_ack);
 
     stopSpeculating();
 
@@ -840,11 +869,7 @@ void UecSrc::fulfill_adjustment(){
     }
     _cwnd += (_inc_bytes)/_cwnd - (_dec_bytes * _cwnd / _bdp);
 
-    if (_cwnd < _mtu)
-        _cwnd = _mtu;
 
-    if (_cwnd > _maxwnd)
-        _cwnd = _maxwnd;
 
     _inc_bytes = 0;
     _dec_bytes = 0;
@@ -852,7 +877,6 @@ void UecSrc::fulfill_adjustment(){
     //unclear what received_bytes this is referring to. 
     _received_bytes = 0;
     _last_adjust_time = eventlist().now();
-    sendIfPermitted();
 }
 
 void UecSrc::mark_packet_for_retransmission(UecBasePacket::seq_t psn, uint16_t pktsize){
@@ -892,11 +916,19 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
     } else if (skip && delay < _target_Qdelay) {
         fair_decrease(can_decrease,newly_acked_bytes);
         if (_flow.flow_id() == _debug_flowid) {
-            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " fair_decrease _nscc_cwnd " << _cwnd << endl;
+            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " fair_decrease _nscc_cwnd " << _cwnd
+                <<" mtu " << _mtu
+                << "_maxwnd " << _maxwnd << endl;
         }
     }
 
     if ( _received_bytes > _adjust_bytes_threshold || eventlist().now() - _last_adjust_time > _adjust_period_threshold ) {
+        if (_flow.flow_id() == _debug_flowid) {
+            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " fulfill_adjustmentx _nscc_cwnd " << _cwnd
+                << " inc_bytes " << _inc_bytes
+                << " dec_bytes " << _dec_bytes
+                << endl;
+        }
         fulfill_adjustment();
         if (_flow.flow_id() == _debug_flowid) {
             cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " fulfill_adjustment _nscc_cwnd " << _cwnd << endl;
@@ -907,12 +939,19 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
         _cwnd += _eta;
         _last_eta_time = eventlist().now();
         if (_flow.flow_id() == _debug_flowid) {
-            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " eta _nscc_cwnd " << _cwnd << endl;
+            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " eta _nscc_cwnd " << _cwnd << " target_q_delay " <<timeAsUs(_target_Qdelay) << endl;
         }
     }
 
+    if (_cwnd < _mtu)
+        _cwnd = _mtu;
+
+    if (_cwnd > _maxwnd)
+        _cwnd = _maxwnd;
     if (_flow.flow_id() == _debug_flowid)
-        cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " final _nscc_cwnd " << _cwnd << endl;
+        cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " final _nscc_cwnd " << _cwnd << " _basertt " << timeAsUs(_base_rtt)<< endl;
+    sendIfPermitted();
+
 }
 
 void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes) {
@@ -948,11 +987,92 @@ simtime_picosec UecSrc::get_avg_delay(){
     return _avg_delay;
 }
 
+uint16_t UecSrc::get_avg_pktsize(){
+    return _mss;  // does not include header
+}
 void UecSrc::average_ecn_bytes(uint32_t pktsize, uint32_t newly_acked_bytes, bool skip) {
     double value = (double)skip * pktsize / newly_acked_bytes;
     _exp_avg_ecn = _ecn_alpha * value + (1 - _ecn_alpha) * _exp_avg_ecn;
 }
 
+void UecSrc::sackLossDetection(uint32_t ooo, UecBasePacket::seq_t cum_ack) {
+    uint16_t avg_size = get_avg_pktsize();
+    int threshold = min(_cwnd, _maxwnd);
+    threshold = max(threshold, 5*avg_size);
+    if(_flow.flow_id() == _debug_flowid ){
+        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " rtx_threshold " << threshold/avg_size
+            << " ooo " << ooo
+            << " _highest_rtx_sent " << _highest_rtx_sent
+            << " cwnd_in_pkts " << _cwnd/avg_size
+            << " cum_ack " << cum_ack
+            << endl;
+    }
+    if (cum_ack >= _recovery_seqno && _loss_recovery_mode){
+        _loss_recovery_mode = false;
+        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " exit_loss " <<endl;
+    }
+    if(ooo < threshold/avg_size && !_loss_recovery_mode)
+        return;
+    if (!_loss_recovery_mode){
+        _loss_recovery_mode = true;
+        _loss_counter = 0;
+        _recovery_seqno = _highest_recv_seqno;
+        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " enter_loss " <<endl;
+    }
+
+    // move the packet to the RTX queue
+    
+    //(rtx_seqno < (_cwnd/avg_size + cum_ack))
+    //_loss_counter < _cwnd/(2*get_avg_pktsize())
+    //(rtx_seqno < (_cwnd/avg_size + cum_ack))
+    for (UecBasePacket::seq_t rtx_seqno = cum_ack; rtx_seqno < _recovery_seqno &&  _loss_counter < _cwnd/get_avg_pktsize() ; rtx_seqno ++ ){
+        if (rtx_seqno <= _highest_rtx_sent)
+            continue;
+        auto i = _tx_bitmap.find(rtx_seqno);
+        if (i == _tx_bitmap.end())
+        {
+            // this means this packet seqno has been acked.
+            continue;
+        }
+
+        if (_rtx_queue.find(rtx_seqno) != _rtx_queue.end()){
+            continue;
+        }
+        if(_flow.flow_id() == _debug_flowid ){
+            cout <<  timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " rtx_seqno " << rtx_seqno
+                << " _highest_recv_seqno "<< _highest_recv_seqno
+                << " recovery_seqno " << _recovery_seqno
+                << endl;
+        }       
+
+        mem_b pkt_size = i->second.pkt_size;
+        assert(pkt_size >= _hdr_size); // check we're not seeing NACKed RTS packets.
+        auto seqno = i->first;
+        simtime_picosec send_time = i->second.send_time;
+        _tx_bitmap.erase(i);
+        assert(_tx_bitmap.find(seqno) == _tx_bitmap.end()); // xxx remove when working
+
+        _in_flight -= pkt_size;
+        if(_in_flight < 0)
+            cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " rtx_seqno " << rtx_seqno
+                << " _highest_recv_seqno " << _highest_recv_seqno
+                << " _in_flight "<< _in_flight
+                << endl;
+        assert(_in_flight >= 0);
+
+        _send_times.erase(send_time);
+        _highest_rtx_sent = seqno;
+        _loss_counter ++;
+        queueForRtx(seqno, pkt_size);
+
+        if (send_time == _rto_send_time)
+        {
+            recalculateRTO();
+        }
+        // penalizePath(ev, 1);
+    }
+    sendIfPermitted();
+}
 void UecSrc::processNack(const UecNackPacket& pkt) {
     _nic.logReceivedCtrl(pkt.size());
 
@@ -1164,7 +1284,7 @@ void UecSrc::sendIfPermitted() {
 
     //cout << timeAsUs(eventlist().now()) << " " << nodename() << " FOO " << _cwnd << " " << _in_flight << endl;                                                  
     if (_sender_based_cc) {
-        if (_cwnd <= _in_flight) {
+        if ((_cwnd < _in_flight && !_loss_recovery_mode) || (_loss_recovery_mode && _rtx_queue.empty())) {
             return;
         }
     }
@@ -1183,7 +1303,10 @@ void UecSrc::sendIfPermitted() {
     // we can send if the NIC lets us.                                                                                                                            
     if (_debug_src)
         cout << _flow.str() << " " << "requestSending 1\n";
-
+    if (_flow.flow_id() == _debug_flowid)
+    {
+        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" requestSending " << endl;
+    }
     const Route* route = _nic.requestSending(*this);
     if (route) {
         mem_b sent_bytes = sendPacket(*route);
@@ -1337,6 +1460,12 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
         cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " sending pkt " << _highest_sent
              << " size " << full_pkt_size << " pull target " << _pull_target << " ack request " << p->ar()
              << " cwnd " << _cwnd << " in_flight " << _in_flight << endl;
+    if (_flow.flow_id() == _debug_flowid)
+    {
+        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" sending pkt " << _highest_sent
+             << " size " << full_pkt_size << " cwnd " << _cwnd
+             << " in_flight " << _in_flight << " pull_target " << _pull_target << " pull " << _pull << endl;
+    }
     p->sendOn();
     _highest_sent++;
     _new_packets_sent++;
@@ -1368,6 +1497,12 @@ mem_b UecSrc::sendRtxPacket(const Route& route) {
         cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " " << _nodename << " sending rtx pkt " << seq_no
              << " size " << full_pkt_size << " cwnd " << _cwnd
              << " in_flight " << _in_flight << " pull_target " << _pull_target << " pull " << _pull << endl;
+    if (_flow.flow_id() == _debug_flowid)
+    {
+        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" sending rtx pkt " << seq_no
+             << " size " << full_pkt_size << " cwnd " << _cwnd
+             << " in_flight " << _in_flight << " pull_target " << _pull_target << " pull " << _pull << endl;
+    }
     p->set_ar(true);
     p->sendOn();
     _rtx_packets_sent++;
@@ -1453,7 +1588,7 @@ void UecSrc::timeToSend(const Route& route) {
     }
 
     if (_sender_based_cc) {
-        if (_cwnd < _in_flight) {
+        if ((_cwnd < _in_flight && !_loss_recovery_mode) || (_loss_recovery_mode && _rtx_queue.empty())) {
             if (_debug_src)
                 cout << _flow.str() << " " << _node_num << "cantSend, limited by sender CWND " << _cwnd << " _in_flight "
                      << _in_flight << "\n";
@@ -1489,7 +1624,7 @@ void UecSrc::timeToSend(const Route& route) {
         return;
     }
     if (_sender_based_cc) {
-        if (_cwnd < _in_flight) {
+        if ((_cwnd < _in_flight && !_loss_recovery_mode) || (_loss_recovery_mode && _rtx_queue.empty())) {
             return;
         }
     }
@@ -1544,6 +1679,7 @@ void UecSrc::rtxTimerExpired() {
     _send_times.erase(first_entry);
     if (_debug_src)
         cout << _nodename << " rtx timer expired for " << seqno << " flow " << _flow.str() << endl;
+    cout << timeAsUs(eventlist().now()) << " rtx timer expired for " << seqno << " flowid " << _flow.flow_id() << endl;
     _tx_bitmap.erase(send_record);
     recalculateRTO();
 
@@ -1975,9 +2111,11 @@ void UecSink::receivePacket(Packet& pkt, uint32_t port_num) {
 
     switch (pkt.type()) {
         case UECDATA:
-            if (pkt.header_only())
+            if (pkt.header_only()){
                 processTrimmed((const UecDataPacket&)pkt);
-            else
+                cout << "UecSink::receivePacket receive trimmed packet\n";
+                abort();
+            }else
                 processData((const UecDataPacket&)pkt);
 
             pkt.free();
@@ -1987,6 +2125,7 @@ void UecSink::receivePacket(Packet& pkt, uint32_t port_num) {
             pkt.free();
             break;
         default:
+            cout << "UecSink::receivePacket receive weird packets\n";
             abort();
     }
 }
@@ -2084,6 +2223,7 @@ UecAckPacket* UecSink::sack(uint16_t path_id, UecBasePacket::seq_t seqno, UecBas
     UecAckPacket* pkt =
         UecAckPacket::newpkt(_flow, NULL, _expected_epsn, seqno, acked_psn, path_id, ce, _recvd_bytes,_rcv_cwnd_pen,_srcaddr);
     pkt->set_bitmap(bitmap);
+    pkt->set_ooo(_out_of_order_count);
     return pkt;
 }
 

@@ -126,6 +126,11 @@ public:
         _maxwnd = maxwnd;
     }
 
+    void boundBaseRTT(simtime_picosec network_rtt){
+        _base_rtt = network_rtt;
+        _bdp = _base_rtt * _nic.linkspeed() / 8000000000000;
+        _maxwnd =  _bdp;
+    }
     mem_b maxWnd() const { return _maxwnd; }
 
     const Stats& stats() const { return _stats; }
@@ -222,6 +227,7 @@ public:
     void processAck(const UecAckPacket& pkt);
     void processNack(const UecNackPacket& pkt);
     void processPull(const UecPullPacket& pkt);
+    void sackLossDetection(uint32_t ooo, UecBasePacket::seq_t cum_ack);
 
     //added for NSCC
     void quick_adapt(bool trimmed);
@@ -253,6 +259,7 @@ public:
     void stopSpeculating();
     void spendCredit(mem_b pktsize);
     UecDataPacket::seq_t _highest_sent;
+    UecDataPacket::seq_t _highest_rtx_sent;
     mem_b _in_flight;
     mem_b _bdp;
     bool _send_blocked_on_nic;
@@ -289,6 +296,7 @@ private:
     void mark_packet_for_retransmission(UecBasePacket::seq_t psn, uint16_t pktsize);
     void update_delay(simtime_picosec delay, bool update_avg);
     simtime_picosec get_avg_delay();
+    uint16_t get_avg_pktsize();
     void average_ecn_bytes(uint32_t pktsize, uint32_t newly_acked_bytes, bool skip);
 
     // entropy value calculation
@@ -332,6 +340,10 @@ private:
     simtime_picosec _last_adjust_time = 0;
     bool _increase = false;
     simtime_picosec _last_dec_time = 0;
+    uint32_t _highest_recv_seqno;
+    bool _loss_recovery_mode = false;
+    uint32_t _recovery_seqno = 0;
+    uint32_t _loss_counter = 0;
 
     uint16_t _crt_path;
     int _next_pathid;

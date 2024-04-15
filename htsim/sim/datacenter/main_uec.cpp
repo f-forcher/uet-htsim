@@ -573,6 +573,8 @@ int main(int argc, char **argv) {
     vector <UecSrc*> uec_srcs;
 
     map <flowid_t, TriggerTarget*> flowmap;
+    simtime_picosec network_rtt = tiers*2*hop_latency*2; //+ timeFromSec((packet_size*8.0)/linkspeed)*tiers*2;
+    cout << "network_rtt " << timeAsUs(network_rtt) << endl;
 
     for (size_t c = 0; c < all_conns->size(); c++){
         connection* crt = all_conns->at(c);
@@ -583,6 +585,7 @@ int main(int argc, char **argv) {
         uec_src = new UecSrc(traffic_logger, eventlist, *nics.at(src), ports);
         uec_src->setCwnd(cwnd*Packet::data_packet_size());
         uec_src->setMaxWnd(cwnd*Packet::data_packet_size());
+        uec_src->boundBaseRTT(network_rtt);
         uec_srcs.push_back(uec_src);
         uec_src->setDst(dest);
 

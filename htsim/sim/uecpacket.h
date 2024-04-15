@@ -224,6 +224,8 @@ public:
     inline simtime_picosec residency_time() const {return _residency_time;}
     inline uint64_t recvd_bytes() const {return _recvd_bytes;}
     inline uint8_t rcv_wnd_pen() const {return _rcv_cwnd_pen;}
+    inline void set_ooo(uint32_t out_of_order_count) { _out_of_order_count = out_of_order_count;}
+    inline uint32_t ooo() const {return _out_of_order_count; }
 
     inline void set_bitmap(uint64_t bitmap){_sack_bitmap = bitmap;};
     /* inline pull_quanta pullno() const {return _pullno;}*/
@@ -250,6 +252,7 @@ protected:
     bool _rnr;
     bool _ecn_echo;
     simtime_picosec _residency_time;
+    uint32_t _out_of_order_count;
 
     static PacketDB<UecAckPacket> _packetdb;
 };
