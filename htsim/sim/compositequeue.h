@@ -77,6 +77,7 @@ class CompositeQueue : public Queue {
 
     bool _return_to_sender;
 
+    int _queue_id;
     CircularBuffer<Packet*> _enqueued_low;
     CircularBuffer<Packet*> _enqueued_high;
 };
