@@ -33,6 +33,7 @@ bool UecSrc::_sender_based_cc = false;
 bool UecSrc::_receiver_based_cc = true;
 
 UecSrc::Sender_CC UecSrc::_sender_cc_algo = UecSrc::NSCC;
+UecSrc::LoadBalancing_Algo UecSrc::_load_balancing_algo = UecSrc::BITMAP;
 
 double UecSrc::_scaling_factor_a = 1; //for 400Gbps. cf. spec must be set to BDP/(100Gbps*12us)
 uint32_t UecSrc::_qa_scaling = 1; //quick adapt scaling - how much of the achieved bytes should we use as new CWND?
@@ -389,10 +390,18 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
     _rts_packets_sent = 0;
     _bounces_received = 0;
 
-    // reset path penalties
-    _ev_skip_bitmap.resize(_no_of_paths);
-    for (uint32_t i = 0; i < _no_of_paths; i++) {
-        _ev_skip_bitmap[i] = 0;
+    if (_load_balancing_algo == BITMAP){
+        nextEntropy = &UecSrc::nextEntropy_bitmap;
+        penalizePath = &UecSrc::penalizePath_bitmap;
+        // reset path penalties
+        _ev_skip_bitmap.resize(_no_of_paths);
+        for (uint32_t i = 0; i < _no_of_paths; i++) {
+            _ev_skip_bitmap[i] = 0;
+        }
+    } else if (_load_balancing_algo == REPS){
+        nextEntropy = &UecSrc::nextEntropy_REPS;
+        penalizePath = &UecSrc::penalizePath_REPS;
+        _crt_path = 0;
     }
 
     // by default, end silently
@@ -677,12 +686,7 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
         bitmap >>= 1;
     }
 
-
-
-    // handle ECN echo only if the path is bad for now. Will update to match full spec afterwards. 
-    if (pkt.ecn_echo()) {
-        penalizePath(pkt.ev(), 1);
-    }
+    (this->*penalizePath)(pkt.ev(), pkt.ecn_echo() ? 1:0);
 
     average_ecn_bytes(pkt_size,newly_recvd_bytes, pkt.ecn_echo());
     if(_flow.flow_id() == _debug_flowid  ){
@@ -1000,7 +1004,7 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
         recalculateRTO();
     }
 
-    penalizePath(ev, 1);
+    (this->*penalizePath)(ev, 1);
     sendIfPermitted();
 }
 
@@ -1242,7 +1246,7 @@ void UecSrc::cancelRTO() {
     }
 }
 
-void UecSrc::penalizePath(uint16_t path_id, uint8_t penalty) {
+void UecSrc::penalizePath_bitmap(uint16_t path_id, uint8_t penalty) {
     // _no_of_paths must be a power of 2
     uint16_t mask = _no_of_paths - 1;
     path_id &= mask;  // only take the relevant bits for an index
@@ -1252,7 +1256,13 @@ void UecSrc::penalizePath(uint16_t path_id, uint8_t penalty) {
     }
 }
 
-uint16_t UecSrc::nextEntropy() {
+void UecSrc::penalizePath_REPS(uint16_t path_id, uint8_t penalty) {
+    if (penalty==0)
+        _next_pathid.push_back(path_id);
+}
+
+
+uint16_t UecSrc::nextEntropy_bitmap() {
     // _no_of_paths must be a power of 2
     uint16_t mask = _no_of_paths - 1;
     uint16_t entropy = (_current_ev_index ^ _path_xor) & mask;
@@ -1275,6 +1285,37 @@ uint16_t UecSrc::nextEntropy() {
 
     entropy |= _path_random ^ (_path_random & mask);  // set upper bits
     return entropy;
+}
+
+uint16_t UecSrc::nextEntropy_REPS(){
+	uint64_t allpathssizes = _mss * _no_of_paths;
+    if (_mss * _highest_sent < max((uint64_t)_maxwnd, allpathssizes)) {
+        _crt_path++;
+        if (_crt_path == _no_of_paths) {
+            _crt_path = 0;
+        }
+
+        if (_debug) 
+            cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS FirstWindow " << _crt_path << endl;
+
+    } else {
+        if (_next_pathid.empty()) {
+            assert(_no_of_paths > 0);
+		    _crt_path = random() % _no_of_paths;
+
+            if (_debug) 
+                cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS Steady " << _crt_path << endl;
+
+        } else {
+            _crt_path = _next_pathid.front();
+            _next_pathid.pop_front();
+
+            if (_debug) 
+                cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS Recycle " << _crt_path << endl;
+
+        }
+    }
+    return _crt_path;
 }
 
 mem_b UecSrc::sendNewPacket(const Route& route) {
@@ -1307,7 +1348,7 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
 
     auto* p = UecDataPacket::newpkt(_flow, route, _highest_sent, full_pkt_size, ptype,
                                      _pull_target, _dstaddr);
-    uint16_t ev = nextEntropy();
+    uint16_t ev = (this->*nextEntropy)();
     p->set_pathid(ev);
     p->flow().logTraffic(*p, *this, TrafficLogger::PKT_CREATESEND);
 
@@ -1340,7 +1381,7 @@ mem_b UecSrc::sendRtxPacket(const Route& route) {
     
     auto* p = UecDataPacket::newpkt(_flow, route, seq_no, full_pkt_size, UecDataPacket::DATA_RTX,
                                      _pull_target, _dstaddr);
-    uint16_t ev = nextEntropy();
+    uint16_t ev = (this->*nextEntropy)();
     p->set_pathid(ev);
     p->flow().logTraffic(*p, *this, TrafficLogger::PKT_CREATESEND);
 
@@ -1372,7 +1413,7 @@ void UecSrc::sendRTS() {
     auto* p =
         UecRtsPacket::newpkt(_flow, NULL, _highest_sent, _pull_target, _dstaddr);
     p->set_dst(_dstaddr);
-    uint16_t ev = nextEntropy();
+    uint16_t ev = (this->*nextEntropy)();
     p->set_pathid(ev);
 
     // p->sendOn();
