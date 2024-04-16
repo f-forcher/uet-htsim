@@ -35,6 +35,7 @@ CompositeQueue::CompositeQueue(linkspeed_bps bitrate, mem_b maxsize, EventList& 
     ss << "compqueue(" << bitrate/1000000 << "Mb/s," << maxsize << "bytes)";
     _nodename = ss.str();
     _queue_id = global_queue_id++;
+    cout << "queueid " << _queue_id << " bitrate " << bitrate/1000000 << "Mb/s," << endl;
 }
 
 void CompositeQueue::beginService(){
@@ -93,9 +94,10 @@ CompositeQueue::completeService(){
         if (decide_ECN()) {
             pkt->set_flags(pkt->flags() | ECN_CE);
         }
-        if (_queue_id == 0){
+        if (_queue_id == 49){
             cout << timeAsUs(eventlist().now()) <<" name " <<_nodename <<" _queuesize_low " 
-                << _queuesize_low*8/((_bitrate/1000000.0)) <<" _queueid " << _queue_id << " switch " << _switch->getID() << endl;    
+                << _queuesize_low*8/((_bitrate/1000000.0)) <<" _queueid " << _queue_id << " switch " << _switch->getID() 
+                << " ecn " << decide_ECN() << endl;    
 
         }
         if (_logger) _logger->logQueue(*this, QueueLogger::PKT_SERVICE, *pkt);
@@ -144,6 +146,12 @@ CompositeQueue::doNextEvent() {
 void
 CompositeQueue::receivePacket(Packet& pkt)
 {
+    if (_queue_id == 49)
+    {
+        cout << timeAsUs(eventlist().now()) << " name " << _nodename << " arrive "
+             << _queuesize_low * 8 / ((_bitrate / 1000000.0)) << " _queueid " << _queue_id << " switch " << _switch->getID() 
+             <<" flowid " << pkt.flow_id() << " ev " << pkt.pathid()<< endl;
+    }
     pkt.flow().logTraffic(pkt,*this,TrafficLogger::PKT_ARRIVE);
     if (_logger) _logger->logQueue(*this, QueueLogger::PKT_ARRIVE, pkt);
 

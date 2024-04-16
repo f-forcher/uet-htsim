@@ -129,7 +129,8 @@ public:
     void boundBaseRTT(simtime_picosec network_rtt){
         _base_rtt = network_rtt;
         _bdp = _base_rtt * _nic.linkspeed() / 8000000000000;
-        _maxwnd =  _bdp;
+        _maxwnd =  1.5*_bdp;
+        cout << "_bdp " << _bdp << " _maxwnd " << _maxwnd << " _base_rtt " << timeAsUs(_base_rtt) << endl;
     }
     mem_b maxWnd() const { return _maxwnd; }
 
