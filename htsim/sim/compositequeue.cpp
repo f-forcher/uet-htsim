@@ -94,10 +94,12 @@ CompositeQueue::completeService(){
         if (decide_ECN()) {
             pkt->set_flags(pkt->flags() | ECN_CE);
         }
-        if (_queue_id == 49){
+        if (_queue_id == 0){
             cout << timeAsUs(eventlist().now()) <<" name " <<_nodename <<" _queuesize_low " 
                 << _queuesize_low*8/((_bitrate/1000000.0)) <<" _queueid " << _queue_id << " switch " << _switch->getID() 
-                << " ecn " << decide_ECN() << endl;    
+                << " ecn " << decide_ECN() 
+                << " _queuesize_high " << _queuesize_high*8/((_bitrate/1000000.0))
+                << endl;    
 
         }
         if (_logger) _logger->logQueue(*this, QueueLogger::PKT_SERVICE, *pkt);
@@ -293,8 +295,8 @@ CompositeQueue::receivePacket(Packet& pkt)
         } else {
             if (_logger) _logger->logQueue(*this, QueueLogger::PKT_DROP, pkt);
             pkt.flow().logTraffic(pkt,*this,TrafficLogger::PKT_DROP);
-            //cout << "B[ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ] DROP " 
-            //     << pkt.flow().get_id() << endl;
+            cout << "B[ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ] DROP " 
+                << pkt.flow().flow_id() << endl;
             pkt.free();
             _num_drops++;
             return;

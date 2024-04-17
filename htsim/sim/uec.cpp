@@ -730,6 +730,7 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
             << " ooo " << ooo
             << " cwnd " << _cwnd/get_avg_pktsize()
             << " _achieved_bytes " << _achieved_bytes
+            << " acked_psn " << acked_psn
             << endl;
     }
     if (_sender_based_cc){
@@ -1136,7 +1137,9 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
         _exp_avg_ecn = _ecn_alpha * 1.0  + (1 - _ecn_alpha) * _exp_avg_ecn;
     }
     if(_flow.flow_id() == _debug_flowid){
-        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " ev " << ev << " trimming "<< endl;
+        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " ev " << ev 
+            << " seqno " << seqno
+            << " trimming " << endl;
     }
     if (_sender_based_cc)
         (this->*updateCwndOnNack)(ev, pkt_size);
@@ -1315,14 +1318,26 @@ void UecSrc::sendIfPermitted() {
         // can send if we have *any* credit, but we don't                                                                                                         
         return;
     }
-
+    if (_flow.flow_id() == _debug_flowid)
+    {
+        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" _cwnd " << _cwnd
+            << " _in_flight " << _in_flight 
+            << " _loss_recovery_mode " << _loss_recovery_mode
+            << endl;
+    }
     //cout << timeAsUs(eventlist().now()) << " " << nodename() << " FOO " << _cwnd << " " << _in_flight << endl;                                                  
     if (_sender_based_cc) {
-        if ((_cwnd < _in_flight && !_loss_recovery_mode) || (_loss_recovery_mode && _rtx_queue.empty())) {
+        if ((_cwnd <= _in_flight && !_loss_recovery_mode) || (_loss_recovery_mode && _rtx_queue.empty())) {
             return;
         }
     }
-
+    if (_flow.flow_id() == _debug_flowid)
+    {
+        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" _cwnd " << _cwnd
+            << " _in_flight " << _in_flight 
+            << " _loss_recovery_mode2 " << _loss_recovery_mode
+            << endl;
+    }
     if (_rtx_queue.empty()) {
         if (_backlog == 0) {
             return;
@@ -1338,7 +1353,7 @@ void UecSrc::sendIfPermitted() {
         if (_flow.flow_id() == _debug_flowid){
             for(auto it = _nic._active_srcs.begin(); it != _nic._active_srcs.end(); ++it) {
                 UecSrc* queued_src = *it; 
-                cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" sendIfPermitted " << queued_src->flow()->flow_id() << " _nic " << _nic._src_id << endl;;
+                cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" sendIfPermitted block" << queued_src->flow()->flow_id() << " _nic " << _nic._src_id << endl;;
             } 
         }
         return;
@@ -1515,7 +1530,7 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
     if (_flow.flow_id() == _debug_flowid)
     {
         cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" sending pkt " << _highest_sent
-             << " size " << full_pkt_size << " cwnd " << _cwnd << " ev " << ev << " skip_weight " <<(uint32_t)_ev_skip_bitmap[ev]
+             << " size " << full_pkt_size << " cwnd " << _cwnd << " ev " << ev << " skip_weight " <<(uint32_t)(_ev_skip_bitmap[ev])
              << " in_flight " << _in_flight << " pull_target " << _pull_target << " pull " << _pull << endl;
     }
     p->sendOn();
@@ -1640,7 +1655,7 @@ void UecSrc::timeToSend(const Route& route) {
     }
 
     if (_sender_based_cc) {
-        if ((_cwnd < _in_flight && !_loss_recovery_mode) || (_loss_recovery_mode && _rtx_queue.empty())) {
+        if ((_cwnd <= _in_flight && !_loss_recovery_mode) || (_loss_recovery_mode && _rtx_queue.empty())) {
             if (_debug_src)
                 cout << _flow.str() << " " << _node_num << "cantSend, limited by sender CWND " << _cwnd << " _in_flight "
                      << _in_flight << "\n";
@@ -1679,7 +1694,7 @@ void UecSrc::timeToSend(const Route& route) {
         return;
     }
     if (_sender_based_cc) {
-        if ((_cwnd < _in_flight && !_loss_recovery_mode) || (_loss_recovery_mode && _rtx_queue.empty())) {
+        if ((_cwnd <= _in_flight && !_loss_recovery_mode) || (_loss_recovery_mode && _rtx_queue.empty())) {
             return;
         }
     }
@@ -1734,7 +1749,7 @@ void UecSrc::rtxTimerExpired() {
     _send_times.erase(first_entry);
     if (_debug_src)
         cout << _nodename << " rtx timer expired for " << seqno << " flow " << _flow.str() << endl;
-    cout << timeAsUs(eventlist().now()) << " rtx timer expired for " << seqno << " flowid " << _flow.flow_id() << endl;
+    cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " rtx timer expired for " << seqno  << endl;
     _tx_bitmap.erase(send_record);
     recalculateRTO();
 
@@ -1949,7 +1964,11 @@ void UecSink::processData(const UecDataPacket& pkt) {
     _accepted_bytes += pkt.size();
 
     handlePullTarget(pkt.pull_target());
-
+    if (_src->flow()->flow_id() == UecSrc::_debug_flowid)
+    {
+        cout << timeAsUs(_src->eventlist().now()) << " flowid " << _src->flow()->flow_id()
+             << " recv " << pkt.epsn() << endl;
+    }
     if (pkt.epsn() > _high_epsn) {
         // highest_received is used to bound the sack bitmap. This is a 64 bit number in simulation,
         // never wraps. In practice need to handle sequence number wrapping.
@@ -1968,6 +1987,10 @@ void UecSink::processData(const UecDataPacket& pkt) {
         _stats.duplicates++;
         _nic.logReceivedData(pkt.size(), 0);
 
+        if (_src->flow()->flow_id() == UecSrc::_debug_flowid){
+            cout << timeAsUs(_src->eventlist().now()) << " flowid " << _src->flow()->flow_id()  
+                << " Spurious " << pkt.epsn() <<endl;
+        }
         // sender is confused and sending us duplicates: ACK straight away.
         // this code is different from the proposed hardware implementation, as it keeps track of
         // the ACK state of OOO packets.
