@@ -1,6 +1,7 @@
 // -*- c-basic-offset: 4; indent-tabs-mode: nil -*-
 #include "uec.h"
 #include <math.h>
+#include <cstdint>
 #include "circular_buffer.h"
 #include "uec_logger.h"
 
@@ -659,10 +660,10 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
 
     mem_b pkt_size;
     simtime_picosec delay;
-
+    simtime_picosec send_time = 0;
     if (i != _tx_bitmap.end()) {
         //auto seqno = i->first;
-        simtime_picosec send_time = i->second.send_time;
+        send_time = i->second.send_time;
         pkt_size = i->second.pkt_size;
         _raw_rtt = eventlist().now() - send_time;
         if(_raw_rtt > _base_rtt){
@@ -731,6 +732,7 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
             << " cwnd " << _cwnd/get_avg_pktsize()
             << " _achieved_bytes " << _achieved_bytes
             << " acked_psn " << acked_psn
+            << " sending_time " << timeAsUs(send_time)
             << endl;
     }
     if (_sender_based_cc){
@@ -1529,8 +1531,9 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
              << " cwnd " << _cwnd << " in_flight " << _in_flight << endl;
     if (_flow.flow_id() == _debug_flowid)
     {
+        std::uint8_t skip_weight = _ev_skip_bitmap[ev];
         cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" sending pkt " << _highest_sent
-             << " size " << full_pkt_size << " cwnd " << _cwnd << " ev " << ev << " skip_weight " <<(uint32_t)(_ev_skip_bitmap[ev])
+             << " size " << full_pkt_size << " cwnd " << _cwnd << " ev " << ev << " skip_weight " << static_cast<int>(skip_weight)
              << " in_flight " << _in_flight << " pull_target " << _pull_target << " pull " << _pull << endl;
     }
     p->sendOn();
@@ -1566,8 +1569,9 @@ mem_b UecSrc::sendRtxPacket(const Route& route) {
              << " in_flight " << _in_flight << " pull_target " << _pull_target << " pull " << _pull << endl;
     if (_flow.flow_id() == _debug_flowid)
     {
+        uint8_t skip_weight =  _ev_skip_bitmap[ev];
         cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" sending rtx pkt " << seq_no
-             << " size " << full_pkt_size << " cwnd " << _cwnd <<" ev " << ev << " skip_weight " << (uint32_t)_ev_skip_bitmap[ev]
+             << " size " << full_pkt_size << " cwnd " << _cwnd <<" ev " << ev << " skip_weight " << static_cast<int>(skip_weight)
              << " in_flight " << _in_flight << " pull_target " << _pull_target << " pull " << _pull << endl;
     }
     p->set_ar(true);
