@@ -1320,26 +1320,14 @@ void UecSrc::sendIfPermitted() {
         // can send if we have *any* credit, but we don't                                                                                                         
         return;
     }
-    if (_flow.flow_id() == _debug_flowid)
-    {
-        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" _cwnd " << _cwnd
-            << " _in_flight " << _in_flight 
-            << " _loss_recovery_mode " << _loss_recovery_mode
-            << endl;
-    }
+
     //cout << timeAsUs(eventlist().now()) << " " << nodename() << " FOO " << _cwnd << " " << _in_flight << endl;                                                  
     if (_sender_based_cc) {
         if ((_cwnd <= _in_flight && !_loss_recovery_mode) || (_loss_recovery_mode && _rtx_queue.empty())) {
             return;
         }
     }
-    if (_flow.flow_id() == _debug_flowid)
-    {
-        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" _cwnd " << _cwnd
-            << " _in_flight " << _in_flight 
-            << " _loss_recovery_mode2 " << _loss_recovery_mode
-            << endl;
-    }
+
     if (_rtx_queue.empty()) {
         if (_backlog == 0) {
             return;
