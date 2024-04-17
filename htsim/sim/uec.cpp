@@ -983,7 +983,7 @@ void UecSrc::update_delay(simtime_picosec raw_rtt, bool update_avg, bool skip){
         }else{
             if (delay > 5*_target_Qdelay)
             {
-                double r = 0.025;
+                double r = 0.0125;
                 _avg_delay = r * delay + (1 - r) * _avg_delay;
             }
             else
