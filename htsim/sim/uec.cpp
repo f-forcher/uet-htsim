@@ -74,7 +74,7 @@ void UecSrc::parameterScaleToTargetQ(){
 }
 
 
-flowid_t UecSrc::_debug_flowid = 16; //UINT32_MAX;
+flowid_t UecSrc::_debug_flowid = 3; //UINT32_MAX;
 
 #define INIT_PULL 10000000  // needs to be large enough we don't map
                             // negative pull targets (where
@@ -586,6 +586,9 @@ void UecSrc::handlePull(UecBasePacket::pull_quanta pullno) {
             _credit = _maxwnd;
         _pull = pullno;
     }
+    if(_flow.flow_id() == _debug_flowid){
+        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " credit " << _credit << endl; 
+    }
 }
 
 bool UecSrc::checkFinished(UecDataPacket::seq_t cum_ack) {
@@ -663,7 +666,7 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
         pkt_size = i->second.pkt_size;
         _raw_rtt = eventlist().now() - send_time;
         if(_raw_rtt > _base_rtt){
-            update_delay(_raw_rtt, true);
+            update_delay(_raw_rtt, true, pkt.ecn_echo());
             delay = _raw_rtt - _base_rtt; 
         }else{
             delay = get_avg_delay();
@@ -958,7 +961,7 @@ void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes) {
         quick_adapt(true, get_avg_delay());
 }
 
-void UecSrc::update_delay(simtime_picosec raw_rtt, bool update_avg){
+void UecSrc::update_delay(simtime_picosec raw_rtt, bool update_avg, bool skip){
     // bool new_base_rtt = false;
 
     // if (_base_rtt == 0 || _base_rtt > _raw_rtt){
@@ -974,11 +977,19 @@ void UecSrc::update_delay(simtime_picosec raw_rtt, bool update_avg){
 
     simtime_picosec delay = _raw_rtt - _base_rtt;
     if(update_avg){
-        if(delay > timeFromUs(100u)){
-            double r = 0.01;
-            _avg_delay = r * delay + (1- r) * _avg_delay;
+
+        if(skip == false && delay > _target_Qdelay){
+            _avg_delay = _delay_alpha * _base_rtt*0.25 + (1-_delay_alpha) * _avg_delay;
         }else{
-            _avg_delay = _delay_alpha * delay + (1-_delay_alpha) * _avg_delay;
+            if (delay > 5*_target_Qdelay)
+            {
+                double r = 0.025;
+                _avg_delay = r * delay + (1 - r) * _avg_delay;
+            }
+            else
+            {
+                _avg_delay = _delay_alpha * delay + (1 - _delay_alpha) * _avg_delay;
+            }
         }
     }
     if (_debug_src) {
@@ -1119,18 +1130,10 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
 
     _raw_rtt = eventlist().now() - send_time;
     if(_raw_rtt > _base_rtt)
-        update_delay(_raw_rtt, false);
+        update_delay(_raw_rtt, false, true);
 
     if(_enable_avg_ecn_over_path){
-        // int total_ecn_entropy = 0;
-        // for (uint32_t i = 0; i < _no_of_paths; i++) {
-        //     if(_ev_skip_bitmap[i] > 0 ) {
-        //         total_ecn_entropy = total_ecn_entropy + 1;
-        //     }
-        // }
-        // _exp_avg_ecn = total_ecn_entropy*1.0/_no_of_paths;
         _exp_avg_ecn = _ecn_alpha * 1.0  + (1 - _ecn_alpha) * _exp_avg_ecn;
-
     }
     if(_flow.flow_id() == _debug_flowid){
         cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " ev " << ev << " trimming "<< endl;
@@ -1166,7 +1169,9 @@ void UecSrc::processPull(const UecPullPacket& pkt) {
     auto pullno = pkt.pullno();
     if (_debug_src)
         cout << _flow.str() << " " << _nodename << " processPull " << pullno << " flow " << _flow.str() << " SP " << pkt.is_slow_pull() << endl;
-
+    if (_flow.flow_id() == _debug_flowid){
+        cout << timeAsUs(eventlist().now())<< " flowid " << _flow.flow_id() << " processPull " << pullno  << " SP " << pkt.is_slow_pull() << endl;
+    }
     stopSpeculating();
     handlePull(pullno);
     sendIfPermitted();
@@ -1222,6 +1227,10 @@ void UecSrc::startFlow() {
         }
 
         const Route *route = _nic.requestSending(*this);
+        if (_flow.flow_id() == _debug_flowid){
+            cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " requestSending " << _nic.activeSources()
+                << endl;
+        }
         if (route) {
             // if we're here, there's no NIC queue
             mem_b sent_bytes = sendNewPacket(*route);
@@ -1255,6 +1264,9 @@ void UecSrc::stopSpeculating() {
         _speculating = false;
         if (_credit > 0)
             _credit = 0;
+        if (_flow.flow_id() == _debug_flowid){
+            cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " stopSpeculating _credit " << _credit << endl;
+        }
     }
 }
 
@@ -1276,6 +1288,10 @@ UecBasePacket::pull_quanta UecSrc::computePullTarget() {
     }
 
     pull_target -= _credit;
+    if(_flow.flow_id() == _debug_flowid){
+        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " _credit " << _credit 
+            << " pull_target " << _pull_target << endl;
+    }
     pull_target += UecBasePacket::unquantize(_pull);
 
     UecBasePacket::pull_quanta quant_pull_target = UecBasePacket::quantize_ceil(pull_target);
@@ -1312,9 +1328,19 @@ void UecSrc::sendIfPermitted() {
             return;
         }
     }
-
+    if (_flow.flow_id() == _debug_flowid)
+    {
+        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" sendIfPermitted requestSending _send_blocked_on_nic "<< _send_blocked_on_nic
+            << " activesenders " << _nic.activeSources() << endl;
+    }
     if (_send_blocked_on_nic) {
-        // the NIC already knows we want to send                                                                                                                  
+        // the NIC already knows we want to send       
+        if (_flow.flow_id() == _debug_flowid){
+            for(auto it = _nic._active_srcs.begin(); it != _nic._active_srcs.end(); ++it) {
+                UecSrc* queued_src = *it; 
+                cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" sendIfPermitted " << queued_src->flow()->flow_id() << " _nic " << _nic._src_id << endl;;
+            } 
+        }
         return;
     }
 
@@ -1323,7 +1349,7 @@ void UecSrc::sendIfPermitted() {
         cout << _flow.str() << " " << "requestSending 1\n";
     if (_flow.flow_id() == _debug_flowid)
     {
-        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" requestSending " << endl;
+        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" sendIfPermitted requestSending " << endl;
     }
     const Route* route = _nic.requestSending(*this);
     if (route) {
@@ -1415,8 +1441,16 @@ uint16_t UecSrc::nextEntropy() {
     // _no_of_paths must be a power of 2
     uint16_t mask = _no_of_paths - 1;
     uint16_t entropy = (_current_ev_index ^ _path_xor) & mask;
+    bool flag = false;
+    int counter = 0;
     while (_ev_skip_bitmap[entropy] > 0) {
-        _ev_skip_bitmap[entropy]--;
+        if (flag == false)
+            _ev_skip_bitmap[entropy]--;
+        flag = true;
+        counter ++;
+        if (counter > _no_of_paths){
+            break;
+        }
         _current_ev_index++;
         if (_current_ev_index == _no_of_paths) {
             _current_ev_index = 0;
@@ -1615,7 +1649,10 @@ void UecSrc::timeToSend(const Route& route) {
             return;
         }
     }
-
+    if (_flow.flow_id() == _debug_flowid ){
+        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " _receiver_based_cc " << _receiver_based_cc << " credit " << credit()
+            << endl;
+    }
     // do we have enough credit if we're using receiver CC?
     if (_receiver_based_cc && credit() <= 0) {
         if (_debug_src)
@@ -1878,6 +1915,10 @@ void UecSink::handlePullTarget(UecBasePacket::seq_t pt) {
 
     if (_src->debug())
         cout << " UecSink " << _nodename << " src " << _src->nodename() << " handlePullTarget pt " << pt << " highest_pt " << _highest_pull_target << endl;
+    if (_src->flow()->flow_id() == UecSrc::_debug_flowid ){
+        cout << timeAsUs(_src->eventlist().now()) << " flowid " << _src->flow()->flow_id()  << " handlePullTarget pt " << pt << " highest_pt " << _highest_pull_target << endl;
+
+    }
     if (pt > _highest_pull_target) {
         if (_src->debug())
             cout << "    pull target advanced\n";
