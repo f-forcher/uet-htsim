@@ -86,5 +86,5 @@ connection_matrices/perm_1024n_1024c_0u_2000000b.cm
 !Binary ./htsim_uec
 !Param -end 2000
 !Param -paths 128
-!Param -topo topologies/leaf_spine_1024_oversub_8:1.topo
+!Param -topo topologies/leaf_spine_1024_oversub_8-1.topo
 !tailFCT 880
