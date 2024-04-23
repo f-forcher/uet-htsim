@@ -493,35 +493,47 @@ void UecSrc::receivePacket(Packet& pkt, uint32_t portnum) {
 
 mem_b UecSrc::handleAckno(UecDataPacket::seq_t ackno) {
     auto i = _tx_bitmap.find(ackno);
-    if (i == _tx_bitmap.end())
-        return 0;
-
-    auto rtx_i = _rtx_queue.find(ackno);
-    if (rtx_i != _rtx_queue.end()) {
-        // packet was in RTX queue
-        mem_b pkt_size = rtx_i->second;
-        _rtx_queue.erase(rtx_i);
-        _rtx_backlog -= pkt_size;
-        _in_flight += pkt_size; // don't double count - we decremented when we marked for rtx
-        if (_debug_src) {
-            cout << "found pkt " << ackno << " in rtx queue\n";
+    if (i == _tx_bitmap.end()) {
+        // The ackno is either in tx_bitmap or in rtx_queue
+        // or in neither, but never in both.
+        // Hence, if it's not in _tx_bitmap, check if it's 
+        // in _rtx_queue and remove and correct. 
+        // If ackno is in neither, there is nothing else
+        // to do here.
+        auto rtx_i = _rtx_queue.find(ackno);
+        if (rtx_i != _rtx_queue.end()) {
+            // packet was in RTX queue
+            mem_b pkt_size = rtx_i->second;
+            _rtx_queue.erase(rtx_i);
+            _rtx_backlog -= pkt_size;
+            _in_flight += pkt_size; // don't double count - we decremented when we marked for rtx
+            if (_debug_src) {
+                cout << "found pkt " << ackno << " in rtx queue\n";
+            }
         }
+
+        return 0;
+    } else {
+        // If ackno is in tx_bitmap, it means we have recentely 
+        // send out an packet, either for the first time or
+        // an rtx packet. Since the current ack tells us that
+        // it has been received already, we can remove it from 
+        // _tx_bitmap.
+        simtime_picosec send_time = i->second.send_time;
+
+        mem_b pkt_size = i->second.pkt_size;
+        
+        if (_debug_src)
+            cout << _flow.str() << " " << _nodename << " handleAck " << ackno << " flow " << _flow.str() << endl;
+        _tx_bitmap.erase(i);
+        _send_times.erase(send_time);
+
+        if (send_time == _rto_send_time) {
+            recalculateRTO();
+        }
+
+        return pkt_size;
     }
-    // mem_b pkt_size = i->second.pkt_size;
-    simtime_picosec send_time = i->second.send_time;
-
-    mem_b pkt_size = i->second.pkt_size;
-    
-    if (_debug_src)
-        cout << _flow.str() << " " << _nodename << " handleAck " << ackno << " flow " << _flow.str() << endl;
-    _tx_bitmap.erase(i);
-    _send_times.erase(send_time);
-
-    if (send_time == _rto_send_time) {
-        recalculateRTO();
-    }
-
-    return pkt_size;
 }
 
 mem_b UecSrc::handleCumulativeAck(UecDataPacket::seq_t cum_ack) {
