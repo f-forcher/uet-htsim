@@ -630,7 +630,10 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
 
     //decrease flightsize.
     _in_flight -= newly_recvd_bytes;
-    assert(_in_flight >= 0);
+    // We cannot run this next line's check here since 
+    // _in_flight could be corrected (increased) in either
+    // handleCumulativeAck or handleAckno.
+    // assert(_in_flight >= 0);
 
     if (_sender_based_cc && pkt.rcv_wnd_pen() < 255) {
             sint64_t window_decrease = newly_recvd_bytes - newly_recvd_bytes * pkt.rcv_wnd_pen() / 255;
@@ -685,6 +688,10 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
         ackno++;
         bitmap >>= 1;
     }
+
+    // We ran both potential _in_flight correcting functions
+    // now check if we are in the negative.
+    assert(_in_flight >= 0);
 
     (this->*penalizePath)(pkt.ev(), pkt.ecn_echo() ? 1:0);
 
