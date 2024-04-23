@@ -150,7 +150,10 @@ public:
     static bool _receiver_based_cc;
 
     enum Sender_CC { DCTCP, NSCC};
+    enum LoadBalancing_Algo { BITMAP, REPS};
+
     static Sender_CC _sender_cc_algo;
+    static LoadBalancing_Algo _load_balancing_algo;
 
     static bool _enable_qa_gate;
     static bool _enable_avg_ecn_over_path;
@@ -199,7 +202,6 @@ public:
     map<UecDataPacket::seq_t, mem_b> _rtx_queue;
     void startFlow();
     bool isSpeculative();
-    uint16_t nextEntropy();
     void sendIfPermitted();
     mem_b sendPacket(const Route& route);
     mem_b sendNewPacket(const Route& route);
@@ -241,8 +243,18 @@ public:
     void (UecSrc::*updateCwndOnAck)(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
     void (UecSrc::*updateCwndOnNack)(bool skip, mem_b nacked_bytes);
 
+    uint16_t nextEntropy_bitmap();
+    uint16_t nextEntropy_REPS();
+
+    void penalizePath_bitmap(uint16_t path_id, uint8_t penalty);
+    void penalizePath_REPS(uint16_t path_id, uint8_t penalty);
+
+    uint16_t (UecSrc::*nextEntropy)();
+    void (UecSrc::*penalizePath)(uint16_t path_id, uint8_t penalty);
+
+
     bool checkFinished(UecDataPacket::seq_t cum_ack);
-    inline void penalizePath(uint16_t path_id, uint8_t penalty);
+
     Stats _stats;
     UecSink* _sink;
 
@@ -348,9 +360,7 @@ private:
     uint32_t _loss_counter = 0;
 
     uint16_t _crt_path;
-    int _next_pathid;
-
-    static bool useReps;
+    list<uint16_t> _next_pathid;
 
     // Connectivity
     PacketFlow _flow;

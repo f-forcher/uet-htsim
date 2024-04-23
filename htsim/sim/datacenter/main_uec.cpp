@@ -153,7 +153,21 @@ int main(int argc, char **argv) {
             UecSrc::_sender_based_cc = true;
             cout << "sender based CC enabled "<< tiers << endl;
         }
-         else if (!strcmp(argv[i],"-queue_type")) {
+        else if (!strcmp(argv[i],"-load_balancing_algo")){
+            if (!strcmp(argv[i+1], "bitmap")) {
+                UecSrc::_load_balancing_algo = UecSrc::BITMAP;
+            } 
+            else if (!strcmp(argv[i+1], "reps")) {
+                UecSrc::_load_balancing_algo = UecSrc::REPS;
+            }
+            else {
+                cout << "Unknown load balancing algorithm of type " << argv[i+1] << ", expecting bitmap or reps" << endl;
+                exit_error(argv[0]);
+            }
+            cout << "Load balancing algorithm set to  "<< argv[i+1] << endl;
+            i++;
+        }
+        else if (!strcmp(argv[i],"-queue_type")) {
             if (!strcmp(argv[i+1], "composite")) {
                 qt = COMPOSITE;
             } 
