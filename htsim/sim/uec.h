@@ -57,11 +57,11 @@ public:
 
     int activeSources() const { return _active_srcs.size(); }
     virtual const string& nodename() const {return _nodename;}
+    list<UecSrc*> _active_srcs;
 
 private:
     void sendControlPktNow();
     uint32_t sendOnFreePortNow(simtime_picosec endtime, const Route* rt);
-    list<UecSrc*> _active_srcs;
     list<struct CtrlPacket> _control;
     mem_b _control_size;
 
@@ -126,6 +126,12 @@ public:
         _maxwnd = maxwnd;
     }
 
+    void boundBaseRTT(simtime_picosec network_rtt){
+        _base_rtt = network_rtt;
+        _bdp = _base_rtt * _nic.linkspeed() / 8000000000000;
+        _maxwnd =  1.5*_bdp;
+        cout << "_bdp " << _bdp << " _maxwnd " << _maxwnd << " _base_rtt " << timeAsUs(_base_rtt) << endl;
+    }
     mem_b maxWnd() const { return _maxwnd; }
 
     const Stats& stats() const { return _stats; }
@@ -148,6 +154,10 @@ public:
 
     static Sender_CC _sender_cc_algo;
     static LoadBalancing_Algo _load_balancing_algo;
+
+    static bool _enable_qa_gate;
+    static bool _enable_avg_ecn_over_path;
+
 
     virtual const string& nodename() { return _nodename; }
     inline void setFlowId(flowid_t flow_id) { _flow.set_flowid(flow_id); }
@@ -220,6 +230,7 @@ public:
     void processAck(const UecAckPacket& pkt);
     void processNack(const UecNackPacket& pkt);
     void processPull(const UecPullPacket& pkt);
+    void sackLossDetection(uint32_t ooo, UecBasePacket::seq_t cum_ack);
 
     //added for NSCC
     void quick_adapt(bool trimmed);
@@ -261,6 +272,7 @@ public:
     void stopSpeculating();
     void spendCredit(mem_b pktsize);
     UecDataPacket::seq_t _highest_sent;
+    UecDataPacket::seq_t _highest_rtx_sent;
     mem_b _in_flight;
     mem_b _bdp;
     bool _send_blocked_on_nic;
@@ -285,7 +297,8 @@ public:
     static double _ecn_thresh;
     static uint32_t _adjust_bytes_threshold;
     static simtime_picosec _adjust_period_threshold;
-
+    //debug
+    static flowid_t _debug_flowid;
 private:
     bool quick_adapt(bool is_loss, simtime_picosec avgqdelay);
     void fair_increase(uint32_t newly_acked_bytes);
@@ -295,8 +308,9 @@ private:
     void multiplicative_decrease(bool can_decrease, uint32_t newly_acked_bytes);
     void fulfill_adjustment();
     void mark_packet_for_retransmission(UecBasePacket::seq_t psn, uint16_t pktsize);
-    void update_delay(simtime_picosec delay, bool update_avg);
+    void update_delay(simtime_picosec delay, bool update_avg, bool skip);
     simtime_picosec get_avg_delay();
+    uint16_t get_avg_pktsize();
     void average_ecn_bytes(uint32_t pktsize, uint32_t newly_acked_bytes, bool skip);
 
     // entropy value calculation
@@ -340,6 +354,10 @@ private:
     simtime_picosec _last_adjust_time = 0;
     bool _increase = false;
     simtime_picosec _last_dec_time = 0;
+    uint32_t _highest_recv_seqno;
+    bool _loss_recovery_mode = false;
+    uint32_t _recovery_seqno = 0;
+    uint32_t _loss_counter = 0;
 
     uint16_t _crt_path;
     list<uint16_t> _next_pathid;
@@ -350,8 +368,7 @@ private:
     int _node_num;
     uint32_t _dstaddr;
 
-    //debug
-    static flowid_t _debug_flowid;
+
 };
 
 // Packets are received on ports, but then passed to the Sink for handling

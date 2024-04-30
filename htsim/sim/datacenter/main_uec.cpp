@@ -128,7 +128,12 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i],"-disable_fd")) {
             disable_fair_decrease = true;
             cout << "fair_decrease disabled" << endl;
-            
+        } else if (!strcmp(argv[i],"-enable_qa_gate")) {
+            UecSrc::_enable_qa_gate = true;
+            cout << "enable quick adapt gate" << endl;            
+        } else if (!strcmp(argv[i],"-enable_avg_ecn_over_path")) {
+            UecSrc::_enable_avg_ecn_over_path = true;
+            cout << "enable avg_ecn_over_path algorithm." << endl;            
         } else if (!strcmp(argv[i],"-target_q_delay")) {
             UecSrc::_target_Qdelay = timeFromUs(atof(argv[i+1]));
             cout << "target_q_delay" << atof(argv[i+1]) << " us"<< endl;
@@ -582,6 +587,8 @@ int main(int argc, char **argv) {
     vector <UecSrc*> uec_srcs;
 
     map <flowid_t, TriggerTarget*> flowmap;
+    simtime_picosec network_rtt = tiers*2*hop_latency*2; //+ timeFromSec((packet_size*8.0)/linkspeed)*tiers*2;
+    cout << "network_rtt " << timeAsUs(network_rtt) << endl;
 
     for (size_t c = 0; c < all_conns->size(); c++){
         connection* crt = all_conns->at(c);
@@ -592,6 +599,7 @@ int main(int argc, char **argv) {
         uec_src = new UecSrc(traffic_logger, eventlist, *nics.at(src), ports);
         uec_src->setCwnd(cwnd*Packet::data_packet_size());
         uec_src->setMaxWnd(cwnd*Packet::data_packet_size());
+        uec_src->boundBaseRTT(network_rtt);
         uec_srcs.push_back(uec_src);
         uec_src->setDst(dest);
 
