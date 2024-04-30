@@ -5,6 +5,9 @@
 #include <sstream>
 #include "ecn.h"
 
+static int global_queue_id=0;
+static bool _disable_trim = false; 
+
 CompositeQueue::CompositeQueue(linkspeed_bps bitrate, mem_b maxsize, EventList& eventlist, 
                                QueueLogger* logger, uint16_t trim_size)
     : Queue(bitrate, maxsize, eventlist, logger)
@@ -31,6 +34,8 @@ CompositeQueue::CompositeQueue(linkspeed_bps bitrate, mem_b maxsize, EventList& 
     stringstream ss;
     ss << "compqueue(" << bitrate/1000000 << "Mb/s," << maxsize << "bytes)";
     _nodename = ss.str();
+    _queue_id = global_queue_id++;
+    cout << "queueid " << _queue_id << " bitrate " << bitrate/1000000 << "Mb/s," << endl;
 }
 
 void CompositeQueue::beginService(){
@@ -89,7 +94,14 @@ CompositeQueue::completeService(){
         if (decide_ECN()) {
             pkt->set_flags(pkt->flags() | ECN_CE);
         }
-    
+        if (_queue_id == 0){
+            cout << timeAsUs(eventlist().now()) <<" name " <<_nodename <<" _queuesize_low " 
+                << _queuesize_low*8/((_bitrate/1000000.0)) <<" _queueid " << _queue_id << " switch " << _switch->getID() 
+                << " ecn " << decide_ECN() 
+                << " _queuesize_high " << _queuesize_high*8/((_bitrate/1000000.0))
+                << endl;    
+
+        }
         if (_logger) _logger->logQueue(*this, QueueLogger::PKT_SERVICE, *pkt);
         _num_packets++;
     } else if (_serv==QUEUE_HIGH) {
@@ -136,6 +148,12 @@ CompositeQueue::doNextEvent() {
 void
 CompositeQueue::receivePacket(Packet& pkt)
 {
+    if (_queue_id == 49)
+    {
+        cout << timeAsUs(eventlist().now()) << " name " << _nodename << " arrive "
+             << _queuesize_low * 8 / ((_bitrate / 1000000.0)) << " _queueid " << _queue_id << " switch " << _switch->getID() 
+             <<" flowid " << pkt.flow_id() << " ev " << pkt.pathid()<< endl;
+    }
     pkt.flow().logTraffic(pkt,*this,TrafficLogger::PKT_ARRIVE);
     if (_logger) _logger->logQueue(*this, QueueLogger::PKT_ARRIVE, pkt);
 
@@ -154,49 +172,67 @@ CompositeQueue::receivePacket(Packet& pkt)
                     assert(0);
                 }
                 //take last packet from low prio queue, make it a header and place it in the high prio queue
-                        
                 Packet* booted_pkt = _enqueued_low.pop_front();
                 _queuesize_low -= booted_pkt->size();
                 if (_logger) _logger->logQueue(*this, QueueLogger::PKT_UNQUEUE, *booted_pkt);
 
-                //cout << "A [ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ] STRIP" << endl;
-                //cout << "booted_pkt->size(): " << booted_pkt->size();
-                booted_pkt->strip_payload(_trim_size);
-                //cout << "CQ trim at " << _nodename << endl;
-                _num_stripped++;
-                booted_pkt->flow().logTraffic(*booted_pkt,*this,TrafficLogger::PKT_TRIM);
-                if (_logger) _logger->logQueue(*this, QueueLogger::PKT_TRIM, pkt);
-                        
-                if (_queuesize_high+booted_pkt->size() > 2*_maxsize){
-                    if (_return_to_sender && booted_pkt->reverse_route()  && booted_pkt->bounced() == false) {
-                        //return the packet to the sender
-                        if (_logger) _logger->logQueue(*this, QueueLogger::PKT_BOUNCE, *booted_pkt);
-                        booted_pkt->flow().logTraffic(pkt,*this,TrafficLogger::PKT_BOUNCE);
-                        //XXX what to do with it now?
+                if (_disable_trim)
+                {
+                    booted_pkt->free();
+                    _num_drops++;
+                    cout << "A [ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ] DROP " << " flowid " << booted_pkt->flow_id()<< endl;
+                }
+                else
+                {
+
+                    // cout << "A [ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ] STRIP" << endl;
+                    // cout << "booted_pkt->size(): " << booted_pkt->size();
+                    booted_pkt->strip_payload(_trim_size);
+                    // cout << "CQ trim at " << _nodename << endl;
+                    _num_stripped++;
+                    booted_pkt->flow().logTraffic(*booted_pkt, *this, TrafficLogger::PKT_TRIM);
+                    if (_logger)
+                        _logger->logQueue(*this, QueueLogger::PKT_TRIM, pkt);
+
+                    if (_queuesize_high + booted_pkt->size() > 2 * _maxsize)
+                    {
+                        if (_return_to_sender && booted_pkt->reverse_route() && booted_pkt->bounced() == false)
+                        {
+                            // return the packet to the sender
+                            if (_logger)
+                                _logger->logQueue(*this, QueueLogger::PKT_BOUNCE, *booted_pkt);
+                            booted_pkt->flow().logTraffic(pkt, *this, TrafficLogger::PKT_BOUNCE);
+                            // XXX what to do with it now?
 #if 0
                         printf("Bounce2 at %s\n", _nodename.c_str());
                         printf("Fwd route:\n");
                         print_route(*(booted_pkt->route()));
                         printf("nexthop: %d\n", booted_pkt->nexthop());
 #endif
-                        booted_pkt->bounce();
+                            booted_pkt->bounce();
 #if 0
                         printf("\nRev route:\n");
                         print_route(*(booted_pkt->reverse_route()));
                         printf("nexthop: %d\n", booted_pkt->nexthop());
 #endif
-                        _num_bounced++;
-                        booted_pkt->sendOn();
-                    } else {    
-                        booted_pkt->flow().logTraffic(*booted_pkt,*this,TrafficLogger::PKT_DROP);
-                        booted_pkt->free();
-                        if (_logger) _logger->logQueue(*this, QueueLogger::PKT_DROP, pkt);
+                            _num_bounced++;
+                            booted_pkt->sendOn();
+                        }
+                        else
+                        {
+                            booted_pkt->flow().logTraffic(*booted_pkt, *this, TrafficLogger::PKT_DROP);
+                            booted_pkt->free();
+                            if (_logger)
+                                _logger->logQueue(*this, QueueLogger::PKT_DROP, pkt);
+                        }
                     }
-                }  
-                else {
-                    _enqueued_high.push(booted_pkt);
-                    _queuesize_high += booted_pkt->size();
-                    if (_logger) _logger->logQueue(*this, QueueLogger::PKT_ENQUEUE, *booted_pkt);
+                    else
+                    {
+                        _enqueued_high.push(booted_pkt);
+                        _queuesize_high += booted_pkt->size();
+                        if (_logger)
+                            _logger->logQueue(*this, QueueLogger::PKT_ENQUEUE, *booted_pkt);
+                    }
                 }
             }
 
@@ -214,6 +250,14 @@ CompositeQueue::receivePacket(Packet& pkt)
             
             return;
         } else {
+           if (_disable_trim){
+                cout <<timeAsUs(eventlist().now()) << "B[ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ] DROP "
+                    << pkt.flow().flow_id() << " queue " << str() << " pathid " <<pkt.pathid()<< " queueid " << _queue_id
+                    << " size " << pkt.size() << endl;
+               pkt.free();
+               _num_drops++;
+               return;
+           }
             //strip packet the arriving packet - low priority queue is full
             //cout << "B [ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ] STRIP" << endl;
             pkt.strip_payload(_trim_size);
@@ -251,8 +295,8 @@ CompositeQueue::receivePacket(Packet& pkt)
         } else {
             if (_logger) _logger->logQueue(*this, QueueLogger::PKT_DROP, pkt);
             pkt.flow().logTraffic(pkt,*this,TrafficLogger::PKT_DROP);
-            //cout << "B[ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ] DROP " 
-            //     << pkt.flow().get_id() << endl;
+            cout << "B[ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ] DROP " 
+                << pkt.flow().flow_id() << endl;
             pkt.free();
             _num_drops++;
             return;
