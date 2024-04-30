@@ -47,7 +47,7 @@ void CompositeQueue::beginService(){
         if (_crt >= (_ratio_high+_ratio_low))
             _crt = 0;
 
-        if (_crt< _ratio_high){
+        if (_crt< _ratio_high) {
             _serv = QUEUE_HIGH;
             eventlist().sourceIsPendingRel(*this, drainTime(_enqueued_high.back()));
         } else {
@@ -58,14 +58,13 @@ void CompositeQueue::beginService(){
         return;
     }
 
-    if (!_enqueued_high.empty()){
+    if (!_enqueued_high.empty()) {
         _serv = QUEUE_HIGH;
         eventlist().sourceIsPendingRel(*this, drainTime(_enqueued_high.back()));
-    } else if (!_enqueued_low.empty()){
+    } else if (!_enqueued_low.empty()) {
         _serv = QUEUE_LOW;
         eventlist().sourceIsPendingRel(*this, drainTime(_enqueued_low.back()));
-    }
-    else {
+    } else {
         assert(0);
         _serv = QUEUE_INVALID;
     }
@@ -84,8 +83,7 @@ bool CompositeQueue::decide_ECN() {
     return false;
 }
 
-void
-CompositeQueue::completeService(){
+void CompositeQueue::completeService(){
     Packet* pkt;
     if (_serv==QUEUE_LOW){
         assert(!_enqueued_low.empty());
@@ -96,7 +94,7 @@ CompositeQueue::completeService(){
         if (decide_ECN()) {
             pkt->set_flags(pkt->flags() | ECN_CE);
         }
-        if (_queue_id == DEBUG_QUEUE_ID){
+        if (_queue_id == DEBUG_QUEUE_ID) {
             cout << timeAsUs(eventlist().now()) <<" name " <<_nodename <<" _queuesize_low " 
                 << _queuesize_low*8/((_bitrate/1000000.0)) <<" _queueid " << _queue_id << " switch " << _switch->getID() 
                 << " ecn " << decide_ECN() 
@@ -136,19 +134,15 @@ CompositeQueue::completeService(){
   
     _serv = QUEUE_INVALID;
   
-    //cout << "E[ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ]" << endl;
-
     if (!_enqueued_high.empty()||!_enqueued_low.empty())
         beginService();
 }
 
-void
-CompositeQueue::doNextEvent() {
+void CompositeQueue::doNextEvent() {
     completeService();
 }
 
-void
-CompositeQueue::receivePacket(Packet& pkt)
+void CompositeQueue::receivePacket(Packet& pkt)
 {
     if (_queue_id == DEBUG_QUEUE_ID)
     {
@@ -178,15 +172,12 @@ CompositeQueue::receivePacket(Packet& pkt)
                 _queuesize_low -= booted_pkt->size();
                 if (_logger) _logger->logQueue(*this, QueueLogger::PKT_UNQUEUE, *booted_pkt);
 
-                if (_disable_trim)
-                {
+                if (_disable_trim) {
                     booted_pkt->free();
                     _num_drops++;
-                    cout << "A [ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ] DROP " << " flowid " << booted_pkt->flow_id()<< endl;
-                }
-                else
-                {
-
+                    cout << "A [ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ] DROP "
+                         << " flowid " << booted_pkt->flow_id()<< endl;
+                } else {
                     // cout << "A [ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ] STRIP" << endl;
                     // cout << "booted_pkt->size(): " << booted_pkt->size();
                     booted_pkt->strip_payload(_trim_size);
@@ -196,40 +187,34 @@ CompositeQueue::receivePacket(Packet& pkt)
                     if (_logger)
                         _logger->logQueue(*this, QueueLogger::PKT_TRIM, pkt);
 
-                    if (_queuesize_high + booted_pkt->size() > 2 * _maxsize)
-                    {
-                        if (_return_to_sender && booted_pkt->reverse_route() && booted_pkt->bounced() == false)
-                        {
+                    if (_queuesize_high + booted_pkt->size() > 2 * _maxsize) {
+                        if (_return_to_sender && booted_pkt->reverse_route() && booted_pkt->bounced() == false) {
                             // return the packet to the sender
                             if (_logger)
                                 _logger->logQueue(*this, QueueLogger::PKT_BOUNCE, *booted_pkt);
                             booted_pkt->flow().logTraffic(pkt, *this, TrafficLogger::PKT_BOUNCE);
                             // XXX what to do with it now?
 #if 0
-                        printf("Bounce2 at %s\n", _nodename.c_str());
-                        printf("Fwd route:\n");
-                        print_route(*(booted_pkt->route()));
-                        printf("nexthop: %d\n", booted_pkt->nexthop());
+                            printf("Bounce2 at %s\n", _nodename.c_str());
+                            printf("Fwd route:\n");
+                            print_route(*(booted_pkt->route()));
+                            printf("nexthop: %d\n", booted_pkt->nexthop());
 #endif
                             booted_pkt->bounce();
 #if 0
-                        printf("\nRev route:\n");
-                        print_route(*(booted_pkt->reverse_route()));
-                        printf("nexthop: %d\n", booted_pkt->nexthop());
+                            printf("\nRev route:\n");
+                            print_route(*(booted_pkt->reverse_route()));
+                            printf("nexthop: %d\n", booted_pkt->nexthop());
 #endif
                             _num_bounced++;
                             booted_pkt->sendOn();
-                        }
-                        else
-                        {
+                        } else {
                             booted_pkt->flow().logTraffic(*booted_pkt, *this, TrafficLogger::PKT_DROP);
                             booted_pkt->free();
                             if (_logger)
                                 _logger->logQueue(*this, QueueLogger::PKT_DROP, pkt);
                         }
-                    }
-                    else
-                    {
+                    } else {
                         _enqueued_high.push(booted_pkt);
                         _queuesize_high += booted_pkt->size();
                         if (_logger)
@@ -252,17 +237,17 @@ CompositeQueue::receivePacket(Packet& pkt)
             
             return;
         } else {
-           if (_disable_trim){
-               if (_queue_id == DEBUG_QUEUE_ID) {
-                   cout <<timeAsUs(eventlist().now()) << "B[ " << _enqueued_low.size() << " "
-                        << _enqueued_high.size() << " ] DROP " << pkt.flow().flow_id() << " queue "
-                        << str() << " pathid " <<pkt.pathid()<< " queueid " << _queue_id
-                        << " size " << pkt.size() << endl;
-               }
-               pkt.free();
-               _num_drops++;
-               return;
-           }
+            if (_disable_trim) {
+                if (_queue_id == DEBUG_QUEUE_ID) {
+                    cout <<timeAsUs(eventlist().now()) << "B[ " << _enqueued_low.size() << " "
+                         << _enqueued_high.size() << " ] DROP " << pkt.flow().flow_id() << " queue "
+                         << str() << " pathid " <<pkt.pathid()<< " queueid " << _queue_id
+                         << " size " << pkt.size() << endl;
+                }
+                pkt.free();
+                _num_drops++;
+                return;
+            }
             //strip packet the arriving packet - low priority queue is full
             //cout << "B [ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ] STRIP" << endl;
             pkt.strip_payload(_trim_size);
@@ -274,7 +259,7 @@ CompositeQueue::receivePacket(Packet& pkt)
     }
     assert(pkt.header_only());
     
-    if (_queuesize_high+pkt.size() > 2*_maxsize){
+    if (_queuesize_high+pkt.size() > 2*_maxsize) {
         //drop header
         //cout << "drop!\n";
         if (_return_to_sender && pkt.reverse_route()  && pkt.bounced() == false) {
@@ -301,7 +286,7 @@ CompositeQueue::receivePacket(Packet& pkt)
             if (_logger) _logger->logQueue(*this, QueueLogger::PKT_DROP, pkt);
             pkt.flow().logTraffic(pkt,*this,TrafficLogger::PKT_DROP);
             cout << "B[ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ] DROP " 
-                << pkt.flow().flow_id() << endl;
+                 << pkt.flow().flow_id() << endl;
             pkt.free();
             _num_drops++;
             return;
@@ -323,7 +308,6 @@ CompositeQueue::receivePacket(Packet& pkt)
     }
 }
 
-mem_b 
-CompositeQueue::queuesize() const {
+mem_b CompositeQueue::queuesize() const {
     return _queuesize_low + _queuesize_high;
 }
