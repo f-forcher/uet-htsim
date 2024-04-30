@@ -539,6 +539,11 @@ mem_b UecSrc::handleAckno(UecDataPacket::seq_t ackno) {
         
         if (_debug_src)
             cout << _flow.str() << " " << _nodename << " handleAck " << ackno << " flow " << _flow.str() << endl;
+        if(_flow.flow_id() == _debug_flowid ) {
+              cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " handleAck ackno " << ackno
+                   << endl;
+        } 
+
         _tx_bitmap.erase(i);
         _send_times.erase(send_time);
 
@@ -548,6 +553,7 @@ mem_b UecSrc::handleAckno(UecDataPacket::seq_t ackno) {
 
         return pkt_size;
     }
+
 
     // mem_b pkt_size = i->second.pkt_size;
     simtime_picosec send_time = i->second.send_time;
@@ -748,6 +754,10 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
         ackno++;
         bitmap >>= 1;
     }
+
+    // We ran both potential _in_flight correcting functions
+    // now check if we are in the negative.
+    assert(_in_flight >= 0);
 
     _loss_counter --;
 
