@@ -6,7 +6,8 @@
 #include "ecn.h"
 
 static int global_queue_id=0;
-static bool _disable_trim = false; 
+static bool _disable_trim = false;
+#define DEBUG_QUEUE_ID -1 // set to queue ID to enable debugging
 
 CompositeQueue::CompositeQueue(linkspeed_bps bitrate, mem_b maxsize, EventList& eventlist, 
                                QueueLogger* logger, uint16_t trim_size)
@@ -35,7 +36,8 @@ CompositeQueue::CompositeQueue(linkspeed_bps bitrate, mem_b maxsize, EventList& 
     ss << "compqueue(" << bitrate/1000000 << "Mb/s," << maxsize << "bytes)";
     _nodename = ss.str();
     _queue_id = global_queue_id++;
-    cout << "queueid " << _queue_id << " bitrate " << bitrate/1000000 << "Mb/s," << endl;
+    if (_queue_id == DEBUG_QUEUE_ID)
+        cout << "queueid " << _queue_id << " bitrate " << bitrate/1000000 << "Mb/s," << endl;
 }
 
 void CompositeQueue::beginService(){
@@ -94,7 +96,7 @@ CompositeQueue::completeService(){
         if (decide_ECN()) {
             pkt->set_flags(pkt->flags() | ECN_CE);
         }
-        if (_queue_id == 0){
+        if (_queue_id == DEBUG_QUEUE_ID){
             cout << timeAsUs(eventlist().now()) <<" name " <<_nodename <<" _queuesize_low " 
                 << _queuesize_low*8/((_bitrate/1000000.0)) <<" _queueid " << _queue_id << " switch " << _switch->getID() 
                 << " ecn " << decide_ECN() 
@@ -148,7 +150,7 @@ CompositeQueue::doNextEvent() {
 void
 CompositeQueue::receivePacket(Packet& pkt)
 {
-    if (_queue_id == 49)
+    if (_queue_id == DEBUG_QUEUE_ID)
     {
         cout << timeAsUs(eventlist().now()) << " name " << _nodename << " arrive "
              << _queuesize_low * 8 / ((_bitrate / 1000000.0)) << " _queueid " << _queue_id << " switch " << _switch->getID() 
@@ -251,9 +253,12 @@ CompositeQueue::receivePacket(Packet& pkt)
             return;
         } else {
            if (_disable_trim){
-                cout <<timeAsUs(eventlist().now()) << "B[ " << _enqueued_low.size() << " " << _enqueued_high.size() << " ] DROP "
-                    << pkt.flow().flow_id() << " queue " << str() << " pathid " <<pkt.pathid()<< " queueid " << _queue_id
-                    << " size " << pkt.size() << endl;
+               if (_queue_id == DEBUG_QUEUE_ID) {
+                   cout <<timeAsUs(eventlist().now()) << "B[ " << _enqueued_low.size() << " "
+                        << _enqueued_high.size() << " ] DROP " << pkt.flow().flow_id() << " queue "
+                        << str() << " pathid " <<pkt.pathid()<< " queueid " << _queue_id
+                        << " size " << pkt.size() << endl;
+               }
                pkt.free();
                _num_drops++;
                return;
