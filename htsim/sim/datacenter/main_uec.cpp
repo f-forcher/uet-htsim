@@ -160,8 +160,11 @@ int main(int argc, char **argv) {
             else if (!strcmp(argv[i+1], "reps")) {
                 UecSrc::_load_balancing_algo = UecSrc::REPS;
             }
+            else if (!strcmp(argv[i+1], "reps2")) {
+                UecSrc::_load_balancing_algo = UecSrc::REPS2;
+            }
             else {
-                cout << "Unknown load balancing algorithm of type " << argv[i+1] << ", expecting bitmap or reps" << endl;
+                cout << "Unknown load balancing algorithm of type " << argv[i+1] << ", expecting bitmap, reps or reps2" << endl;
                 exit_error(argv[0]);
             }
             cout << "Load balancing algorithm set to  "<< argv[i+1] << endl;
@@ -248,6 +251,11 @@ int main(int argc, char **argv) {
             queuesize = atoi(argv[i+1]);
             cout << "Setting queuesize to " << queuesize << " packets " << endl;
             i++;
+        }
+        else if (!strcmp(argv[i],"-sack_threshold")){
+            UecSink::_bytes_unacked_threshold = atoi(argv[i+1]);
+            cout << "Setting receiver SACK bytes threshold to " << UecSink::_bytes_unacked_threshold  << " bytes " << endl;
+            i++;            
         }
         else if (!strcmp(argv[i],"-ecn")){
             // fraction of queuesize, between 0 and 1
@@ -403,11 +411,6 @@ int main(int argc, char **argv) {
         FatTreeSwitch::set_strategy(FatTreeSwitch::ECMP);
     }
 
-
-    if (UecSrc::_sender_based_cc){
-        UecSink::_bytes_unacked_threshold = 4000;
-    };
-
     queuesize = memFromPkt(queuesize);
 
     if (ecn){
@@ -433,7 +436,7 @@ int main(int argc, char **argv) {
     eventlist.setEndtime(timeFromUs((uint32_t)end_time));
 
     //2 priority queues; 3 hops for incast
-    UecSrc::_min_rto = timeFromUs(150 + queuesize * 6.0 * 8 * 1000000 / linkspeed);
+    UecSrc::_min_rto = timeFromUs(15 + queuesize * 6.0 * 8 * 1000000 / linkspeed);
 
     cout << "Setting queuesize to " << queuesize << endl;
     cout << "Setting min RTO to " << timeAsUs(UecSrc::_min_rto) << endl;

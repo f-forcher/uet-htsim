@@ -407,6 +407,10 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
         nextEntropy = &UecSrc::nextEntropy_REPS;
         penalizePath = &UecSrc::penalizePath_REPS;
         _crt_path = 0;
+    } else if (_load_balancing_algo == REPS2 ){
+        nextEntropy = &UecSrc::nextEntropy_REPS2;
+        penalizePath = &UecSrc::penalizePath_REPS;
+        _crt_path = 0;
     }
 
     // by default, end silently
@@ -733,7 +737,6 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
         ackno++;
         bitmap >>= 1;
     }
-
 
     // We ran both potential _in_flight correcting functions
     // now check if we are in the negative.
@@ -1468,8 +1471,12 @@ void UecSrc::penalizePath_bitmap(uint16_t path_id, uint8_t penalty) {
 }
 
 void UecSrc::penalizePath_REPS(uint16_t path_id, uint8_t penalty) {
-    if (penalty==0)
+    if (penalty==0){
         _next_pathid.push_back(path_id);
+        if (_debug){
+            cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS Add " << path_id << " " << _next_pathid.size() << endl;
+        }
+    }
 }
 
 
@@ -1508,14 +1515,14 @@ uint16_t UecSrc::nextEntropy_bitmap() {
 
 uint16_t UecSrc::nextEntropy_REPS(){
 	uint64_t allpathssizes = _mss * _no_of_paths;
-    if (_mss * _highest_sent < max((uint64_t)_maxwnd, allpathssizes)) {
+    if (_mss * _highest_sent < min((uint64_t)_cwnd, allpathssizes)) {
         _crt_path++;
         if (_crt_path == _no_of_paths) {
             _crt_path = 0;
         }
 
         if (_debug) 
-            cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS FirstWindow " << _crt_path << endl;
+            cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS FirstWindow " << _crt_path << " highest sent " << _mss * _highest_sent << " maxwnd " << _maxwnd << " allpaths " << allpathssizes << endl;
 
     } else {
         if (_next_pathid.empty()) {
@@ -1530,12 +1537,54 @@ uint16_t UecSrc::nextEntropy_REPS(){
             _next_pathid.pop_front();
 
             if (_debug) 
-                cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS Recycle " << _crt_path << endl;
+                cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS Recycle " << _crt_path << " " << _next_pathid.size() << endl;
 
         }
     }
     return _crt_path;
 }
+
+uint16_t UecSrc::nextEntropy_REPS2(){
+	uint64_t allpathssizes = _mss * _no_of_paths;
+    if (_mss * _highest_sent < min((uint64_t)_cwnd, allpathssizes)) {
+        _crt_path++;
+        if (_crt_path == _no_of_paths) {
+            _crt_path = 0;
+        }
+
+        if (_debug) 
+            cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS2 FirstWindow " << _crt_path << " highest sent " << _mss * _highest_sent << " maxwnd " << _maxwnd << " allpaths " << allpathssizes << endl;
+
+    } else {
+        if (_next_pathid.empty()) {
+            if (_knowngood_pathid.empty()){
+                assert(_no_of_paths > 0);
+                _crt_path = random() % _no_of_paths;
+
+                if (_debug) 
+                    cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS2 Steady " << _crt_path << endl;
+            }
+            else {
+                _crt_path = _knowngood_pathid.front();
+                _knowngood_pathid.pop_front();
+
+                if (_debug) 
+                    cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS2 KnownGood " << _crt_path << " " << _knowngood_pathid.size() << endl;
+            }
+        } else {
+            _crt_path = _next_pathid.front();
+            _next_pathid.pop_front();
+
+            _knowngood_pathid.push_back(_crt_path);
+
+            if (_debug) 
+                cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS2 Recycle " << _crt_path << " " << _next_pathid.size() << endl;
+
+        }
+    }
+    return _crt_path;
+}
+
 
 mem_b UecSrc::sendNewPacket(const Route& route) {
     if (_debug_src)
@@ -1571,7 +1620,7 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
     p->set_pathid(ev);
     p->flow().logTraffic(*p, *this, TrafficLogger::PKT_CREATESEND);
 
-    if (_backlog == 0 || (_receiver_based_cc && _credit < 0) || ( _sender_based_cc &&  _in_flight >= _cwnd) ) 
+    if (_backlog == 0 || (_receiver_based_cc && _credit < 0) || ( _sender_based_cc &&  _in_flight >= _cwnd && _cwnd <= UecSink::_bytes_unacked_threshold) ) 
         p->set_ar(true);
 
     createSendRecord(_highest_sent, full_pkt_size);
@@ -1802,8 +1851,8 @@ void UecSrc::rtxTimerExpired() {
 
     _send_times.erase(first_entry);
     if (_debug_src)
-        cout << _nodename << " rtx timer expired for " << seqno << " flow " << _flow.str() << endl;
-    cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " rtx timer expired for " << seqno  << endl;
+        cout << _nodename << " rtx timer expired for seqno " << seqno << " flow " << _flow.str() << " packet sent at " << timeAsUs(send_record->second.send_time) << " now time is " << timeAsUs(eventlist().now()) << endl;
+
     _tx_bitmap.erase(send_record);
     recalculateRTO();
 
@@ -2115,7 +2164,8 @@ void UecSink::processData(const UecDataPacket& pkt) {
             cout << " UecSink " << _nodename << " src " << _src->nodename()
                  << " sendAckNow: " << _expected_epsn << " ref_epsn " << pkt.epsn()
                  << " ooo_count " << _out_of_order_count
-                 << " recvd_bytes " << _recvd_bytes << " flow " << _src->flow()->str() << endl;
+                 << " recvd_bytes " << _recvd_bytes << " flow " << _src->flow()->str() 
+                 << " ecn " << ecn << " shouldSack " << shouldSack() << " forceack " << force_ack << endl;
         }
 
         _accepted_bytes = 0;

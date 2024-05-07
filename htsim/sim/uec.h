@@ -150,7 +150,7 @@ public:
     static bool _receiver_based_cc;
 
     enum Sender_CC { DCTCP, NSCC};
-    enum LoadBalancing_Algo { BITMAP, REPS};
+    enum LoadBalancing_Algo { BITMAP, REPS, REPS2};
 
     static Sender_CC _sender_cc_algo;
     static LoadBalancing_Algo _load_balancing_algo;
@@ -245,9 +245,11 @@ public:
 
     uint16_t nextEntropy_bitmap();
     uint16_t nextEntropy_REPS();
+    uint16_t nextEntropy_REPS2();
 
     void penalizePath_bitmap(uint16_t path_id, uint8_t penalty);
     void penalizePath_REPS(uint16_t path_id, uint8_t penalty);
+    void penalizePath_REPS2(uint16_t path_id, uint8_t penalty);
 
     uint16_t (UecSrc::*nextEntropy)();
     void (UecSrc::*penalizePath)(uint16_t path_id, uint8_t penalty);
@@ -361,6 +363,7 @@ private:
 
     uint16_t _crt_path;
     list<uint16_t> _next_pathid;
+    list<uint16_t> _knowngood_pathid;
 
     // Connectivity
     PacketFlow _flow;
