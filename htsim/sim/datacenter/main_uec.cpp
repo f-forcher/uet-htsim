@@ -587,7 +587,11 @@ int main(int argc, char **argv) {
     vector <UecSrc*> uec_srcs;
 
     map <flowid_t, TriggerTarget*> flowmap;
-    simtime_picosec network_rtt = tiers*2*hop_latency*2; //+ timeFromSec((packet_size*8.0)/linkspeed)*tiers*2;
+    if(planes != 1){
+        cout << "We are taking the plane 0 to calculate the network rtt; If all the planes have the same tiers, you can remove this check." << endl;
+        assert(false);
+    }
+    simtime_picosec network_rtt = topo[0]->get_tiers()*2*hop_latency*2; //+ timeFromSec((packet_size*8.0)/linkspeed)*tiers*2;
     cout << "network_rtt " << timeAsUs(network_rtt) << endl;
 
     for (size_t c = 0; c < all_conns->size(); c++){
