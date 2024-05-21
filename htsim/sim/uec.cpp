@@ -2271,7 +2271,7 @@ uint16_t UecSink::nextEntropy() {
     int fixedmask = ~spraymask;
     int idx = _entropy & spraymask;
     int fixed_entropy = _entropy & fixedmask;
-    int ev = idx++ & spraymask;
+    int ev = ++idx & spraymask;
 
     _entropy = fixed_entropy | ev;  // save for next pkt
 
