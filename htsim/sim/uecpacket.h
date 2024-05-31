@@ -140,7 +140,7 @@ protected:
 class UecPullPacket : public UecBasePacket {
     using Packet::set_route;
 public:
-    inline static UecPullPacket* newpkt(PacketFlow& flow, const route_t* route, pull_quanta pullno, bool rnr,uint32_t destination = UINT32_MAX) {
+    inline static UecPullPacket* newpkt(PacketFlow& flow, const route_t* route, pull_quanta pullno, uint16_t ev,uint32_t destination = UINT32_MAX) {
         UecPullPacket* p = _packetdb.allocPacket();
         p->set_attrs(flow, ACKSIZE, 0);
         if (route) {
@@ -159,7 +159,8 @@ public:
 
         p->_eqsrcid = 0;
         p->_eqtgtid = 0;
-        p->_rnr = rnr;
+        p->_pathid = ev;
+        //p->_rnr = rnr;
         p->_slow_pull = false;
         return p;
     }    
