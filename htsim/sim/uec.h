@@ -11,6 +11,8 @@
 #include "uecpacket.h"
 #include "circular_buffer.h"
 #include "modular_vector.h"
+#include "pciemodel.h"
+#include "oversubscribed_cc.h"
 
 #define timeInf 0
 // min RTO bound in us
@@ -150,8 +152,9 @@ public:
     static bool _receiver_based_cc;
 
     enum Sender_CC { DCTCP, NSCC};
-    enum LoadBalancing_Algo { BITMAP, REPS, REPS2};
-
+    enum LoadBalancing_Algo { BITMAP, REPS, OBLIVIOUS, MIXED};
+    enum PathFeedback {PATH_GOOD,PATH_ECN,PATH_NACK,PATH_TIMEOUT};
+    enum EvState {STATE_GOOD,STATE_SKIP,STATE_ASSUMED_BAD};
     static Sender_CC _sender_cc_algo;
     static LoadBalancing_Algo _load_balancing_algo;
 
@@ -245,15 +248,25 @@ public:
 
     uint16_t nextEntropy_bitmap();
     uint16_t nextEntropy_REPS();
-    uint16_t nextEntropy_REPS2();
+    uint16_t nextEntropy_oblivious();
+    uint16_t nextEntropy_mixed();
 
-    void penalizePath_bitmap(uint16_t path_id, uint8_t penalty);
-    void penalizePath_REPS(uint16_t path_id, uint8_t penalty);
-    void penalizePath_REPS2(uint16_t path_id, uint8_t penalty);
+    void processEv_bitmap(uint16_t path_id, PathFeedback feedback);
+    void processEv_REPS(uint16_t path_id, PathFeedback feedback);
+    void processEv_oblivious(uint16_t path_id, PathFeedback feedback);
+    void processEv_mixed(uint16_t path_id, PathFeedback feedback);
+
+    inline EvState ev_state(uint16_t path) const { 
+        if (_ev_skip_bitmap[path]==0) 
+            return STATE_GOOD; 
+        else if (_ev_skip_bitmap[path]==_max_penalty) 
+            return STATE_ASSUMED_BAD; 
+        else 
+            return STATE_SKIP;
+    }
 
     uint16_t (UecSrc::*nextEntropy)();
-    void (UecSrc::*penalizePath)(uint16_t path_id, uint8_t penalty);
-
+    void (UecSrc::*processEv)(uint16_t path_id, PathFeedback feedback);
 
     bool checkFinished(UecDataPacket::seq_t cum_ack);
 
@@ -324,6 +337,8 @@ private:
                                  // get EV
     vector<uint8_t> _ev_skip_bitmap;  // paths scores for load balancing
     uint8_t _max_penalty;             // max value we allow in _path_penalties (typically 1 or 2).
+    uint16_t _ev_skip_count;
+    uint16_t _ev_bad_count;
 
     // RTT estimate data for RTO and sender based CC.
     simtime_picosec _rtt, _mdev, _rto, _raw_rtt;
@@ -398,6 +413,8 @@ class UecSink : public DataReceiver {
         uint64_t trimmed;
         uint64_t pulls;
         uint64_t rts;
+        uint64_t ecn_received;
+        uint64_t ecn_bytes_received;
     };
 
     UecSink(TrafficLogger* trafficLogger, UecPullPacer* pullPacer, UecNIC& nic, uint32_t no_of_ports);
@@ -409,7 +426,7 @@ class UecSink : public DataReceiver {
              UecNIC& nic, uint32_t no_of_ports);
     void receivePacket(Packet& pkt, uint32_t port_num);
 
-    void processData(const UecDataPacket& pkt);
+    void processData(UecDataPacket& pkt);
     void processRts(const UecRtsPacket& pkt);
     void processTrimmed(const UecDataPacket& pkt);
 
@@ -470,20 +487,28 @@ class UecSink : public DataReceiver {
     }
     inline UecNIC* getNIC() const { return &_nic; }
 
+    inline void setPCIeModel(PCIeModel* c){assert(_model_pcie); _pcie = c;}
+    inline void setOversubscribedCC(OversubscribedCC* c){_receiver_cc = c;}
+
     uint16_t nextEntropy();
 
     UecSrc* getSrc() { return _src; }
     uint32_t getMaxCwnd() { return _src->maxWnd(); };
 
+    PCIeModel* pcieModel() const{ return _pcie;}
+
     static mem_b _bytes_unacked_threshold;
     static UecBasePacket::pull_quanta _credit_per_pull;
     static int TGT_EV_SIZE;
 
-    static bool _receiver_oversubscribed_cc;  // experimental option, not for UEC at this stage
+    static bool _receiver_oversubscribed_cc; 
 
     // for sink logger
     inline mem_b total_received() const { return _stats.bytes_received; }
     uint32_t reorder_buffer_size();  // count is in packets
+
+    inline UecPullPacer* pullPacer() const {return _pullPacer;}
+
    private:
     uint32_t _no_of_ports;
     vector <UecSinkPort*> _ports;
@@ -523,12 +548,22 @@ class UecSink : public DataReceiver {
 
     uint16_t _entropy;
 
+    //variables for PCIe model
+    PCIeModel* _pcie;
+    OversubscribedCC* _receiver_cc;
+
     Stats _stats;
     string _nodename;
+
+public:
+    static bool _oversubscribed_cc;
+    static bool _model_pcie;
 };
 
 class UecPullPacer : public EventSource {
    public:
+    enum reason {PCIE = 0, OVERSUBSCRIBED_CC = 1};
+
     UecPullPacer(linkspeed_bps linkSpeed,
                   double pull_rate_modifier,
                   uint16_t mtu,
@@ -540,13 +575,25 @@ class UecPullPacer : public EventSource {
     bool isActive(UecSink* sink);
     bool isIdle(UecSink* sink);
 
+    inline uint16_t mtu() const {return _mtu;}
+    inline linkspeed_bps linkspeed() const {return _linkspeed;}
+
+    void updatePullRate(reason r,double relative_rate);
+
+    simtime_picosec packettime() const {return _actualPktTime;}
+
    private:
     list<UecSink*> _active_senders;  // TODO priorities?
     list<UecSink*> _idle_senders;    // TODO priorities?
 
     const simtime_picosec _pktTime;
+    simtime_picosec _actualPktTime;
     bool _active;
+    
+    double _rates[2];
 
+    linkspeed_bps _linkspeed;
+    uint16_t _mtu;
 };
 
 #endif  // UEC_H

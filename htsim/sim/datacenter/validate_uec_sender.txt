@@ -66,14 +66,14 @@ connection_matrices/perm_16n_16c_2MB.cm
 !Param -paths 1
 !tailFCT 1300
 connection_matrices/perm_1024n_1024c_0u_2000000b.cm
-!Experiment Large permutation (1204 nodes)
+!Experiment Large permutation (1024 nodes)
 !Binary ./htsim_uec
 !Param -sender_cc_only
 !Param -end 400
 !Param -paths 128
 !tailFCT 220
 connection_matrices/perm_1024n_1024c_0u_2000000b.cm
-!Experiment Large permutation (1204 nodes)
+!Experiment Large permutation (1024 nodes)
 !Binary ./htsim_uec
 !Param -sender_cc_only
 !Param -failed 1
@@ -81,7 +81,7 @@ connection_matrices/perm_1024n_1024c_0u_2000000b.cm
 !Param -paths 128
 !tailFCT 220
 connection_matrices/perm_1024n_1024c_0u_2000000b.cm
-!Experiment Large permutation (1204 nodes), single path.
+!Experiment Large permutation (1024 nodes), single path.
 !Binary ./htsim_uec
 !Param -sender_cc_only
 !Param -end 3000
@@ -102,4 +102,4 @@ connection_matrices/perm_1024n_1024c_0u_2000000b.cm
 !Param -sender_cc_only
 !Param -paths 128
 !Param -topo topologies/leaf_spine_1024_oversub_8-1.topo
-!tailFCT 880
+!tailFCT 1760

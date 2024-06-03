@@ -6,10 +6,13 @@ CFLAGS = -Wall -std=c++11 -g -Wsign-compare
 #CFLAGS += -fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined
 CFLAGS += -O2
 
-all:	htsim_dumbell_ndp htsim_dumbell_ndptunnel htsim_dumbell_tcp htsim_dumbell_swift htsim_multihop_swift htsim_multihop_swift2 htsim_bidir_swift htsim_bidir_ndp htsim_multipath_swift htsim_trigger_test htsim_dumbell_roce htsim_dumbell_hpcc htsim_dumbell_strack
+all:	htsim_dumbell_ndp htsim_dumbell_ndptunnel htsim_dumbell_tcp htsim_dumbell_swift htsim_multihop_swift htsim_multihop_swift2 htsim_bidir_swift htsim_bidir_ndp htsim_multipath_swift htsim_trigger_test htsim_dumbell_roce htsim_dumbell_hpcc htsim_dumbell_strack htsim_dumbell_uec
 
 htsim_dumbell_ndp:  main_dumbell_ndp.o $(LIBDEP)
 	$(CC) $(CFLAGS) main_dumbell_ndp.o -o htsim_dumbell_ndp $(LIBS)
+
+htsim_dumbell_uec:  main_dumbell_uec.o $(LIBDEP)
+	$(CC) $(CFLAGS) main_dumbell_uec.o -o htsim_dumbell_uec $(LIBS)
 
 htsim_dumbell_roce:	main_dumbell_roce.o $(LIBDEP)
 	$(CC) $(CFLAGS) main_dumbell_roce.o -o htsim_dumbell_roce $(LIBS)

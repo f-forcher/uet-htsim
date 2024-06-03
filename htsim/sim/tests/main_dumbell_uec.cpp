@@ -9,9 +9,9 @@
 #include "pipe.h"
 #include "eventlist.h"
 #include "logfile.h"
-#include "eqds_logger.h"
+#include "uec_logger.h"
 #include "clock.h"
-#include "eqds.h"
+#include "uec.h"
 #include "compositequeue.h"
 #include "ecnqueue.h"
 
@@ -24,13 +24,15 @@ void exit_error(char* progr){
 
 int main(int argc, char **argv) {
     EventList eventlist;
-    simtime_picosec end_time = timeFromSec(1);
+    simtime_picosec end_time = timeFromUs(10000u);
 
     Clock c(timeFromSec(50/100.), eventlist);
 
     uint32_t cwnd = 50;
 
     int seed = 13;
+
+    double pcie_rate = 1;
 
     mem_b queuesize = 35; 
     mem_b ecn_threshold_min = 70; 
@@ -43,13 +45,13 @@ int main(int argc, char **argv) {
 
     uint32_t mtu = 4064;
 
-    EqdsSink::_bytes_unacked_threshold = 3000;//force one ack per packet
+    UecSink::_bytes_unacked_threshold = 3000;//force one ack per packet
     linkspeed_bps linkspeed = speedFromMbps((uint64_t)100000);
 
     simtime_picosec RTT1=timeFromUs((uint32_t)3);
 
     int flow_count = 1;
-    int flow_size = 2000000;
+    int flow_size = 20000000;
 
     int i = 1;
     while (i<argc) {
@@ -70,7 +72,7 @@ int main(int argc, char **argv) {
             cout << "endtime(us) "<< end_time << endl;
             i++;            
         } else if (!strcmp(argv[i],"-debug")) {
-            EqdsSrc::_debug = true;
+            UecSrc::_debug = true;
         } else if (!strcmp(argv[i],"-rts")) {
             rts = true;
             cout << "rts enabled "<< endl;
@@ -82,7 +84,7 @@ int main(int argc, char **argv) {
             queuesize = atoi(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i],"-target_qdelay")){
-            EqdsSrc::_target_Qdelay = timeFromUs(atof(argv[i+1]));
+            UecSrc::_target_Qdelay = timeFromUs(atof(argv[i+1]));
             i++;
         } else if (!strcmp(argv[i],"-ecn_threshold")){
             // fraction of queuesize, between 0 and 1
@@ -108,14 +110,16 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i],"-mtu")){
             mtu = atoi(argv[i+1]);
             i++;
+        } else if (!strcmp(argv[i],"-pcie")){
+            UecSink::_model_pcie = true;
+            pcie_rate = atof(argv[i+1]);
+            i++;
         } else if (!strcmp(argv[i],"-sender_cc")) {
-            EqdsSrc::_sender_based_cc = true;
+            UecSrc::_sender_based_cc = true;
             cout << "sender based CC enabled "<<  endl;
 
             if (!strcmp(argv[i+1],"dctcp"))
-                EqdsSrc::_sender_cc_algo = EqdsSrc::DCTCP;
-            else     
-                EqdsSrc::_sender_cc_algo = EqdsSrc::SMARTT;
+                UecSrc::_sender_cc_algo = UecSrc::DCTCP;
             
             i++;
         } else {
@@ -148,18 +152,18 @@ int main(int argc, char **argv) {
     Pipe pipe1(RTT1, eventlist); pipe1.setName("pipe1"); logfile.writeName(pipe1);
     Pipe pipe2(RTT1, eventlist); pipe2.setName("pipe2"); logfile.writeName(pipe2);
 
-    CompositeQueue queue(linkspeed, queuesize, eventlist, &qs1, EqdsBasePacket::ACKSIZE);
+    CompositeQueue queue(linkspeed, queuesize, eventlist, &qs1, UecBasePacket::ACKSIZE);
     queue.setName("Queue1"); 
     logfile.writeName(queue);
     queue.set_ecn_thresholds(ecn_threshold_min,ecn_threshold_max);
     
-    CompositeQueue queue2(linkspeed, queuesize, eventlist, NULL, EqdsBasePacket::ACKSIZE); queue2.setName("Queue2"); logfile.writeName(queue2);
+    CompositeQueue queue2(linkspeed, queuesize, eventlist, NULL, UecBasePacket::ACKSIZE); queue2.setName("Queue2"); logfile.writeName(queue2);
     queue.set_ecn_thresholds(ecn_threshold_min,ecn_threshold_max);
 
-    EqdsSrc* eqdsSrc;
-    EqdsNIC* eqdsNic;
-    EqdsSink* eqdsSnk;
-    EqdsSinkLoggerSampling sinkLogger(timeFromUs((uint32_t)25),eventlist);
+    UecSrc* uecSrc;
+    UecNIC* uecNic;
+    UecSink* uecSnk;
+    UecSinkLoggerSampling sinkLogger(timeFromUs((uint32_t)25),eventlist);
 
     logfile.addLogger(sinkLogger);
     route_t* routeout;
@@ -170,42 +174,54 @@ int main(int argc, char **argv) {
     cout << "Cwnd: " << cwnd << " packets\n";
     cout << "Linkspeed: " << linkspeed/1000000000 << "Gb/s\n";
  
-    vector<EqdsSrc*> eqds_srcs;
+    vector<UecSrc*> Uec_srcs;
+
+    OversubscribedCC::setOversubscriptionRatio(flow_count);
 
     for (int i=0;i<flow_count;i++){
-        eqdsNic = new EqdsNIC(i, eventlist, linkspeed, 1);
-        eqdsSrc = new EqdsSrc(NULL,eventlist,*eqdsNic,rts,1);
-        //eqdsSrc->setRouteStrategy(SINGLE_PATH);
-        eqdsSrc->setCwnd(cwnd*Packet::data_packet_size());
-        eqdsSrc->setFlowsize(flow_size);
+        uecNic = new UecNIC(i, eventlist, linkspeed, 1);
+        uecSrc = new UecSrc(NULL,eventlist,*uecNic,1, rts);
+        //UecSrc->setRouteStrategy(SINGLE_PATH);
+        uecSrc->setCwnd(cwnd*Packet::data_packet_size());
+        uecSrc->setFlowsize(flow_size);
         
-        eqdsSrc->setName("EQDS"+ntoa(i)); 
-        logfile.writeName(*eqdsSrc);
+        uecSrc->setName("Uec"+ntoa(i)); 
+        logfile.writeName(*uecSrc);
 
-        eqds_srcs.push_back(eqdsSrc);
+        Uec_srcs.push_back(uecSrc);
 
-        eqdsSnk = new EqdsSink(NULL, linkspeed, 0.99, Packet::data_packet_size(), eventlist,*eqdsNic, 1); 
-        eqdsSnk->setName("EqdsSink");
-        logfile.writeName(*eqdsSnk);
+        uecNic = new UecNIC(i, eventlist, linkspeed, 1);
+        uecSnk = new UecSink(NULL, linkspeed, 0.99, Packet::data_packet_size(), eventlist,*uecNic, 1); 
+
+        if (UecSink::_model_pcie){
+            uecSnk->setPCIeModel(new PCIeModel(linkspeed * pcie_rate,Packet::data_packet_size(),eventlist,uecSnk->pullPacer()));
+        }
+
+        if (UecSink::_oversubscribed_cc){
+            uecSnk->setOversubscribedCC(new OversubscribedCC(eventlist,uecSnk->pullPacer()));
+        }
+            
+        ((DataReceiver*)uecSnk)->setName("UecSink");
+        logfile.writeName(*(DataReceiver*)uecSnk);
         
         // tell it the route
         routeout = new route_t();
-        // EQDS expects each src host to have a FairPriorityQueue
+        // Uec expects each src host to have a FairPriorityQueue
         routeout->push_back(new FairPriorityQueue(linkspeed, memFromPkt(1000),eventlist, NULL));
         routeout->push_back(&queue); 
         routeout->push_back(&pipe1);
-        routeout->push_back(new CompositeQueue(linkspeed, queuesize, eventlist, NULL, EqdsBasePacket::ACKSIZE));
+        routeout->push_back(new CompositeQueue(linkspeed, queuesize, eventlist, NULL, UecBasePacket::ACKSIZE));
         routeout->push_back(new Pipe(RTT1, eventlist));
-        routeout->push_back(eqdsSnk->getPort(0));
+        routeout->push_back(uecSnk->getPort(0));
         
         routein  = new route_t();
         routein->push_back(&pipe1);
         routein->push_back(&queue2); 
         routein->push_back(&pipe1);
-        routein->push_back(eqdsSrc->getPort(0)); 
+        routein->push_back(uecSrc->getPort(0)); 
 
-        eqdsSrc->connectPort(0, *routeout, *routein, *eqdsSnk, timeFromUs(0.0));
-        sinkLogger.monitorSink(eqdsSnk);
+        uecSrc->connectPort(0, *routeout, *routein, *uecSnk, timeFromUs(0.0));
+        sinkLogger.monitorSink(uecSnk);
     }
 
     // Record the setup
@@ -221,10 +237,10 @@ int main(int argc, char **argv) {
     cout << "Done" << endl;
 
     int new_pkts = 0, rtx_pkts = 0, bounce_pkts = 0;
-    for (size_t ix = 0; ix < eqds_srcs.size(); ix++) {
-        new_pkts += eqds_srcs[ix]->_new_packets_sent;
-        rtx_pkts += eqds_srcs[ix]->_rtx_packets_sent;
-        bounce_pkts += eqds_srcs[ix]->_bounces_received;
+    for (size_t ix = 0; ix < Uec_srcs.size(); ix++) {
+        new_pkts += Uec_srcs[ix]->_new_packets_sent;
+        rtx_pkts += Uec_srcs[ix]->_rtx_packets_sent;
+        bounce_pkts += Uec_srcs[ix]->_bounces_received;
     }
     cout << "New: " << new_pkts << " Rtx: " << rtx_pkts << " Bounced: " << bounce_pkts << endl;
 

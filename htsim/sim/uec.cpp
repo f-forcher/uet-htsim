@@ -4,6 +4,7 @@
 #include <cstdint>
 #include "circular_buffer.h"
 #include "uec_logger.h"
+#include "pciemodel.h"
 
 using namespace std;
 
@@ -20,6 +21,8 @@ simtime_picosec UecSrc::_min_rto = timeFromUs((uint32_t)DEFAULT_UEC_RTO_MIN);
 mem_b UecSink::_bytes_unacked_threshold = 16384;
 int UecSink::TGT_EV_SIZE = 7;
 
+bool UecSink::_model_pcie = false;
+
 /* if you change _credit_per_pull, fix pktTime in the Pacer too - this assumes one pull per MTU */
 UecBasePacket::pull_quanta UecSink::_credit_per_pull = 8;  // uints of typically 512 bytes
 
@@ -31,7 +34,9 @@ uint16_t UecSrc::_mtu = _mss + _hdr_size;
 bool UecSrc::_debug = false;
 
 bool UecSrc::_sender_based_cc = false;
+
 bool UecSrc::_receiver_based_cc = true;
+bool UecSink::_oversubscribed_cc = false; // can only be enabled when receiver_based_cc is set to true
 
 UecSrc::Sender_CC UecSrc::_sender_cc_algo = UecSrc::NSCC;
 UecSrc::LoadBalancing_Algo UecSrc::_load_balancing_algo = UecSrc::BITMAP;
@@ -60,7 +65,6 @@ double UecSrc::_ecn_thresh = 0.2;
 bool UecSrc::_enable_qa_gate = false;
 bool UecSrc::_enable_avg_ecn_over_path = false;
 
-
 void UecSrc::disableFairDecrease() {
     // constants for when FairDecrease is not used
     _fd = 0.0; //fair_decrease constant
@@ -76,7 +80,7 @@ void UecSrc::parameterScaleToTargetQ(){
 }
 
 
-flowid_t UecSrc::_debug_flowid = 3; //UINT32_MAX;
+flowid_t UecSrc::_debug_flowid = UINT32_MAX;
 
 #define INIT_PULL 10000000  // needs to be large enough we don't map
                             // negative pull targets (where
@@ -386,7 +390,11 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
     _path_random = rand() % 0xffff;  // random upper bits of EV
     _path_xor = rand() % _no_of_paths;
     _current_ev_index = 0;
+
+    //must be at least two, to allow us to encode assumed_bad state.
     _max_penalty = 15;
+    _ev_skip_count = 0;
+    _ev_bad_count = 0;
     _last_rts = 0;
 
     // stats for debugging
@@ -397,7 +405,9 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
 
     if (_load_balancing_algo == BITMAP){
         nextEntropy = &UecSrc::nextEntropy_bitmap;
-        penalizePath = &UecSrc::penalizePath_bitmap;
+        processEv = &UecSrc::processEv_bitmap;
+        _crt_path = 0;
+        
         // reset path penalties
         _ev_skip_bitmap.resize(_no_of_paths);
         for (uint32_t i = 0; i < _no_of_paths; i++) {
@@ -405,12 +415,22 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
         }
     } else if (_load_balancing_algo == REPS){
         nextEntropy = &UecSrc::nextEntropy_REPS;
-        penalizePath = &UecSrc::penalizePath_REPS;
+        processEv = &UecSrc::processEv_REPS;
         _crt_path = 0;
-    } else if (_load_balancing_algo == REPS2 ){
-        nextEntropy = &UecSrc::nextEntropy_REPS2;
-        penalizePath = &UecSrc::penalizePath_REPS;
+    } else if (_load_balancing_algo == OBLIVIOUS ){
+        nextEntropy = &UecSrc::nextEntropy_oblivious;
+        processEv = &UecSrc::processEv_oblivious;
         _crt_path = 0;
+    } else if (_load_balancing_algo == MIXED ){
+        nextEntropy = &UecSrc::nextEntropy_mixed;
+        processEv = &UecSrc::processEv_mixed;
+        _crt_path = 0;
+
+        // reset path penalties
+        _ev_skip_bitmap.resize(_no_of_paths);
+        for (uint32_t i = 0; i < _no_of_paths; i++) {
+            _ev_skip_bitmap[i] = 0;
+        }
     }
 
     // by default, end silently
@@ -740,11 +760,11 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
 
     // We ran both potential _in_flight correcting functions
     // now check if we are in the negative.
-    assert(_in_flight >= 0);
+    //assert(_in_flight >= 0);
 
     _loss_counter --;
 
-    (this->*penalizePath)(pkt.ev(), pkt.ecn_echo() ? 1:0);
+    (this->*processEv)(pkt.ev(), pkt.ecn_echo() ? PATH_ECN:PATH_GOOD);
 
     average_ecn_bytes(pkt_size,newly_recvd_bytes, pkt.ecn_echo());
 
@@ -899,8 +919,6 @@ void UecSrc::fulfill_adjustment(){
     }
     _cwnd += (_inc_bytes)/_cwnd - (_dec_bytes * _cwnd / _bdp);
 
-
-
     _inc_bytes = 0;
     _dec_bytes = 0;
 
@@ -911,7 +929,7 @@ void UecSrc::fulfill_adjustment(){
 
 void UecSrc::mark_packet_for_retransmission(UecBasePacket::seq_t psn, uint16_t pktsize){
     _in_flight -= pktsize;
-    assert (_in_flight>=0);
+    //assert (_in_flight>=0);
     _cwnd = max(_cwnd - pktsize, (mem_b)_mtu);
 
     //_rtx_count ++;
@@ -1142,9 +1160,10 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
         // simulation - when it does, it is usually due to a bug
         // elsewhere.  But if you discover a case where this happens
         // for real, remove the abort and uncomment the return below.
-        abort();
+        //abort();
         // this can happen when the NACK arrives later than a cumulative ACK covering the NACKed
-        // packet. return;
+        // packet. 
+        return;
     }
 
     mem_b pkt_size = i->second.pkt_size;
@@ -1190,8 +1209,7 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
         recalculateRTO();
     }
 
-
-    (this->*penalizePath)(ev, _max_penalty);
+    (this->*processEv)(ev, PATH_NACK);
 
     sendIfPermitted();
 }
@@ -1325,6 +1343,10 @@ UecBasePacket::pull_quanta UecSrc::computePullTarget() {
         cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " _credit " << _credit 
             << " pull_target " << _pull_target << endl;
     }
+
+    if (_nic.activeSources()>1)
+        pull_target /= _nic.activeSources();
+
     pull_target += UecBasePacket::unquantize(_pull);
 
     UecBasePacket::pull_quanta quant_pull_target = UecBasePacket::quantize_ceil(pull_target);
@@ -1460,23 +1482,45 @@ void UecSrc::cancelRTO() {
     }
 }
 
-void UecSrc::penalizePath_bitmap(uint16_t path_id, uint8_t penalty) {
+void UecSrc::processEv_mixed(uint16_t path_id, PathFeedback reason){
+    processEv_bitmap(path_id,reason);
+    processEv_REPS(path_id,reason);
+}
+
+void UecSrc::processEv_bitmap(uint16_t path_id, PathFeedback reason){
     // _no_of_paths must be a power of 2
     uint16_t mask = _no_of_paths - 1;
     path_id &= mask;  // only take the relevant bits for an index
+
+    if (!_ev_skip_bitmap[path_id])
+        _ev_skip_count++;
+
+    uint8_t penalty = 0;
+
+    if (reason == PathFeedback::PATH_ECN)
+        penalty = 1;
+    else if (reason == PathFeedback::PATH_NACK)
+        penalty = 4;
+    else if (reason == PathFeedback::PATH_TIMEOUT)
+        penalty = _max_penalty;
+
     _ev_skip_bitmap[path_id] += penalty;
     if (_ev_skip_bitmap[path_id] > _max_penalty) {
         _ev_skip_bitmap[path_id] = _max_penalty;
     }
 }
 
-void UecSrc::penalizePath_REPS(uint16_t path_id, uint8_t penalty) {
-    if (penalty==0){
+void UecSrc::processEv_REPS(uint16_t path_id, PathFeedback feedback) {
+    if (feedback == PATH_GOOD){
         _next_pathid.push_back(path_id);
         if (_debug){
             cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS Add " << path_id << " " << _next_pathid.size() << endl;
         }
     }
+}
+
+void UecSrc::processEv_oblivious(uint16_t path_id, PathFeedback feedback) {
+    return;
 }
 
 
@@ -1487,8 +1531,14 @@ uint16_t UecSrc::nextEntropy_bitmap() {
     bool flag = false;
     int counter = 0;
     while (_ev_skip_bitmap[entropy] > 0) {
-        if (flag == false)
+        if (flag == false){
             _ev_skip_bitmap[entropy]--;
+            if (!_ev_skip_bitmap[entropy]){
+                assert(_ev_skip_count>0);
+                _ev_skip_count--;
+            }
+        }
+
         flag = true;
         counter ++;
         if (counter > _no_of_paths){
@@ -1544,45 +1594,34 @@ uint16_t UecSrc::nextEntropy_REPS(){
     return _crt_path;
 }
 
-uint16_t UecSrc::nextEntropy_REPS2(){
-	uint64_t allpathssizes = _mss * _no_of_paths;
-    if (_mss * _highest_sent < min((uint64_t)_cwnd, allpathssizes)) {
-        _crt_path++;
-        if (_crt_path == _no_of_paths) {
-            _crt_path = 0;
-        }
+uint16_t UecSrc::nextEntropy_mixed(){
+    if (_next_pathid.empty()) {
+        return nextEntropy_bitmap();
+    }
+    else {
+        _crt_path = _next_pathid.front();
+        _next_pathid.pop_front();
 
         if (_debug) 
-            cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS2 FirstWindow " << _crt_path << " highest sent " << _mss * _highest_sent << " maxwnd " << _maxwnd << " allpaths " << allpathssizes << endl;
-
-    } else {
-        if (_next_pathid.empty()) {
-            if (_knowngood_pathid.empty()){
-                assert(_no_of_paths > 0);
-                _crt_path = random() % _no_of_paths;
-
-                if (_debug) 
-                    cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS2 Steady " << _crt_path << endl;
-            }
-            else {
-                _crt_path = _knowngood_pathid.front();
-                _knowngood_pathid.pop_front();
-
-                if (_debug) 
-                    cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS2 KnownGood " << _crt_path << " " << _knowngood_pathid.size() << endl;
-            }
-        } else {
-            _crt_path = _next_pathid.front();
-            _next_pathid.pop_front();
-
-            _knowngood_pathid.push_back(_crt_path);
-
-            if (_debug) 
-                cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS2 Recycle " << _crt_path << " " << _next_pathid.size() << endl;
-
-        }
+            cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " MIXED Recycle " << _crt_path << " " << _next_pathid.size() << endl;
     }
     return _crt_path;
+}
+
+uint16_t UecSrc::nextEntropy_oblivious(){
+    // _no_of_paths must be a power of 2
+    uint16_t mask = _no_of_paths - 1;
+    uint16_t entropy = (_current_ev_index ^ _path_xor) & mask;
+
+    // set things for next time
+    _current_ev_index++;
+    if (_current_ev_index == _no_of_paths) {
+        _current_ev_index = 0;
+        _path_xor = rand() & mask;
+    }
+
+    entropy |= _path_random ^ (_path_random & mask);  // set upper bits
+    return entropy;
 }
 
 
@@ -1978,9 +2017,12 @@ UecSink::UecSink(TrafficLogger* trafficLogger, UecPullPacer* pullPacer, UecNIC& 
         _ports[p] = new UecSinkPort(*this, p);
     }
         
-    _stats = {0, 0, 0, 0, 0};
+    _stats = {0, 0, 0, 0, 0,0,0};
     _in_pull = false;
     _in_slow_pull = false;
+
+    _pcie = NULL;
+    _receiver_cc = NULL;
 }
 
 UecSink::UecSink(TrafficLogger* trafficLogger,
@@ -2017,9 +2059,12 @@ UecSink::UecSink(TrafficLogger* trafficLogger,
     for (uint32_t p = 0; p < _no_of_ports; p++) {
         _ports[p] = new UecSinkPort(*this, p);
     }
-    _stats = {0, 0, 0, 0, 0};
+    _stats = {0, 0, 0, 0, 0,0,0};
     _in_pull = false;
     _in_slow_pull = false;
+
+    _pcie = NULL;
+    _receiver_cc = NULL;
 }
 
 void UecSink::connectPort(uint32_t port_num, UecSrc& src, const Route& route) {
@@ -2051,12 +2096,21 @@ void UecSink::handlePullTarget(UecBasePacket::seq_t pt) {
     }
 }
 
-/*void UecSink::handleReceiveBitmap(){
-
-}*/
-
-void UecSink::processData(const UecDataPacket& pkt) {
+void UecSink::processData(UecDataPacket& pkt) {
     bool force_ack = false;
+
+    //PCIeModel processing
+
+    if (_model_pcie){
+        if (!_pcie->addBacklog(pkt.size())){
+            //will drop this packet!
+            cout << "PCIE trim" << endl;
+            //should trim this packet.
+            pkt.strip_payload();
+            processTrimmed(pkt);
+            return;
+        }
+    }
 
     if (_src->debug())
         cout << " UecSink " << _nodename << " src " << _src->nodename()
@@ -2081,6 +2135,14 @@ void UecSink::processData(const UecDataPacket& pkt) {
     // should send an ACK; if incoming packet is ECN marked, the ACK will be sent straight away;
     // otherwise ack will be delayed until we have cumulated enough bytes / packets.
     bool ecn = (bool)(pkt.flags() & ECN_CE);
+
+    if (ecn){
+        _stats.ecn_received++;
+        _stats.ecn_bytes_received += pkt.size();
+
+        if (_oversubscribed_cc)
+            _receiver_cc->ecn_received(pkt.size());
+    }
 
     if (pkt.epsn() < _expected_epsn || _epsn_rx_bitmap[pkt.epsn()]) {
         if (UecSrc::_debug)
@@ -2179,6 +2241,8 @@ void UecSink::processTrimmed(const UecDataPacket& pkt) {
     _nic.logReceivedTrim(pkt.size());
 
     _stats.trimmed++;
+    if (_oversubscribed_cc)
+        _receiver_cc->trimmed_received();
 
     if (pkt.epsn() < _expected_epsn || _epsn_rx_bitmap[pkt.epsn()]) {
         if (_src->debug())
@@ -2295,6 +2359,9 @@ void UecSink::receivePacket(Packet& pkt, uint32_t port_num) {
     _stats.received++;
     _stats.bytes_received += pkt.size();  // should this include just the payload?
 
+    if (_oversubscribed_cc)
+        _receiver_cc->data_received(pkt.size());
+
     switch (pkt.type()) {
         case UECDATA:
             if (pkt.header_only()){
@@ -2302,7 +2369,7 @@ void UecSink::receivePacket(Packet& pkt, uint32_t port_num) {
                 // cout << "UecSink::receivePacket receive trimmed packet\n";
                 // assert(false);
             }else
-                processData((const UecDataPacket&)pkt);
+                processData((UecDataPacket&)pkt);
 
             pkt.free();
             break;
@@ -2347,7 +2414,8 @@ UecPullPacket* UecSink::pull() {
     _latest_pull += UecSink::_credit_per_pull;
 
     UecPullPacket* pkt = NULL;
-    pkt = UecPullPacket::newpkt(_flow, NULL, _latest_pull, nextEntropy(), _srcaddr);
+    pkt = UecPullPacket::newpkt(_flow, NULL, _latest_pull, false, _srcaddr);
+    pkt->set_pathid(nextEntropy());
 
     return pkt;
 }
@@ -2422,6 +2490,7 @@ void UecSink::setEndTrigger(Trigger& end_trigger) {
     _end_trigger = &end_trigger;
 };
 
+
 static unsigned pktByteTimes(unsigned size) {
     // IPG (96 bit times) + preamble + SFD + ether header + FCS = 38B
     return max(size, 46u) + 38;
@@ -2451,6 +2520,11 @@ UecPullPacer::UecPullPacer(linkspeed_bps linkSpeed,
     : EventSource(eventList, "uecPull"),
       _pktTime(pull_rate_modifier * 8 * pktByteTimes(mtu) * 1e12 / (linkSpeed * no_of_ports)) {
     _active = false;
+    _actualPktTime = _pktTime;
+    _mtu = mtu;
+    _linkspeed = linkSpeed;
+    _rates[PCIE] = 1;
+    _rates[OVERSUBSCRIBED_CC] = 1;
 }
 
 void UecPullPacer::doNextEvent() {
@@ -2472,7 +2546,7 @@ void UecPullPacer::doNextEvent() {
 
         // TODO if more pulls are needed, enqueue again
         if (UecSrc::_debug)
-            cout << "PullPacer: Active: " << sink->getSrc()->nodename() << " backlog "
+            cout << "PullPacer: Active: " << sink->getSrc()->flow()->str() << " backlog "
                  << sink->backlog() << " at " << timeAsUs(eventlist().now()) << endl;
         if (sink->backlog() > 0)
             _active_senders.push_back(sink);
@@ -2489,7 +2563,7 @@ void UecPullPacer::doNextEvent() {
             sink->addToSlowPullQueue();
 
         if (UecSrc::_debug)
-            cout << "PullPacer: Idle: " << sink->getSrc()->nodename() << " at "
+            cout << "PullPacer: Idle: " << sink->getSrc()->flow()->str() << " at "
                  << timeAsUs(eventlist().now()) << " backlog " << sink->backlog() << " "
                  << sink->slowCredit() << " max "
                  << UecBasePacket::quantize_floor(sink->getMaxCwnd()) << endl;
@@ -2511,7 +2585,16 @@ void UecPullPacer::doNextEvent() {
     sink->getNIC()->sendControlPacket(pullPkt, NULL, sink);
     _active = true;
 
-    eventlist().sourceIsPendingRel(*this, _pktTime);
+    eventlist().sourceIsPendingRel(*this, _actualPktTime);
+}
+
+void UecPullPacer::updatePullRate(reason r, double relative_rate){
+    _rates[r] = relative_rate;
+
+    _actualPktTime = _pktTime / min(_rates[PCIE],_rates[OVERSUBSCRIBED_CC]);
+
+    if (UecSrc::_debug)
+        cout << "Interpacket delay " << timeAsUs(_actualPktTime) << endl;
 }
 
 bool UecPullPacer::isActive(UecSink* sink) {

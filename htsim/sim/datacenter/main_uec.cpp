@@ -15,6 +15,9 @@
 #include "compositequeue.h"
 #include "topology.h"
 #include "connection_matrix.h"
+#include "pciemodel.h"
+#include "oversubscribed_cc.h"
+
 
 #include "fat_tree_topology.h"
 #include "fat_tree_switch.h"
@@ -76,7 +79,7 @@ int main(int argc, char **argv) {
     int seed = 13;
     int path_burst = 1;
     int i = 1;
-
+    double pcie_rate = 1.1;
 
     filename << "logout.dat";
     int end_time = 1000;//in microseconds
@@ -123,6 +126,7 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i],"-sender_cc_only")) {
             UecSrc::_sender_based_cc = true;
             UecSrc::_receiver_based_cc = false;
+            UecSink::_oversubscribed_cc = false;
             receiver_driven = false;
             cout << "sender based CC enabled ONLY" << endl;
         } else if (!strcmp(argv[i],"-disable_fd")) {
@@ -151,6 +155,7 @@ int main(int argc, char **argv) {
             i++;
         } else if (!strcmp(argv[i],"-sender_cc")) {
             UecSrc::_sender_based_cc = true;
+            UecSink::_oversubscribed_cc = false;
             cout << "sender based CC enabled "<< tiers << endl;
         }
         else if (!strcmp(argv[i],"-load_balancing_algo")){
@@ -160,8 +165,11 @@ int main(int argc, char **argv) {
             else if (!strcmp(argv[i+1], "reps")) {
                 UecSrc::_load_balancing_algo = UecSrc::REPS;
             }
-            else if (!strcmp(argv[i+1], "reps2")) {
-                UecSrc::_load_balancing_algo = UecSrc::REPS2;
+            else if (!strcmp(argv[i+1], "oblivious")) {
+                UecSrc::_load_balancing_algo = UecSrc::OBLIVIOUS;
+            }
+            else if (!strcmp(argv[i+1], "mixed")) {
+                UecSrc::_load_balancing_algo = UecSrc::MIXED;
             }
             else {
                 cout << "Unknown load balancing algorithm of type " << argv[i+1] << ", expecting bitmap, reps or reps2" << endl;
@@ -300,6 +308,10 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i],"-hop_latency")){
             hop_latency = timeFromUs(atof(argv[i+1]));
             cout << "Hop latency set to " << timeAsUs(hop_latency) << endl;
+            i++;
+        } else if (!strcmp(argv[i],"-pcie")){
+            UecSink::_model_pcie = true;
+            pcie_rate = atof(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i],"-switch_latency")){
             switch_latency = timeFromUs(atof(argv[i+1]));
@@ -544,6 +556,7 @@ int main(int argc, char **argv) {
     for (uint32_t p = 0; p < planes; p++) {
         if (topo_file) {
             topo[p] = FatTreeTopology::load(topo_file, qlf, eventlist, queuesize, qt, snd_type);
+
             if (topo[p]->no_of_nodes() != no_of_nodes) {
                 cerr << "Mismatch between connection matrix (" << no_of_nodes << " nodes) and topology ("
                      << topo[p]->no_of_nodes() << " nodes)" << endl;
@@ -556,6 +569,9 @@ int main(int argc, char **argv) {
                                           switch_latency,
                                           snd_type);
         }
+
+        OversubscribedCC::setOversubscriptionRatio(topo[p]->get_oversubscription_ratio());
+        cout << "Oversubscription ratio is " << topo[p]->get_oversubscription_ratio() << endl;
 
         if (log_switches) {
             topo[p]->add_switch_loggers(logfile, timeFromUs(20.0));
@@ -572,10 +588,20 @@ int main(int argc, char **argv) {
     }
 
     vector<UecPullPacer*> pacers;
+    vector<PCIeModel*> pcie_models;
+    vector<OversubscribedCC*> oversubscribed_ccs;
+
     vector<UecNIC*> nics;
 
     for (size_t ix = 0; ix < no_of_nodes; ix++){
         pacers.push_back(new UecPullPacer(linkspeed, 0.99, UecSrc::_mtu, eventlist, ports));
+
+        if (UecSink::_model_pcie)
+            pcie_models.push_back(new PCIeModel(linkspeed * pcie_rate,UecSrc::_mtu,eventlist,pacers[ix]));
+
+        if (UecSink::_oversubscribed_cc)
+            oversubscribed_ccs.push_back(new OversubscribedCC(eventlist,pacers[ix]));
+
         UecNIC* nic = new UecNIC(ix, eventlist, linkspeed, ports);
         nics.push_back(nic);
         if (log_nic) {
@@ -618,9 +644,17 @@ int main(int argc, char **argv) {
         uec_src->setName("Uec_" + ntoa(src) + "_" + ntoa(dest));
         logfile.writeName(*uec_src);
         uec_snk->setSrc(src);
+
+        if (UecSink::_model_pcie){
+            uec_snk->setPCIeModel(pcie_models[dest]);
+        }
                         
-        uec_snk->setName("Uec_sink_" + ntoa(src) + "_" + ntoa(dest));
-        logfile.writeName(*uec_snk);
+        if (UecSink::_oversubscribed_cc){
+            uec_snk->setOversubscribedCC(oversubscribed_ccs[dest]);
+        }
+
+        ((DataReceiver*)uec_snk)->setName("Uec_sink_" + ntoa(src) + "_" + ntoa(dest));
+        logfile.writeName(*(DataReceiver*)uec_snk);
 
         if (crt->flowid) {
             uec_src->setFlowId(crt->flowid);
