@@ -265,6 +265,10 @@ int main(int argc, char **argv) {
             cout << "Setting receiver SACK bytes threshold to " << UecSink::_bytes_unacked_threshold  << " bytes " << endl;
             i++;            
         }
+        else if (!strcmp(argv[i],"-oversubscribed_cc")){
+            UecSink::_oversubscribed_cc = true;
+            cout << "Using receiver oversubscribed CC " << endl;
+        }
         else if (!strcmp(argv[i],"-ecn")){
             // fraction of queuesize, between 0 and 1
             ecn = true;
