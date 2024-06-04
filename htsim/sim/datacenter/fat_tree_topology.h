@@ -120,6 +120,8 @@ public:
     uint32_t queue_up(int tier) const {return _queue_up[tier];}
     uint32_t queue_down(int tier) const {return _queue_down[tier];}
 
+    int get_oversubscription_ratio(){int ratio = _oversub[TOR_TIER]; if (_tiers>2) ratio *= _oversub[AGG_TIER]; return ratio;}
+
     void add_failed_link(uint32_t type, uint32_t switch_id, uint32_t link_id);
 
     // add loggers to record total queue size at switches
