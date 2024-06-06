@@ -63,7 +63,7 @@ double UecSrc::_fd = 0.8; //fair_decrease constant
 double UecSrc::_eta = 0;
 double UecSrc::_ecn_thresh = 0.2;
 bool UecSrc::_enable_qa_gate = false;
-bool UecSrc::_enable_avg_ecn_over_path = false;
+bool UecSrc::_enable_avg_ecn_over_path = true;
 
 void UecSrc::disableFairDecrease() {
     // constants for when FairDecrease is not used
@@ -741,10 +741,6 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
         }else{
             delay = get_avg_delay();
         }
-
-        if (_debug_src) {
-            cout << " send_time " << timeAsUs(send_time) << " now " << timeAsUs(eventlist().now()) << " sample " << timeAsUs(_raw_rtt) << endl;
-        }
     } else {
         // this can happen when the ACK arrives later than a cumulative ACK covering the NACKed
         // packet.
@@ -970,38 +966,38 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
 
     if (!skip && delay >= _target_Qdelay) {
         fair_increase(newly_acked_bytes);
-        if (_flow.flow_id() == _debug_flowid) {
-            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " fair_increase  _nscc_cwnd " << _cwnd << endl;
+        if (_flow.flow_id() == _debug_flowid || UecSrc::_debug) {
+            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " fair_increase  _nscc_cwnd " << _cwnd << endl;
         }
     } else if (!skip && delay < _target_Qdelay) {
         proportional_increase(newly_acked_bytes,delay);
-        if (_flow.flow_id() == _debug_flowid) {
-            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " proportional_increase _nscc_cwnd " << _cwnd << endl;
+        if (_flow.flow_id() == _debug_flowid || UecSrc::_debug) {
+            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " proportional_increase _nscc_cwnd " << _cwnd << endl;
         }
     } else if (skip && delay >= _target_Qdelay) {    
         multiplicative_decrease(can_decrease,newly_acked_bytes);
-        if (_flow.flow_id() == _debug_flowid) {
-            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " multiplicative_decrease _nscc_cwnd " << _cwnd << endl;
+        if (_flow.flow_id() == _debug_flowid || UecSrc::_debug) {
+            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " multiplicative_decrease _nscc_cwnd " << _cwnd << endl;
         }
     } else if (skip && delay < _target_Qdelay) {
         fair_decrease(can_decrease,newly_acked_bytes);
-        if (_flow.flow_id() == _debug_flowid) {
-            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " fair_decrease _nscc_cwnd " << _cwnd
+        if (_flow.flow_id() == _debug_flowid || UecSrc::_debug) {
+            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " fair_decrease _nscc_cwnd " << _cwnd
                 <<" mtu " << _mtu
                 << "_maxwnd " << _maxwnd << endl;
         }
     }
 
     if ( _received_bytes > _adjust_bytes_threshold || eventlist().now() - _last_adjust_time > _adjust_period_threshold ) {
-        if (_flow.flow_id() == _debug_flowid) {
-            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " fulfill_adjustmentx _nscc_cwnd " << _cwnd
+        if (_flow.flow_id() == _debug_flowid || UecSrc::_debug) {
+            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<<  " " << _flow.str() << " fulfill_adjustmentx _nscc_cwnd " << _cwnd
                 << " inc_bytes " << _inc_bytes
                 << " dec_bytes " << _dec_bytes
                 << endl;
         }
         fulfill_adjustment();
-        if (_flow.flow_id() == _debug_flowid) {
-            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " fulfill_adjustment _nscc_cwnd " << _cwnd << endl;
+        if (_flow.flow_id() == _debug_flowid || UecSrc::_debug) {
+            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " fulfill_adjustment _nscc_cwnd " << _cwnd << endl;
         }
     }
 
@@ -1009,7 +1005,7 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
         _cwnd += _eta;
         _last_eta_time = eventlist().now();
         if (_flow.flow_id() == _debug_flowid) {
-            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " eta _nscc_cwnd " << _cwnd << " target_q_delay " <<timeAsUs(_target_Qdelay) << endl;
+            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " eta _nscc_cwnd " << _cwnd << " target_q_delay " <<timeAsUs(_target_Qdelay) << endl;
         }
     }
 
