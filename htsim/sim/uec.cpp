@@ -51,24 +51,25 @@ double UecSrc::_fi = 1; //fair_increase constant
 double UecSrc::_fi_scale = .25 * UecSrc::_scaling_factor_a;
 
 double UecSrc::_ecn_alpha = 0.125;
-double UecSrc::_delay_alpha = 0.125;
+double UecSrc::_delay_alpha = 0.0125;//0.125;
 
 simtime_picosec UecSrc::_adjust_period_threshold = timeFromUs(12u);
 simtime_picosec UecSrc::_target_Qdelay = timeFromUs(6u);
-uint32_t UecSrc::_adjust_bytes_threshold = 32000*(_target_Qdelay/timeFromUs(12u));
+uint32_t UecSrc::_adjust_bytes_threshold = (simtime_picosec)32000*_target_Qdelay/timeFromUs(12u);
 double UecSrc::_qa_threshold = 4 * UecSrc::_target_Qdelay; 
 
 // constants for when FairDecrease is used
 double UecSrc::_fd = 0.8; //fair_decrease constant
+//double UecSrc::_eta = 0.15 * 4000 * _scaling_factor_a;
 double UecSrc::_eta = 0;
-double UecSrc::_ecn_thresh = 0.2;
+double UecSrc::_ecn_thresh = 0.3;
 bool UecSrc::_enable_qa_gate = false;
-bool UecSrc::_enable_avg_ecn_over_path = true;
+bool UecSrc::_enable_avg_ecn_over_path = false;
 
 void UecSrc::disableFairDecrease() {
     // constants for when FairDecrease is not used
     _fd = 0.0; //fair_decrease constant
-    _eta = 0.15 * (_target_Qdelay/timeFromUs(12u)) * 4000 * UecSrc::_scaling_factor_a;
+    _eta = 0.15 * _target_Qdelay/timeFromUs(12u) * 4000.0 * UecSrc::_scaling_factor_a;
     _ecn_thresh = 0.0;
 }
 
@@ -799,6 +800,11 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
             << endl;
     }
     if (_sender_based_cc){
+        /*if (pkt.ecn_echo()){
+            (this->*updateCwndOnAck)(pkt.ecn_echo(), delay, pkt_size);
+            (this->*updateCwndOnAck)(false, delay, newly_recvd_bytes - pkt_size);
+        }
+        else */
         (this->*updateCwndOnAck)(pkt.ecn_echo(), delay, newly_recvd_bytes);
     }
 
@@ -1027,18 +1033,18 @@ void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes) {
 }
 
 void UecSrc::update_delay(simtime_picosec raw_rtt, bool update_avg, bool skip){
-    // bool new_base_rtt = false;
+    bool new_base_rtt = false;
 
-    // if (_base_rtt == 0 || _base_rtt > _raw_rtt){
-    //     _base_rtt = _raw_rtt;
-    //     new_base_rtt = true;
-    // }
+    if (_base_rtt == 0 || _base_rtt > _raw_rtt){
+         _base_rtt = _raw_rtt;
+         new_base_rtt = true;
+    }
 
-    // if (_bdp == 0 || new_base_rtt){
-    //     //reinitialize BDP, we have new RTT sample.
-    //     _bdp = _raw_rtt * _nic.linkspeed() / 8000000000000;
-    //     _maxwnd = 2 * _bdp;
-    // }
+    if (_bdp == 0 || new_base_rtt){
+         //reinitialize BDP, we have new RTT sample.
+         _bdp = _raw_rtt * _nic.linkspeed() / 8000000000000;
+         _maxwnd = 1.5 * _bdp;
+    }
 
     simtime_picosec delay = _raw_rtt - _base_rtt;
     if(update_avg){
@@ -1070,8 +1076,18 @@ uint16_t UecSrc::get_avg_pktsize(){
     return _mss;  // does not include header
 }
 void UecSrc::average_ecn_bytes(uint32_t pktsize, uint32_t newly_acked_bytes, bool skip) {
-    double value = (double)skip * pktsize / newly_acked_bytes;
-    _exp_avg_ecn = _ecn_alpha * value + (1 - _ecn_alpha) * _exp_avg_ecn;
+    //double value = (double)skip * pktsize / newly_acked_bytes;
+    //_exp_avg_ecn = _ecn_alpha * value + (1 - _ecn_alpha) * _exp_avg_ecn;
+
+    _exp_avg_ecn = _ecn_alpha * skip + (1 - _ecn_alpha) * _exp_avg_ecn;
+
+    int32_t nab = newly_acked_bytes;
+    nab -= pktsize;
+
+    while (nab > 0) {
+        nab -= _mtu;          
+        _exp_avg_ecn = (1 - _ecn_alpha) * _exp_avg_ecn;
+    }
 }
 
 void UecSrc::sackLossDetection(uint32_t ooo, UecBasePacket::seq_t cum_ack) {
@@ -1206,8 +1222,9 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
             << " seqno " << seqno
             << " trimming " << endl;
     }
-    if (_sender_based_cc)
+    if (_sender_based_cc){
         (this->*updateCwndOnNack)(ev, pkt_size);
+    }
 
     if (_debug_src)
         cout << _flow.str() << " " << _nodename << " erasing send record, seqno: " << seqno << " flow " << _flow.str()
