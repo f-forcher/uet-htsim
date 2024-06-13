@@ -403,6 +403,7 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
     _rtx_packets_sent = 0;
     _rts_packets_sent = 0;
     _bounces_received = 0;
+    _acks_received = 0;
 
     if (_load_balancing_algo == BITMAP){
         nextEntropy = &UecSrc::nextEntropy_bitmap;
@@ -710,6 +711,7 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
     if (_debug_src) {
         cout << "processAck " << cum_ack << " ref_epsn " << pkt.acked_psn() << " recvd_bytes " << _recvd_bytes << " newly_recvd_bytes " << newly_recvd_bytes << endl;
     }
+    _acks_received++;
 
     //decrease flightsize.
     _in_flight -= newly_recvd_bytes;
@@ -1694,9 +1696,8 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
     p->set_pathid(ev);
     p->flow().logTraffic(*p, *this, TrafficLogger::PKT_CREATESEND);
 
-    if (_backlog == 0 || (_receiver_based_cc && _credit < 0) || ( _sender_based_cc &&  _in_flight >= _cwnd ))
+    if (_backlog == 0 || (_receiver_based_cc && _credit < 0) || ( _sender_based_cc &&  _in_flight >= _cwnd )) 
         p->set_ar(true);
-    // && _cwnd <= UecSink::_bytes_unacked_threshold) ) 
     
     createSendRecord(_highest_sent, full_pkt_size);
     if (_debug_src)

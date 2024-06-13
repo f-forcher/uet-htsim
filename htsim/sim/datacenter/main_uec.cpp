@@ -748,14 +748,15 @@ int main(int argc, char **argv) {
     }
 
     cout << "Done" << endl;
-    int new_pkts = 0, rtx_pkts = 0, bounce_pkts = 0, rts_pkts = 0;
+    int new_pkts = 0, rtx_pkts = 0, bounce_pkts = 0, rts_pkts = 0, ack_pkts = 0;
     for (size_t ix = 0; ix < uec_srcs.size(); ix++) {
         new_pkts += uec_srcs[ix]->_new_packets_sent;
         rtx_pkts += uec_srcs[ix]->_rtx_packets_sent;
         rts_pkts += uec_srcs[ix]->_rts_packets_sent;
         bounce_pkts += uec_srcs[ix]->_bounces_received;
+        ack_pkts += uec_srcs[ix]->_acks_received;
     }
-    cout << "New: " << new_pkts << " Rtx: " << rtx_pkts << " RTS: " << rts_pkts << " Bounced: " << bounce_pkts << endl;
+    cout << "New: " << new_pkts << " Rtx: " << rtx_pkts << " RTS: " << rts_pkts << " Bounced: " << bounce_pkts << " ACKs:" << ack_pkts << endl;
     /*
     list <const Route*>::iterator rt_i;
     int counts[10]; int hop;

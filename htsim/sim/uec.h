@@ -175,6 +175,7 @@ public:
     uint32_t _rtx_packets_sent;
     uint32_t _rts_packets_sent;
     uint32_t _bounces_received;
+    uint32_t _acks_received;
 
     static bool _debug;
     bool _debug_src;
