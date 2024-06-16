@@ -7,6 +7,15 @@ connection_matrices/perm_1024n_1024c_0u_2000000b.cm
 !Param -paths 128
 !tailFCT 220
 connection_matrices/perm_1024n_1024c_0u_2000000b.cm
+!Experiment Large permutation, oblivious, large queues (1024 nodes)
+!Binary ./htsim_uec
+!Param -sender_cc_only
+!Param -end 1000
+!Param -q 500
+!Param -load_balancing_algo oblivious
+!Param -paths 128
+!tailFCT 220
+connection_matrices/perm_1024n_1024c_0u_2000000b.cm
 !Experiment Large permutation, bitmap (1024 nodes)
 !Binary ./htsim_uec
 !Param -sender_cc_only
@@ -15,10 +24,29 @@ connection_matrices/perm_1024n_1024c_0u_2000000b.cm
 !Param -paths 128
 !tailFCT 220
 connection_matrices/perm_1024n_1024c_0u_2000000b.cm
+!Experiment Large permutation, bitmap, large queues (1024 nodes)
+!Binary ./htsim_uec
+!Param -sender_cc_only
+!Param -end 1000
+!Param -q 500
+!Param -load_balancing_algo bitmap
+!Param -paths 128
+!tailFCT 220
+connection_matrices/perm_1024n_1024c_0u_2000000b.cm
 !Experiment Large permutation, REPS, 1SACK/packet (1024 nodes)
 !Binary ./htsim_uec
 !Param -sender_cc_only
 !Param -end 1000
+!Param -load_balancing_algo reps
+!Param -sack_threshold 4000
+!Param -paths 128
+!tailFCT 220
+connection_matrices/perm_1024n_1024c_0u_2000000b.cm
+!Experiment Large permutation, REPS 1 packet per SACK, large queues (1024 nodes)
+!Binary ./htsim_uec
+!Param -sender_cc_only
+!Param -end 1000
+!Param -q 500
 !Param -load_balancing_algo reps
 !Param -sack_threshold 4000
 !Param -paths 128
@@ -41,42 +69,6 @@ connection_matrices/perm_1024n_1024c_0u_2000000b.cm
 !Param -paths 128
 !tailFCT 220
 connection_matrices/perm_1024n_1024c_0u_2000000b.cm
-!Experiment Large permutation, mixed, 4SACK/packet (1024 nodes)
-!Binary ./htsim_uec
-!Param -sender_cc_only
-!Param -end 1000
-!Param -load_balancing_algo mixed
-!Param -paths 128
-!tailFCT 220
-connection_matrices/perm_1024n_1024c_0u_2000000b.cm
-!Experiment Large permutation, oblivious, large queues (1024 nodes)
-!Binary ./htsim_uec
-!Param -sender_cc_only
-!Param -end 1000
-!Param -q 500
-!Param -load_balancing_algo oblivious
-!Param -paths 128
-!tailFCT 220
-connection_matrices/perm_1024n_1024c_0u_2000000b.cm
-!Experiment Large permutation, bitmap, large queues (1024 nodes)
-!Binary ./htsim_uec
-!Param -sender_cc_only
-!Param -end 1000
-!Param -q 500
-!Param -load_balancing_algo bitmap
-!Param -paths 128
-!tailFCT 220
-connection_matrices/perm_1024n_1024c_0u_2000000b.cm
-!Experiment Large permutation, REPS 1 packet per SACK, large queues (1024 nodes)
-!Binary ./htsim_uec
-!Param -sender_cc_only
-!Param -end 1000
-!Param -q 500
-!Param -load_balancing_algo reps
-!Param -sack_threshold 4000
-!Param -paths 128
-!tailFCT 220
-connection_matrices/perm_1024n_1024c_0u_2000000b.cm
 !Experiment Large permutation, mixed 1 packet per SACK, large queues (1024 nodes)
 !Binary ./htsim_uec
 !Param -sender_cc_only
@@ -84,5 +76,13 @@ connection_matrices/perm_1024n_1024c_0u_2000000b.cm
 !Param -q 500
 !Param -load_balancing_algo mixed
 !Param -sack_threshold 4000
+!Param -paths 128
+!tailFCT 220
+connection_matrices/perm_1024n_1024c_0u_2000000b.cm
+!Experiment Large permutation, mixed, 4SACK/packet (1024 nodes)
+!Binary ./htsim_uec
+!Param -sender_cc_only
+!Param -end 1000
+!Param -load_balancing_algo mixed
 !Param -paths 128
 !tailFCT 220
