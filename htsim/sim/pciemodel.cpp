@@ -2,8 +2,8 @@
 #include "pciemodel.h"
 #include "uec.h"
 
-mem_b PCIeModel::_max_pcie_backlog = 1000000;
-mem_b PCIeModel::_min_threshold = 200000;
+mem_b PCIeModel::_max_pcie_backlog = 5000000;
+mem_b PCIeModel::_min_threshold = 1000000;
 
 static unsigned pktByteTimes(unsigned size) {
     // IPG (96 bit times) + preamble + SFD + ether header + FCS = 38B
@@ -68,7 +68,7 @@ void PCIeModel::adjustCreditRate() {
     }
 
     if (UecSrc::_debug)
-        cout << "At " << timeAsUs(eventlist().now()) << "PCIe backlog " << _backlog << " rate "
+        cout << "At " << timeAsUs(eventlist().now()) << " PCIe backlog " << _backlog << " rate "
              << _pcie_rate << endl;
 
     _pullPacer->updatePullRate(UecPullPacer::PCIE, _pcie_rate);
