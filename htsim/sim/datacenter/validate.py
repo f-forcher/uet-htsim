@@ -106,6 +106,7 @@ def run_experiments(input_filename):
             lines = output.splitlines()
 
             fcttail = 0
+            fctmin = 0
             actual_connection_count = 0
             for x in lines:
                 if "finished" in str(x):
@@ -120,6 +121,10 @@ def run_experiments(input_filename):
                     flowname = a[1]
                     fct = float(items[8])
                     fcttail = fct
+
+                    if (fctmin == 0):
+                        fctmin = fct
+
 
                     if items[1] in targetFCT:
                         if fct <= targetFCT[items[1]]:
@@ -140,6 +145,7 @@ def run_experiments(input_filename):
             else:
                 print ("[PASS] Connection count",actual_connection_count)
 
+            print ("FCT Spread",fctmin,"->",fcttail, "ratio",fcttail/fctmin)
             print ("Summary:",x.decode('utf-8'))
 
         else:
