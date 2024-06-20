@@ -559,7 +559,7 @@ int main(int argc, char **argv) {
 
     no_of_nodes = conns->N;
 
-
+    simtime_picosec network_rtt = 0;
     vector <FatTreeTopology*> topo;
     topo.resize(planes);
     for (uint32_t p = 0; p < planes; p++) {
@@ -585,7 +585,15 @@ int main(int argc, char **argv) {
         if (log_switches) {
             topo[p]->add_switch_loggers(logfile, timeFromUs(20.0));
         }
+
+        if (p==0) {
+            network_rtt = 2 * topo[p]->get_diameter_latency();
+        } else {
+            // We only allow identical network rtts for now
+            assert(network_rtt == topo[p]->get_diameter_latency());
+        }
     }
+    cout << "network_rtt " << timeAsUs(network_rtt) << endl;
     
     //handle link failures specified in the connection matrix.
     for (size_t c = 0; c < conns->failures.size(); c++){
@@ -629,8 +637,6 @@ int main(int argc, char **argv) {
         cout << "We are taking the plane 0 to calculate the network rtt; If all the planes have the same tiers, you can remove this check." << endl;
         assert(false);
     }
-    simtime_picosec network_rtt = topo[0]->get_tiers()*2*hop_latency*2; //+ timeFromSec((packet_size*8.0)/linkspeed)*tiers*2;
-    cout << "network_rtt " << timeAsUs(network_rtt) << endl;
 
     for (size_t c = 0; c < all_conns->size(); c++){
         connection* crt = all_conns->at(c);

@@ -285,22 +285,34 @@ FatTreeTopology::FatTreeTopology(uint32_t no_of_nodes, linkspeed_bps linkspeed, 
     _hop_latency = latency;
     _switch_latency = switch_latency;
 
+    _diameter_latency = 0;
     if (_link_latencies[TOR_TIER] == 0) {
-        cout << "Fat Tree topology (0) with " << timeAsUs(_hop_latency) << "us links and " << timeAsUs(_switch_latency) <<"us switching latency." <<endl;
+        _diameter_latency = (_hop_latency * (2 * _tiers)) + (_switch_latency * (2 * _tiers - 1));
+        cout << "Fat Tree topology (0) with " << timeAsUs(_hop_latency) << "us links and " 
+             << timeAsUs(_switch_latency) << "us switching latency for " 
+             << timeAsUs(_diameter_latency) << "us diameter latency." << endl;
     } else {
+
+        _diameter_latency = 2 * (_link_latencies[TOR_TIER] + _link_latencies[AGG_TIER]) \
+                            + 2 * _switch_latencies[TOR_TIER] + _switch_latencies[AGG_TIER];
+        if (_tiers == 3) {
+            _diameter_latency += 2 * _link_latencies[CORE_TIER] \
+                                 + _switch_latencies[AGG_TIER] + _switch_latencies[CORE_TIER];
+        }
+
         cout << "Fat Tree topology (0) with "
              << timeAsUs(_link_latencies[TOR_TIER]) << "us Src-ToR links, "
              << timeAsUs(_link_latencies[AGG_TIER]) << "us ToR-Agg links, ";
         if (_tiers == 3) {
             cout << timeAsUs(_link_latencies[CORE_TIER]) << "us Agg-Core links, ";
         }
+
         cout << timeAsUs(_switch_latencies[TOR_TIER]) << "us ToR switch latency, "
              << timeAsUs(_switch_latencies[AGG_TIER]) << "us Agg switch latency";
         if (_tiers == 3) {
             cout << ", " << timeAsUs(_switch_latencies[CORE_TIER]) << "us Core switch latency." << endl;
-        } else {
-            cout << "." << endl;
-        }
+        } 
+        cout << " for " << timeAsUs(_diameter_latency) << "us diameter latency." << endl;;
     }
     set_params(no_of_nodes);
 
@@ -324,8 +336,16 @@ FatTreeTopology::FatTreeTopology(uint32_t no_of_nodes, linkspeed_bps linkspeed, 
         _hop_latency = timeFromUs((uint32_t)0); 
     }
     _switch_latency = timeFromUs((uint32_t)0); 
+
+    _diameter_latency = 2 * (_hop_latency + _hop_latency) \
+                        + 3 * _switch_latency;
+    if (_tiers == 3) {
+        _diameter_latency += 2 * _hop_latency \
+                                + 2 * _switch_latency;
+    }
  
-    cout << "Fat tree topology (1) with " << no_of_nodes << " nodes" << endl;
+    cout << "Fat tree topology (1) with " << no_of_nodes << " nodes"
+         << " and " << timeAsUs(_diameter_latency) << "us diameter latency." << endl;;
     set_params(no_of_nodes);
 
     init_network();
@@ -342,6 +362,13 @@ FatTreeTopology::FatTreeTopology(uint32_t no_of_nodes, linkspeed_bps linkspeed, 
         _hop_latency = timeFromUs((uint32_t)0); 
     }
     _switch_latency = timeFromUs((uint32_t)0); 
+    _diameter_latency = 2 * (_hop_latency + _hop_latency) \
+                        + 3 * _switch_latency;
+    if (_tiers == 3) {
+        _diameter_latency += 2 * _hop_latency \
+                                + 2 * _switch_latency;
+    }
+ 
     _logger_factory = logger_factory;
     _qt = q;
     _sender_qt = FAIR_PRIO;
@@ -351,7 +378,8 @@ FatTreeTopology::FatTreeTopology(uint32_t no_of_nodes, linkspeed_bps linkspeed, 
 
     failed_links = num_failed;
   
-    cout << "Fat tree topology (2) with " << no_of_nodes << " nodes" << endl;
+    cout << "Fat tree topology (2) with " << no_of_nodes << " nodes" 
+         << " and " << timeAsUs(_diameter_latency) << "us diameter latency." << endl;;
     set_params(no_of_nodes);
 
     init_network();
@@ -369,6 +397,12 @@ FatTreeTopology::FatTreeTopology(uint32_t no_of_nodes, linkspeed_bps linkspeed, 
         _hop_latency = timeFromUs((uint32_t)0); 
     }
     _switch_latency = timeFromUs((uint32_t)0); 
+    _diameter_latency = 2 * (_hop_latency + _hop_latency) \
+                        + 3 * _switch_latency;
+    if (_tiers == 3) {
+        _diameter_latency += 2 * _hop_latency \
+                                + 2 * _switch_latency;
+    }
     _logger_factory = logger_factory;
     _qt = qtype;
     _sender_qt = sender_qtype;
@@ -378,7 +412,8 @@ FatTreeTopology::FatTreeTopology(uint32_t no_of_nodes, linkspeed_bps linkspeed, 
 
     failed_links = num_failed;
 
-    cout << "Fat tree topology (3) with " << no_of_nodes << " nodes" << endl;
+    cout << "Fat tree topology (3) with " << no_of_nodes << " nodes" 
+         << " and " << timeAsUs(_diameter_latency) << "us diameter latency." << endl;;
     set_params(no_of_nodes);
 
     init_network();
