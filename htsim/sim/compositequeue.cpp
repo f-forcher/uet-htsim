@@ -6,13 +6,13 @@
 #include "ecn.h"
 
 static int global_queue_id=0;
-static bool _disable_trim = false;
 #define DEBUG_QUEUE_ID -1 // set to queue ID to enable debugging
 
 CompositeQueue::CompositeQueue(linkspeed_bps bitrate, mem_b maxsize, EventList& eventlist, 
-                               QueueLogger* logger, uint16_t trim_size)
+                               QueueLogger* logger, uint16_t trim_size, bool disable_trim)
     : Queue(bitrate, maxsize, eventlist, logger)
 {
+    _disable_trim = disable_trim;
     _trim_size = trim_size;
     _ratio_high = 100000;
     _ratio_low = 1;

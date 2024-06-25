@@ -51,6 +51,7 @@ int main(int argc, char **argv) {
     uint32_t tiers = 3; // we support 2 and 3 tier fattrees
     uint32_t planes = 1;  // multi-plane topologies
     uint32_t ports = 1;  // ports per NIC
+    bool disable_trim = false; // Disable trimming, drop instead
     uint16_t trimsize = 64; // size of a trimmed packet
     simtime_picosec logtime = timeFromMs(0.25); // ms;
     stringstream filename(ios_base::out);
@@ -156,7 +157,7 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i],"-sender_cc")) {
             UecSrc::_sender_based_cc = true;
             UecSink::_oversubscribed_cc = false;
-            cout << "sender based CC enabled "<< tiers << endl;
+            cout << "sender based CC enabled " << endl;
         }
         else if (!strcmp(argv[i],"-load_balancing_algo")){
             if (!strcmp(argv[i+1], "bitmap")) {
@@ -269,12 +270,19 @@ int main(int argc, char **argv) {
             UecSink::_oversubscribed_cc = true;
             cout << "Using receiver oversubscribed CC " << endl;
         }
+        else if (!strcmp(argv[i],"-fastlossrecovery")){
+            UecSrc::_enable_fast_loss_recovery = true;
+            cout << "Using sender fast loss recovery heuristic " << endl;
+        }
         else if (!strcmp(argv[i],"-ecn")){
             // fraction of queuesize, between 0 and 1
             ecn = true;
             ecn_low = atoi(argv[i+1]); 
             ecn_high = atoi(argv[i+2]);
             i+=2;
+        } else if (!strcmp(argv[i],"-disable_trim")) {
+            disable_trim = true;
+            cout << "Trimming disabled, dropping instread." << endl;
         } else if (!strcmp(argv[i],"-trimsize")){
             // size of trimmed packet in bytes
             trimsize = atoi(argv[i+1]);
@@ -452,6 +460,7 @@ int main(int argc, char **argv) {
     FatTreeSwitch::_ar_sticky = ar_sticky;
     FatTreeSwitch::_sticky_delta = timeFromUs(ar_sticky_delta);
     FatTreeSwitch::_ecn_threshold_fraction = ecn_thresh;
+    FatTreeSwitch::_disable_trim = disable_trim;
     FatTreeSwitch::_trim_size = trimsize;
 
     eventlist.setEndtime(timeFromUs((uint32_t)end_time));

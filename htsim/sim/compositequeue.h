@@ -21,7 +21,8 @@
 class CompositeQueue : public Queue {
  public:
     CompositeQueue(linkspeed_bps bitrate, mem_b maxsize, 
-                   EventList &eventlist, QueueLogger* logger, uint16_t trim_size);
+                   EventList &eventlist, QueueLogger* logger, 
+                   uint16_t trim_size, bool disable_trim=false);
     virtual void receivePacket(Packet& pkt);
     virtual void doNextEvent();
     // should really be private, but loggers want to see
@@ -64,6 +65,8 @@ class CompositeQueue : public Queue {
     void beginService(); // start serving the item at the head of the queue
     void completeService(); // wrap up serving the item at the head of the queue
     bool decide_ECN();
+
+    bool _disable_trim;
 
     int _serv;
     int _ratio_high, _ratio_low, _crt;

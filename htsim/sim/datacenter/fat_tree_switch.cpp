@@ -318,6 +318,7 @@ double FatTreeSwitch::_ecn_threshold_fraction = 0.2;
 double FatTreeSwitch::_speculative_threshold_fraction = 0.2;
 int8_t (*FatTreeSwitch::fn)(FibEntry*,FibEntry*)= &FatTreeSwitch::compare_queuesize;
 uint16_t FatTreeSwitch::_trim_size = 64;
+bool FatTreeSwitch::_disable_trim = false;
 
 Route* FatTreeSwitch::getNextHop(Packet& pkt, BaseQueue* ingress_port){
     vector<FibEntry*> * available_hops = _fib->getRoutes(pkt.dst());
