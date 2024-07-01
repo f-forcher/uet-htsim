@@ -22,9 +22,16 @@ void exit_error(char* progr){
     exit(1);
 }
 
+simtime_picosec compute_latency(int cable_length){
+    return timeFromNs(5.0 * cable_length);
+}
+
 int main(int argc, char **argv) {
     EventList eventlist;
     simtime_picosec end_time = timeFromUs(10000u);
+
+    int cable_length[1000];
+    bzero(cable_length,1000*sizeof(int));
 
     Clock c(timeFromSec(50/100.), eventlist);
 
@@ -48,7 +55,7 @@ int main(int argc, char **argv) {
     UecSink::_bytes_unacked_threshold = 3000;//force one ack per packet
     linkspeed_bps linkspeed = speedFromMbps((uint64_t)100000);
 
-    simtime_picosec RTT1=timeFromUs((uint32_t)3);
+    simtime_picosec RTT1=timeFromUs((uint32_t)1);
 
     int flow_count = 1;
     int flow_size = 20000000;
@@ -59,12 +66,11 @@ int main(int argc, char **argv) {
             filename.str(std::string());
             filename << argv[i+1];
             i++;
-        /*
         } else if (!strcmp(argv[i],"-oversubscribed_cc")) {
-              NdpSink::_oversubscribed_congestion_control = true;
-        */
+              UecSink::_oversubscribed_cc = true;
         } else if (!strcmp(argv[i],"-conns")) {
             flow_count = atoi(argv[i+1]);
+            assert (flow_count < 1000);
             cout << "no_of_conns "<<flow_count << endl;
             i++;
         } else if (!strcmp(argv[i],"-end")) {
@@ -95,6 +101,12 @@ int main(int argc, char **argv) {
             ecn_threshold_min = atoi(argv[i+1]); 
             ecn_threshold_max = atoi(argv[i+2]); 
             i+=2;
+        } else if (!strcmp(argv[i],"-cable_lengths")){
+            for (int j=0;j<flow_count;j++) {
+                cable_length[j] = atoi(argv[i+1]);
+                cout << "Cable length for sender " << j << " is " << cable_length[j] << "m" << endl;
+                i++;
+            }
         } else if (!strcmp(argv[i],"-linkspeed")){
             // linkspeed specified is in Mbps
             linkspeed = speedFromMbps(atof(argv[i+1]));
@@ -160,6 +172,16 @@ int main(int argc, char **argv) {
     CompositeQueue queue2(linkspeed, queuesize, eventlist, NULL, UecBasePacket::ACKSIZE); queue2.setName("Queue2"); logfile.writeName(queue2);
     queue.set_ecn_thresholds(ecn_threshold_min,ecn_threshold_max);
 
+    //figure out max cable length
+    int max_cl = 0;
+    for (i=0;i<flow_count;i++)
+        if (max_cl < cable_length[i])
+            max_cl = cable_length[i];
+
+    UecSrc::_min_rto = 10*timeFromUs(2.0 + queuesize * 8 * 1000000 / linkspeed)+compute_latency(max_cl);
+    cout << "Setting min RTO to " << timeAsUs(UecSrc::_min_rto) << endl;
+    cout << "BDP is " << (int)(linkspeed * timeAsSec(compute_latency(max_cl)+timeFromUs(2.0))) << "B , or " << (int)(linkspeed * timeAsSec(compute_latency(max_cl)+timeFromUs(2.0)))/mtu << "pkts" << endl;
+
     UecSrc* uecSrc;
     UecNIC* uecNic;
     UecSink* uecSnk;
@@ -207,17 +229,16 @@ int main(int argc, char **argv) {
         // tell it the route
         routeout = new route_t();
         // Uec expects each src host to have a FairPriorityQueue
-        routeout->push_back(new FairPriorityQueue(linkspeed, memFromPkt(1000),eventlist, NULL));
+        //routeout->push_back(new FairPriorityQueue(linkspeed, memFromPkt(1000),eventlist, NULL));
+        routeout->push_back(new Pipe(compute_latency(cable_length[i]),eventlist));
         routeout->push_back(&queue); 
-        routeout->push_back(&pipe1);
-        routeout->push_back(new CompositeQueue(linkspeed, queuesize, eventlist, NULL, UecBasePacket::ACKSIZE));
         routeout->push_back(new Pipe(RTT1, eventlist));
         routeout->push_back(uecSnk->getPort(0));
         
         routein  = new route_t();
         routein->push_back(&pipe1);
         routein->push_back(&queue2); 
-        routein->push_back(&pipe1);
+        routein->push_back(new Pipe(compute_latency(cable_length[i]),eventlist));
         routein->push_back(uecSrc->getPort(0)); 
 
         uecSrc->connectPort(0, *routeout, *routein, *uecSnk, timeFromUs(0.0));

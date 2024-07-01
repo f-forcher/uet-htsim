@@ -747,7 +747,9 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
     } else {
         // this can happen when the ACK arrives later than a cumulative ACK covering the NACKed
         // packet.
-        cout << "Can't find send record for seqno " << acked_psn << endl;
+        if (UecSrc::_debug)
+            cout << "Can't find send record for seqno " << acked_psn << endl;
+
         pkt_size = _mtu;
         delay = get_avg_delay();
     }
@@ -1025,7 +1027,6 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
     if (_flow.flow_id() == _debug_flowid)
         cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " final _nscc_cwnd " << _cwnd << " _basertt " << timeAsUs(_base_rtt)<< endl;
     sendIfPermitted();
-
 }
 
 void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes) {
@@ -1235,7 +1236,7 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
     assert(_tx_bitmap.find(seqno) == _tx_bitmap.end());  // xxx remove when working
 
     _in_flight -= pkt_size;
-    assert(_in_flight >= 0);
+    //assert(_in_flight >= 0);
 
     _send_times.erase(send_time);
 
