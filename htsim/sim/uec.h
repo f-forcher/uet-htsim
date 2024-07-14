@@ -106,6 +106,7 @@ public:
         uint64_t rts_nacks;
     };
     UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, uint32_t no_of_ports, bool rts = false);
+    void delFromSendTimes(simtime_picosec time, UecDataPacket::seq_t seq_no);
     static void disableFairDecrease();
     static void parameterScaleToTargetQ();
     void logFlowEvents(FlowEventLogger& flow_logger) { _flow_logger = &flow_logger; }
