@@ -162,6 +162,7 @@ public:
     static bool _enable_qa_gate;
     static bool _enable_avg_ecn_over_path;
 
+    static bool _enable_fast_loss_recovery;
 
     virtual const string& nodename() { return _nodename; }
     inline void setFlowId(flowid_t flow_id) { _flow.set_flowid(flow_id); }
@@ -235,7 +236,7 @@ public:
     void processAck(const UecAckPacket& pkt);
     void processNack(const UecNackPacket& pkt);
     void processPull(const UecPullPacket& pkt);
-    void sackLossDetection(uint32_t ooo, UecBasePacket::seq_t cum_ack);
+    void fastLossRecovery(uint32_t ooo, UecBasePacket::seq_t cum_ack);
 
     //added for NSCC
     void quick_adapt(bool trimmed);

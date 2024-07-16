@@ -65,6 +65,7 @@ double UecSrc::_eta = 0;
 double UecSrc::_ecn_thresh = 0.3;
 bool UecSrc::_enable_qa_gate = false;
 bool UecSrc::_enable_avg_ecn_over_path = false;
+bool UecSrc::_enable_fast_loss_recovery = false;
 
 void UecSrc::disableFairDecrease() {
     // constants for when FairDecrease is not used
@@ -835,7 +836,9 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
         cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " " << _nodename << " processAck: " << cum_ack << " flow " << _flow.str() << " cwnd " << _cwnd << " flightsize " << _in_flight << " delay " << timeAsUs(delay) << " newlyrecvd " << newly_recvd_bytes << " skip " << pkt.ecn_echo() << " raw rtt " << _raw_rtt <<  " ecn avg " << _exp_avg_ecn << endl;
     }
 
-    // sackLossDetection(ooo, cum_ack);
+    if (_sender_based_cc && _enable_fast_loss_recovery) {
+        fastLossRecovery(ooo, cum_ack);
+    }
 
     stopSpeculating();
 
@@ -1112,7 +1115,7 @@ void UecSrc::average_ecn_bytes(uint32_t pktsize, uint32_t newly_acked_bytes, boo
     }
 }
 
-void UecSrc::sackLossDetection(uint32_t ooo, UecBasePacket::seq_t cum_ack) {
+void UecSrc::fastLossRecovery(uint32_t ooo, UecBasePacket::seq_t cum_ack) {
     uint16_t avg_size = get_avg_pktsize();
     int threshold = min(_cwnd, _maxwnd);
     threshold = max(threshold, 5*avg_size);
@@ -1139,11 +1142,8 @@ void UecSrc::sackLossDetection(uint32_t ooo, UecBasePacket::seq_t cum_ack) {
 
     // move the packet to the RTX queue
     
-    //(rtx_seqno < (_cwnd/avg_size + cum_ack))
-    //_loss_counter < _cwnd/(2*get_avg_pktsize())
-    //(rtx_seqno < (_cwnd/avg_size + cum_ack))
     for (UecBasePacket::seq_t rtx_seqno = cum_ack; rtx_seqno < _recovery_seqno &&  _loss_counter < _cwnd/get_avg_pktsize() ; rtx_seqno ++ ){
-        if (rtx_seqno <= _highest_rtx_sent)
+        if (rtx_seqno < _highest_rtx_sent)
             continue;
         auto i = _tx_bitmap.find(rtx_seqno);
         if (i == _tx_bitmap.end())
@@ -1170,16 +1170,10 @@ void UecSrc::sackLossDetection(uint32_t ooo, UecBasePacket::seq_t cum_ack) {
         assert(_tx_bitmap.find(seqno) == _tx_bitmap.end()); // xxx remove when working
 
         _in_flight -= pkt_size;
-        if(_in_flight < 0)
-            cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " rtx_seqno " << rtx_seqno
-                << " _highest_recv_seqno " << _highest_recv_seqno
-                << " _in_flight "<< _in_flight
-                << endl;
-        assert(_in_flight >= 0);
 
         // _send_times.erase(send_time);
         delFromSendTimes(send_time, rtx_seqno);
-        _highest_rtx_sent = seqno;
+        _highest_rtx_sent = seqno+1;
         _loss_counter ++;
         queueForRtx(seqno, pkt_size);
 

@@ -716,7 +716,7 @@ FatTreeTopology::alloc_queue(QueueLogger* queueLogger, linkspeed_bps speed, mem_
     case COMPOSITE:
         {
             CompositeQueue* q = new CompositeQueue(speed, queuesize, *_eventlist, queueLogger,
-                                                   FatTreeSwitch::_trim_size);
+                                                   FatTreeSwitch::_trim_size, FatTreeSwitch::_disable_trim);
 
             if (_enable_ecn){
                 if (!tor || dir == UPLINK || _enable_ecn_on_tor_downlink) {
@@ -754,13 +754,14 @@ FatTreeTopology::alloc_queue(QueueLogger* queueLogger, linkspeed_bps speed, mem_
         return new LosslessOutputQueue(speed, memFromPkt(10000), *_eventlist, queueLogger);
     case COMPOSITE_ECN:
         if (tor && dir == DOWNLINK) 
-            return new CompositeQueue(speed, queuesize, *_eventlist, queueLogger, FatTreeSwitch::_trim_size);
+            return new CompositeQueue(speed, queuesize, *_eventlist, queueLogger, 
+                                      FatTreeSwitch::_trim_size, FatTreeSwitch::_disable_trim);
         else
             return new ECNQueue(speed, memFromPkt(2*SWITCH_BUFFER), *_eventlist, queueLogger, memFromPkt(15));
     case COMPOSITE_ECN_LB:
         {
             CompositeQueue* q = new CompositeQueue(speed, queuesize, *_eventlist, queueLogger,
-                                                   FatTreeSwitch::_trim_size);
+                                                   FatTreeSwitch::_trim_size, FatTreeSwitch::_disable_trim);
             if (!tor || dir == UPLINK || _enable_ecn_on_tor_downlink) {
                 // don't use ECN on ToR downlinks unless configured so.
                 q->set_ecn_threshold(FatTreeSwitch::_ecn_threshold_fraction * queuesize);
