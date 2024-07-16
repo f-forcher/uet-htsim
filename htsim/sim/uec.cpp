@@ -474,6 +474,22 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
 
 }
 
+void UecSrc::delFromSendTimes(simtime_picosec time, UecDataPacket::seq_t seq_no) {
+    cout << eventlist().now() << " flowid " << _flow.flow_id() << " _send_times.erase " << time << " for " << seq_no << endl;
+    auto snd_seq_range = _send_times.equal_range(time);
+    auto snd_it = snd_seq_range.first;
+    while (snd_it != snd_seq_range.second) {
+        if (snd_it->second == seq_no) {
+            _send_times.erase(snd_it);
+            break;
+        } else {
+            ++snd_it;
+        }
+    }
+    assert(snd_it->second == seq_no);
+    assert(snd_it!=snd_seq_range.second);
+}
+
 void UecSrc::connectPort(uint32_t port_num,
                           Route& routeout,
                           Route& routeback,
@@ -571,7 +587,8 @@ mem_b UecSrc::handleAckno(UecDataPacket::seq_t ackno) {
         } 
 
         _tx_bitmap.erase(i);
-        _send_times.erase(send_time);
+        // _send_times.erase(send_time);
+        delFromSendTimes(send_time, ackno);
 
         if (send_time == _rto_send_time) {
             recalculateRTO();
@@ -593,7 +610,8 @@ mem_b UecSrc::handleAckno(UecDataPacket::seq_t ackno) {
              << endl;
     }    
     _tx_bitmap.erase(i);
-    _send_times.erase(send_time);
+    // _send_times.erase(send_time);
+    delFromSendTimes(send_time, ackno);
 
     if (send_time == _rto_send_time) {
         recalculateRTO();
@@ -639,7 +657,8 @@ mem_b UecSrc::handleCumulativeAck(UecDataPacket::seq_t cum_ack) {
         }  
         _tx_bitmap.erase(i);
         i = _tx_bitmap.begin();
-        _send_times.erase(send_time);
+        // _send_times.erase(send_time);
+        delFromSendTimes(send_time, seqno);
         if (send_time == _rto_send_time) {
             recalculateRTO();
         }
@@ -1158,7 +1177,8 @@ void UecSrc::sackLossDetection(uint32_t ooo, UecBasePacket::seq_t cum_ack) {
                 << endl;
         assert(_in_flight >= 0);
 
-        _send_times.erase(send_time);
+        // _send_times.erase(send_time);
+        delFromSendTimes(send_time, rtx_seqno);
         _highest_rtx_sent = seqno;
         _loss_counter ++;
         queueForRtx(seqno, pkt_size);
@@ -1238,7 +1258,8 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
     _in_flight -= pkt_size;
     //assert(_in_flight >= 0);
 
-    _send_times.erase(send_time);
+    // _send_times.erase(send_time);
+    delFromSendTimes(send_time, seqno);
 
     stopSpeculating();
     queueForRtx(seqno, pkt_size);

@@ -106,6 +106,7 @@ public:
         uint64_t rts_nacks;
     };
     UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, uint32_t no_of_ports, bool rts = false);
+    void delFromSendTimes(simtime_picosec time, UecDataPacket::seq_t seq_no);
     static void disableFairDecrease();
     static void parameterScaleToTargetQ();
     void logFlowEvents(FlowEventLogger& flow_logger) { _flow_logger = &flow_logger; }
@@ -201,7 +202,7 @@ public:
 
     // we need to access the in_flight packet list quickly by sequence number, or by send time.
     map<UecDataPacket::seq_t, sendRecord> _tx_bitmap;
-    map<simtime_picosec, UecDataPacket::seq_t> _send_times;
+    multimap<simtime_picosec, UecDataPacket::seq_t> _send_times;
 
     map<UecDataPacket::seq_t, mem_b> _rtx_queue;
     void startFlow();
