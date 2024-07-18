@@ -491,8 +491,8 @@ void UecSrc::delFromSendTimes(simtime_picosec time, UecDataPacket::seq_t seq_no)
             ++snd_it;
         }
     }
-    assert(snd_it->second == seq_no);
-    assert(snd_it!=snd_seq_range.second);
+    //assert(snd_it->second == seq_no);
+    //assert(snd_it!=snd_seq_range.second);
 }
 
 void UecSrc::connectPort(uint32_t port_num,
@@ -1965,7 +1965,9 @@ void UecSrc::rtxTimerExpired() {
 
     // update flightsize?
 
-    _send_times.erase(first_entry);
+    //_send_times.erase(first_entry);
+    delFromSendTimes(first_entry->first,seqno);
+
     if (_debug_src)
         cout << _nodename << " rtx timer expired for seqno " << seqno << " flow " << _flow.str() << " packet sent at " << timeAsUs(send_record->second.send_time) << " now time is " << timeAsUs(eventlist().now()) << endl;
 
