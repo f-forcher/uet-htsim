@@ -59,6 +59,8 @@ int main(int argc, char **argv) {
     simtime_picosec switch_latency = timeFromUs((uint32_t)0);
     queue_type qt = COMPOSITE;
 
+    UecSrc::_load_balancing_algo = UecSrc::MIXED;
+
     bool log_sink = false;
     bool log_nic = false;
     bool log_flow_events = true;
@@ -93,7 +95,7 @@ int main(int argc, char **argv) {
 
     char* tm_file = NULL;
     char* topo_file = NULL;
-    bool disable_fair_decrease = false;
+    bool disable_fair_decrease = true, enable_qa_gate = true;
 
     while (i<argc) {
         if (!strcmp(argv[i],"-o")) {
@@ -134,8 +136,7 @@ int main(int argc, char **argv) {
             disable_fair_decrease = true;
             cout << "fair_decrease disabled" << endl;
         } else if (!strcmp(argv[i],"-enable_qa_gate")) {
-            UecSrc::_enable_qa_gate = true;
-            cout << "enable quick adapt gate" << endl;            
+            enable_qa_gate = true;
         } else if (!strcmp(argv[i],"-enable_avg_ecn_over_path")) {
             UecSrc::_enable_avg_ecn_over_path = true;
             cout << "enable avg_ecn_over_path algorithm." << endl;            
@@ -148,6 +149,10 @@ int main(int argc, char **argv) {
             
             if (!strcmp(argv[i+1],"dctcp")) 
                 UecSrc::_sender_cc_algo = UecSrc::DCTCP;
+            else if (!strcmp(argv[i+1],"nscc")) 
+                UecSrc::_sender_cc_algo = UecSrc::NSCC;
+            else if (!strcmp(argv[i+1],"constant")) 
+                UecSrc::_sender_cc_algo = UecSrc::CONSTANT;
             else {
                 cout << "UNKNOWN CC ALGO " << argv[i+1] << endl;
                 exit(1);
@@ -449,6 +454,11 @@ int main(int argc, char **argv) {
         FatTreeTopology::set_ecn_parameters(true, !receiver_driven, ecn_low,ecn_high);
     }
 
+    if (enable_qa_gate){
+        UecSrc::_enable_qa_gate = true;
+        cout << "enable quick adapt gate" << endl;            
+    }
+
     if(disable_fair_decrease){
         UecSrc::disableFairDecrease();
     }
@@ -588,8 +598,11 @@ int main(int argc, char **argv) {
                                           snd_type);
         }
 
-        OversubscribedCC::setOversubscriptionRatio(topo[p]->get_oversubscription_ratio());
-        cout << "Oversubscription ratio is " << topo[p]->get_oversubscription_ratio() << endl;
+        if (topo[p]->get_oversubscription_ratio() > 1 && !UecSrc::_sender_based_cc){
+            UecSink::_oversubscribed_cc = true;
+            OversubscribedCC::setOversubscriptionRatio(topo[p]->get_oversubscription_ratio());
+            cout << "Using simple receiver oversubscribed CC. Oversubscription ratio is " << topo[p]->get_oversubscription_ratio() << endl;
+        }
 
         if (log_switches) {
             topo[p]->add_switch_loggers(logfile, timeFromUs(20.0));
@@ -620,7 +633,7 @@ int main(int argc, char **argv) {
     vector<UecNIC*> nics;
 
     for (size_t ix = 0; ix < no_of_nodes; ix++){
-        pacers.push_back(new UecPullPacer(linkspeed, 0.99, UecSrc::_mtu, eventlist, ports));
+        pacers.push_back(new UecPullPacer(linkspeed, 0.97, UecBasePacket::unquantize(UecSink::_credit_per_pull), eventlist, ports));
 
         if (UecSink::_model_pcie)
             pcie_models.push_back(new PCIeModel(linkspeed * pcie_rate,UecSrc::_mtu,eventlist,pacers[ix]));
@@ -667,7 +680,7 @@ int main(int argc, char **argv) {
         if (receiver_driven)
             uec_snk = new UecSink(NULL,pacers[dest],*nics.at(dest), ports);
         else //each connection has its own pacer, so receiver driven mode does not kick in! 
-            uec_snk = new UecSink(NULL,linkspeed,0.99,UecSrc::_mtu,eventlist,*nics.at(dest), ports);
+            uec_snk = new UecSink(NULL,linkspeed,1.1,UecBasePacket::unquantize(UecSink::_credit_per_pull),eventlist,*nics.at(dest), ports);
 
         uec_src->setName("Uec_" + ntoa(src) + "_" + ntoa(dest));
         logfile.writeName(*uec_src);

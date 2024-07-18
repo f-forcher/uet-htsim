@@ -3,7 +3,7 @@ connection_matrices/one.cm
 !Binary ./htsim_uec
 !Param -end 1000
 !Param -sender_cc_only
-!tailFCT 180
+!tailFCT 190
 connection_matrices/bidir.cm
 !Experiment Bidirectional Connection
 !Binary ./htsim_uec
@@ -15,7 +15,7 @@ connection_matrices/incast.cm
 !Binary ./htsim_uec
 !Param -sender_cc_only
 !Param -end 3000
-!tailFCT 2500
+!tailFCT 2550
 connection_matrices/incast_128.cm
 !Experiment 128 node incast
 !Binary ./htsim_uec

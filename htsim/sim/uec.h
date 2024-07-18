@@ -19,7 +19,7 @@
 //  *** don't change this default - override it by calling UecSrc::setMinRTO()
 #define DEFAULT_UEC_RTO_MIN 100
 
-static const unsigned uecMaxInFlightPkts = 1 << 12;
+static const unsigned uecMaxInFlightPkts = 1 << 14;
 class UecPullPacer;
 class UecSink;
 class UecSrc;
@@ -131,7 +131,7 @@ public:
 
     void boundBaseRTT(simtime_picosec network_rtt){
         _base_rtt = network_rtt;
-        _bdp = _base_rtt * _nic.linkspeed() / 8000000000000;
+        _bdp = timeAsUs(_base_rtt) * _nic.linkspeed() / 8000000;
         _maxwnd =  1.5*_bdp;
         cout << "_bdp " << _bdp << " _maxwnd " << _maxwnd << " _base_rtt " << timeAsUs(_base_rtt) << endl;
     }
@@ -152,7 +152,7 @@ public:
     static bool _sender_based_cc;
     static bool _receiver_based_cc;
 
-    enum Sender_CC { DCTCP, NSCC};
+    enum Sender_CC { DCTCP, NSCC, CONSTANT};
     enum LoadBalancing_Algo { BITMAP, REPS, OBLIVIOUS, MIXED};
     enum PathFeedback {PATH_GOOD,PATH_ECN,PATH_NACK,PATH_TIMEOUT};
     enum EvState {STATE_GOOD,STATE_SKIP,STATE_ASSUMED_BAD};
@@ -245,6 +245,9 @@ public:
 
     void updateCwndOnAck_DCTCP(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
     void updateCwndOnNack_DCTCP(bool skip, mem_b nacked_bytes);
+
+    void dontUpdateCwndOnAck(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
+    void dontUpdateCwndOnNack(bool skip, mem_b nacked_bytes);
 
     void (UecSrc::*updateCwndOnAck)(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
     void (UecSrc::*updateCwndOnNack)(bool skip, mem_b nacked_bytes);

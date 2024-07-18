@@ -460,6 +460,10 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
                 updateCwndOnAck = &UecSrc::updateCwndOnAck_NSCC;
                 updateCwndOnNack = &UecSrc::updateCwndOnNack_NSCC;
                 break;
+            case CONSTANT:
+                updateCwndOnAck = &UecSrc::dontUpdateCwndOnAck;
+                updateCwndOnNack = &UecSrc::dontUpdateCwndOnNack;
+                break;
             default:
                 cout << "Unknown CC algo specified " << _sender_cc_algo << endl;
                 assert(0);
@@ -985,6 +989,11 @@ void UecSrc::mark_packet_for_retransmission(UecBasePacket::seq_t psn, uint16_t p
     //_rtx_count ++;
 }
 
+void UecSrc::dontUpdateCwndOnAck(bool skip, simtime_picosec delay, mem_b newly_acked_bytes) {
+        sendIfPermitted();
+}
+
+
 void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_acked_bytes) {
     bool can_decrease = _exp_avg_ecn > _ecn_thresh;
 
@@ -1052,9 +1061,17 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
 }
 
 void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes) {
+    _cwnd -= nacked_bytes;
+    if (_cwnd < _mtu)
+        _cwnd = _mtu;
+
     _trigger_qa = true;
     if (_bytes_ignored >= _bytes_to_ignore)
-        quick_adapt(true, get_avg_delay());
+        quick_adapt(true, get_avg_delay());    
+}
+
+void UecSrc::dontUpdateCwndOnNack(bool skip, mem_b nacked_bytes) {
+    sendIfPermitted();
 }
 
 void UecSrc::update_delay(simtime_picosec raw_rtt, bool update_avg, bool skip){
@@ -1065,9 +1082,10 @@ void UecSrc::update_delay(simtime_picosec raw_rtt, bool update_avg, bool skip){
          new_base_rtt = true;
     }
 
-    if (_bdp == 0 || new_base_rtt){
+    if ((_bdp == 0 || new_base_rtt) && _sender_based_cc){
          //reinitialize BDP, we have new RTT sample.
-         _bdp = _raw_rtt * _nic.linkspeed() / 8000000000000;
+         
+         _bdp = timeAsUs(_raw_rtt) * _nic.linkspeed() / 8000000; 
          _maxwnd = 1.5 * _bdp;
     }
 
@@ -1305,6 +1323,7 @@ void UecSrc::setFlowsize(uint64_t flow_size_in_bytes) {
 void UecSrc::startFlow() {
     //_cwnd = _maxwnd;
     _credit = _maxwnd;
+
     if (_debug_src)
         cout << _flow.str() << " " << "startflow " << _flow._name << " CWND " << _cwnd << " at "
              << timeAsUs(eventlist().now()) << " flow " << _flow.str() << endl;
@@ -1366,7 +1385,7 @@ void UecSrc::stopSpeculating() {
     // on an RTO before we've heard back from the receiver
     if (_speculating) {
         _speculating = false;
-        if (_credit > 0)
+            if (_credit > 0)
             _credit = 0;
         if (_flow.flow_id() == _debug_flowid){
             cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " stopSpeculating _credit " << _credit << endl;
@@ -1411,13 +1430,14 @@ UecBasePacket::pull_quanta UecSrc::computePullTarget() {
              << UecBasePacket::unquantize(quant_pull_target - _pull) << " credit "
              << _credit
              << " backlog " << _backlog << " rtx_backlog " << _rtx_backlog << " active sources "
-             << _nic.activeSources() << endl;
+             << _nic.activeSources() << " cwnd " << _cwnd << " maxwnd " << _maxwnd
+             << endl;
     }
     return quant_pull_target;
 }
 
 void UecSrc::sendIfPermitted() {
-    // send if the NIC, credit and window allow.                                                                                                                  
+    // send if the NIC, credit and window allow.           
 
     if (_receiver_based_cc && credit() <= 0) {
         // can send if we have *any* credit, but we don't                                                                                                         
@@ -1425,6 +1445,7 @@ void UecSrc::sendIfPermitted() {
     }
 
     //cout << timeAsUs(eventlist().now()) << " " << nodename() << " FOO " << _cwnd << " " << _in_flight << endl;                                                  
+
     if (_sender_based_cc) {
         if ((_cwnd <= _in_flight && !_loss_recovery_mode) || (_loss_recovery_mode && _rtx_queue.empty())) {
             return;
@@ -1826,6 +1847,7 @@ void UecSrc::timeToSend(const Route& route) {
         _nic.cantSend(*this);
         return;
     }
+
     // time_to_send is called back from the UecNIC when it's time for
     // this src to send.  To get called back, the src must have
     // previously told the NIC it is ready to send by calling
@@ -1888,11 +1910,13 @@ void UecSrc::timeToSend(const Route& route) {
         _nic.cantSend(*this);
         return;
     }
+    
     if (_sender_based_cc) {
         if ((_cwnd <= _in_flight && !_loss_recovery_mode) || (_loss_recovery_mode && _rtx_queue.empty())) {
             return;
         }
     }
+
     // do we have enough credit to send again?
     if (_receiver_based_cc && credit() <= 0) {
         return;
@@ -2163,6 +2187,11 @@ void UecSink::processData(UecDataPacket& pkt) {
             processTrimmed(pkt);
             return;
         }
+    }
+
+    //ensure we never overflow receive bitmap.
+    if (pkt.epsn() > _expected_epsn + uecMaxInFlightPkts * UecSrc::_mtu){
+        abort();
     }
 
     if (_src->debug())
@@ -2546,7 +2575,7 @@ void UecSink::setEndTrigger(Trigger& end_trigger) {
 
 static unsigned pktByteTimes(unsigned size) {
     // IPG (96 bit times) + preamble + SFD + ether header + FCS = 38B
-    return max(size, 46u) + 38;
+    return size;//max(size, 46u) + 38;
 }
 
 uint32_t UecSink::reorder_buffer_size() {
@@ -2571,7 +2600,7 @@ UecPullPacer::UecPullPacer(linkspeed_bps linkSpeed,
                              EventList& eventList,
                              uint32_t no_of_ports)
     : EventSource(eventList, "uecPull"),
-      _pktTime(pull_rate_modifier * 8 * pktByteTimes(mtu) * 1e12 / (linkSpeed * no_of_ports)) {
+      _pktTime((8 * mtu * 1e12 / (linkSpeed * no_of_ports))/pull_rate_modifier) {
     _active = false;
     _actualPktTime = _pktTime;
     _mtu = mtu;

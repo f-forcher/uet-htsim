@@ -132,7 +132,15 @@ int main(int argc, char **argv) {
 
             if (!strcmp(argv[i+1],"dctcp"))
                 UecSrc::_sender_cc_algo = UecSrc::DCTCP;
-            
+            else if (!strcmp(argv[i+1],"nscc"))
+                UecSrc::_sender_cc_algo = UecSrc::NSCC;
+            else if (!strcmp(argv[i+1],"constant"))
+                UecSrc::_sender_cc_algo = UecSrc::CONSTANT;
+            else {
+                cout << "Unknown congestion control type " << argv[i+1] << endl;
+                exit_error(argv[0]);
+            }
+
             i++;
         } else {
             cout << "Unknown parameter " << argv[i] << endl;
@@ -149,7 +157,7 @@ int main(int argc, char **argv) {
   
     logfile.setStartTime(timeFromSec(0.0));
 
-    Packet::set_packet_size(mtu);
+    //Packet::set_packet_size(mtu);
 
     queuesize = memFromPkt(queuesize);
     ecn_threshold_min = memFromPkt(ecn_threshold_min);
@@ -167,10 +175,10 @@ int main(int argc, char **argv) {
     CompositeQueue queue(linkspeed, queuesize, eventlist, &qs1, UecBasePacket::ACKSIZE);
     queue.setName("Queue1"); 
     logfile.writeName(queue);
-    queue.set_ecn_thresholds(ecn_threshold_min,ecn_threshold_max);
+    //queue.set_ecn_thresholds(ecn_threshold_min,ecn_threshold_max);
     
     CompositeQueue queue2(linkspeed, queuesize, eventlist, NULL, UecBasePacket::ACKSIZE); queue2.setName("Queue2"); logfile.writeName(queue2);
-    queue.set_ecn_thresholds(ecn_threshold_min,ecn_threshold_max);
+    //queue.set_ecn_thresholds(ecn_threshold_min,ecn_threshold_max);
 
     //figure out max cable length
     int max_cl = 0;
@@ -178,7 +186,7 @@ int main(int argc, char **argv) {
         if (max_cl < cable_length[i])
             max_cl = cable_length[i];
 
-    UecSrc::_min_rto = 10*timeFromUs(2.0 + queuesize * 8 * 1000000 / linkspeed)+compute_latency(max_cl);
+    UecSrc::_min_rto = 10*timeFromUs(2.0 + queuesize * 8 * 1000000 / linkspeed)+2 * compute_latency(max_cl);
     cout << "Setting min RTO to " << timeAsUs(UecSrc::_min_rto) << endl;
     cout << "BDP is " << (int)(linkspeed * timeAsSec(compute_latency(max_cl)+timeFromUs(2.0))) << "B , or " << (int)(linkspeed * timeAsSec(compute_latency(max_cl)+timeFromUs(2.0)))/mtu << "pkts" << endl;
 
@@ -200,11 +208,14 @@ int main(int argc, char **argv) {
 
     OversubscribedCC::setOversubscriptionRatio(flow_count);
 
+    UecPullPacer* pacer = new UecPullPacer(linkspeed, 0.97, UecBasePacket::unquantize(UecSink::_credit_per_pull), eventlist, 1);
+
     for (int i=0;i<flow_count;i++){
         uecNic = new UecNIC(i, eventlist, linkspeed, 1);
         uecSrc = new UecSrc(NULL,eventlist,*uecNic,1, rts);
         //UecSrc->setRouteStrategy(SINGLE_PATH);
         uecSrc->setCwnd(cwnd*Packet::data_packet_size());
+        uecSrc->setMaxWnd(cwnd*Packet::data_packet_size());
         uecSrc->setFlowsize(flow_size);
         
         uecSrc->setName("Uec"+ntoa(i)); 
@@ -213,7 +224,8 @@ int main(int argc, char **argv) {
         Uec_srcs.push_back(uecSrc);
 
         uecNic = new UecNIC(i, eventlist, linkspeed, 1);
-        uecSnk = new UecSink(NULL, linkspeed, 0.99, Packet::data_packet_size(), eventlist,*uecNic, 1); 
+        //uecSnk = new UecSink(NULL, linkspeed, 1, Packet::data_packet_size(), eventlist,*uecNic, 1); 
+        uecSnk = new UecSink(NULL, pacer, *uecNic, 1); 
 
         if (UecSink::_model_pcie){
             uecSnk->setPCIeModel(new PCIeModel(linkspeed * pcie_rate,Packet::data_packet_size(),eventlist,uecSnk->pullPacer()));
@@ -241,7 +253,7 @@ int main(int argc, char **argv) {
         routein->push_back(new Pipe(compute_latency(cable_length[i]),eventlist));
         routein->push_back(uecSrc->getPort(0)); 
 
-        uecSrc->connectPort(0, *routeout, *routein, *uecSnk, timeFromUs(0.0));
+        uecSrc->connectPort(0, *routeout, *routein, *uecSnk, i * 1000.0);
         sinkLogger.monitorSink(uecSnk);
     }
 
