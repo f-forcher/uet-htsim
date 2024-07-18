@@ -578,7 +578,7 @@ int main(int argc, char **argv) {
 
     no_of_nodes = conns->N;
 
-    simtime_picosec network_rtt = 0;
+    simtime_picosec network_max_unloaded_rtt = 0;
     vector <FatTreeTopology*> topo;
     topo.resize(planes);
     for (uint32_t p = 0; p < planes; p++) {
@@ -609,13 +609,13 @@ int main(int argc, char **argv) {
         }
 
         if (p==0) {
-            network_rtt = 2 * topo[p]->get_diameter_latency();
+            network_max_unloaded_rtt = 2 * topo[p]->get_diameter_latency() + (Packet::data_packet_size() * 8 / speedAsGbps(linkspeed) * topo[p]->get_diameter() * 1000) + (UecBasePacket::get_ack_size() * 8 / speedAsGbps(linkspeed) * topo[p]->get_diameter() * 1000);
         } else {
             // We only allow identical network rtts for now
-            assert(network_rtt == topo[p]->get_diameter_latency());
+            assert(network_max_unloaded_rtt == topo[p]->get_diameter_latency());
         }
     }
-    cout << "network_rtt " << timeAsUs(network_rtt) << endl;
+    cout << "network_max_unloaded_rtt " << timeAsUs(network_max_unloaded_rtt) << endl;
     
     //handle link failures specified in the connection matrix.
     for (size_t c = 0; c < conns->failures.size(); c++){
@@ -669,7 +669,7 @@ int main(int argc, char **argv) {
         uec_src = new UecSrc(traffic_logger, eventlist, *nics.at(src), ports);
         uec_src->setCwnd(cwnd*Packet::data_packet_size());
         uec_src->setMaxWnd(cwnd*Packet::data_packet_size());
-        uec_src->boundBaseRTT(network_rtt);
+        uec_src->boundBaseRTT(network_max_unloaded_rtt);
         uec_srcs.push_back(uec_src);
         uec_src->setDst(dest);
 
