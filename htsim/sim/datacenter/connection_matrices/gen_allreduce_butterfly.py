@@ -134,7 +134,7 @@ for group in range(groups):
             else:
                 continue
         
-for t in range(1, trig_id):
+for t in range(1, trig_id+1):
     out = "trigger id " + str(t) + " oneshot"
     print(out, file=f)
 

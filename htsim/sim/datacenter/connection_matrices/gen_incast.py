@@ -35,7 +35,7 @@ print("Nodes", nodes, file=f)
 print("Connections", conns, file=f)
 
 srcs = []
-if (prefer_remote >= 1):
+if (prefer_remote == 0):
     for n in range(1,nodes):
         srcs.append(n)
     if randseed != 0:

@@ -9,6 +9,10 @@ import anlysis_and_plotting
 # Some Global Variables
 exp_directory = "experiments"
 
+
+def get_incast_outcast_ratio(ratio):
+    return ratio.split(':')[0], ratio.split(':')[1]
+
 def delete_folder_contents(folder_path):
     for filename in os.listdir(folder_path):
         file_path = os.path.join(folder_path, filename)
@@ -47,7 +51,7 @@ def get_topology_file(topology_size, os_ratio):
         return f"../topologies/fat_tree_128_{os_ratio}os_100.topo"
 
 def get_file_to_run(name_exp, parameters_experiment, global_params):
-    dir = f"{name_exp}_size{global_params['topology_sizes']}_osratio{global_params['oversubscription_ratio']}_linkspeed{global_params['link_speed_Gbps']}"
+    dir = f"{name_exp}_size{global_params['topology_sizes']}_osratio{global_params['oversubscription_ratio']}_linkspeed{global_params['link_speed_Gbps']}/tmp"
     if (name_exp == "incast"):
         cm_name = f"{exp_directory}/{dir}/incast_{parameters_experiment['ratio']}to1_size{parameters_experiment['message_size_bytes']}B.cm"
         output_file = (f"{exp_directory}/{dir}/incast_{parameters_experiment['ratio']}to1_size{parameters_experiment['message_size_bytes']}B_")
@@ -67,6 +71,59 @@ def get_file_to_run(name_exp, parameters_experiment, global_params):
         try:
             # Execute the command
             """ print(f"Creating CM named {cmd_to_run_cm_file}") """
+            subprocess.run(cmd_to_run_cm_file, shell=True, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"An error occurred while running the command: {e}")
+        return cm_name, output_file
+    
+    elif (name_exp == "outcast_incast"):
+        
+        incast_ratio, outcast_ratio = get_incast_outcast_ratio(parameters_experiment['ratio']) 
+        cm_name = f"{exp_directory}/{dir}/outcast_size{parameters_experiment['message_size_bytes']}B_incast{incast_ratio}_outcast{outcast_ratio}.cm"
+        output_file = f"{exp_directory}/{dir}/outcast_size{parameters_experiment['message_size_bytes']}B_incast{incast_ratio}_outcast{outcast_ratio}_"
+        cmd_to_run_cm_file = "python ../connection_matrices/gen_outcast_incast.py {} {} {} {} {} 42".format(cm_name, 128, incast_ratio, outcast_ratio, parameters_experiment["message_size_bytes"])
+        try:
+            # Execute the command
+            print(f"Creating CM named {cmd_to_run_cm_file}")
+            subprocess.run(cmd_to_run_cm_file, shell=True, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"An error occurred while running the command: {e}")
+        return cm_name, output_file
+    
+    elif (name_exp == "all_reduce_ring"):
+        
+        cm_name = f"{exp_directory}/{dir}/allreduce_size{parameters_experiment['message_size_bytes']}B.cm"
+        output_file = f"{exp_directory}/{dir}/allreduce_size{parameters_experiment['message_size_bytes']}B_"
+        cmd_to_run_cm_file = "python ../connection_matrices/gen_allreduce.py {} {} {} {} {} 1 42".format(cm_name, 128, 128, 128, parameters_experiment["message_size_bytes"])
+        try:
+            # Execute the command
+            print(f"Creating CM named {cmd_to_run_cm_file}")
+            subprocess.run(cmd_to_run_cm_file, shell=True, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"An error occurred while running the command: {e}")
+        return cm_name, output_file
+    
+    elif (name_exp == "all_reduce_butterfly"):
+        
+        cm_name = f"{exp_directory}/{dir}/allreduceButterfly_size{parameters_experiment['message_size_bytes']}B.cm"
+        output_file = f"{exp_directory}/{dir}/allreduceButterfly_size{parameters_experiment['message_size_bytes']}B_"
+        cmd_to_run_cm_file = "python ../connection_matrices/gen_allreduce_butterfly.py {} {} {} {} {} 1 42".format(cm_name, 128, 1, 128, parameters_experiment["message_size_bytes"])
+        try:
+            # Execute the command
+            print(f"Creating CM named {cmd_to_run_cm_file}")
+            subprocess.run(cmd_to_run_cm_file, shell=True, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"An error occurred while running the command: {e}")
+        return cm_name, output_file
+    
+    elif (name_exp == "all_to_all_windowed"):
+        
+        cm_name = f"{exp_directory}/{dir}/alltoallwindowed_size{parameters_experiment['message_size_bytes']}B_window{parameters_experiment['parallel_connections']}.cm"
+        output_file = f"{exp_directory}/{dir}/alltoallwindowed_size{parameters_experiment['message_size_bytes']}B__window{parameters_experiment['parallel_connections']}_"
+        cmd_to_run_cm_file = "python ../connection_matrices/gen_serialn_alltoall.py {} {} {} {} {} {} 0 42".format(cm_name, 128, 128, 128, parameters_experiment["parallel_connections"], parameters_experiment["message_size_bytes"])
+        try:
+            # Execute the command
+            print(f"Creating CM named {cmd_to_run_cm_file}")
             subprocess.run(cmd_to_run_cm_file, shell=True, check=True)
         except subprocess.CalledProcessError as e:
             print(f"An error occurred while running the command: {e}")
@@ -102,19 +159,6 @@ def run_experiment(experiment_name, global_params, subparams):
         print(f"An error occurred while running the command: {e}")
 
 def handle_experiment(experiment, global_combinations, global_params):
-    """ for global_params in global_combinations:
-        print("GLOBAL")
-        print(global_params)
-        subparam_keys = [key for key in experiment.keys() if key != 'name']
-        subparam_values = (experiment[key] if isinstance(experiment[key], list) else [experiment[key]] for key in subparam_keys)
-        directory = os.path.join(exp_directory, f"{experiment['name']}_size{global_params['topology_sizes']}_osratio{global_params['oversubscription_ratio']}_linkspeed{global_params['link_speed_Gbps']}")
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        delete_folder_contents(directory)
-        for subparam_combination in product(*subparam_values):
-            subparams = dict(zip(subparam_keys, subparam_combination))
-            run_experiment(experiment['name'], global_params, subparams)
-        anlysis_and_plotting.plot_runtimes(directory) """
 
     for link_speed in global_params["link_speed_Gbps"]:
         for os_ratio in global_params["oversubscription_ratio"]:
@@ -123,6 +167,11 @@ def handle_experiment(experiment, global_combinations, global_params):
                 if not os.path.exists(directory):
                     os.makedirs(directory)
                 delete_folder_contents(directory)
+                directory_tmp = os.path.join(exp_directory, f"{experiment['name']}_size{topology_size}_osratio{os_ratio}_linkspeed{link_speed}")
+                directory_tmp = os.path.join(directory_tmp,"tmp")
+                if not os.path.exists(directory_tmp):
+                    os.makedirs(directory_tmp)
+                delete_folder_contents(directory_tmp)
                 for cc_algo in global_params["cc_algo"]:
                     subparam_keys = [key for key in experiment.keys() if key != 'name']
                     subparam_values = (experiment[key] if isinstance(experiment[key], list) else [experiment[key]] for key in subparam_keys)
@@ -134,7 +183,7 @@ def handle_experiment(experiment, global_combinations, global_params):
                         glob_params["topology_sizes"] = topology_size
                         glob_params["cc_algo"] = cc_algo
                         run_experiment(experiment['name'], glob_params, subparams)
-                anlysis_and_plotting.plot_runtimes(directory)
+                anlysis_and_plotting.plot_runtimes(directory_tmp, directory)
 
 def print_experiments(experiments, global_combinations, global_parameters):
     print("\nExperiments:")
@@ -146,6 +195,8 @@ def print_experiments(experiments, global_combinations, global_parameters):
 def main():
     parser = argparse.ArgumentParser(description='Read and parse a JSON file containing experiments.')
     parser.add_argument('--json_file', required=True, help='Path to the JSON file')
+    parser.add_argument('--show_plot', required=False, help='Pop up plots')
+
 
     args = parser.parse_args()
 

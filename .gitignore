@@ -10,3 +10,6 @@ idmap.txt
 *.out
 *.pyc
 **/validation/**/*.cm
+*.pdf
+*.png
+!example_validate.json
