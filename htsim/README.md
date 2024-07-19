@@ -27,3 +27,4 @@ From the ```sim/datacenter/validation``` folder, run:
 ```
 python validate_all.py --json_file example_validate.json > out.txt
 ```
+Consider modifying the JSON file for more details (more instructions coming soon).
