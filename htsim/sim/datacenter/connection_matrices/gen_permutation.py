@@ -40,6 +40,7 @@ for n in range(nodes):
     dsts.append(n)
 if randseed != 0:
     seed(randseed)
+
 shuffle(srcs)
 shuffle(dsts)
 #print(srcs)

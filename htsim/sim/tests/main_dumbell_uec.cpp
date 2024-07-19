@@ -253,7 +253,7 @@ int main(int argc, char **argv) {
         routein->push_back(new Pipe(compute_latency(cable_length[i]),eventlist));
         routein->push_back(uecSrc->getPort(0)); 
 
-        uecSrc->connectPort(0, *routeout, *routein, *uecSnk, i * 1000.0);
+        uecSrc->connectPort(0, *routeout, *routein, *uecSnk, 0/*i * 1000.0*/);
         sinkLogger.monitorSink(uecSnk);
     }
 
