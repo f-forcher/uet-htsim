@@ -20,7 +20,9 @@ def run_command(command):
         return f"Command '{command}' failed with error:\n{e.stderr}"
     
 def run_experiments(input_filename):
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    num_cores = os.cpu_count() or 1
+    print(f'Using {num_cores} to run the experiment')
+    with ThreadPoolExecutor(max_workers=num_cores) as executor:
 
        with open(input_filename, 'r') as file:
         inputlines = file.readlines()
