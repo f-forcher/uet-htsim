@@ -648,6 +648,17 @@ void FatTreeTopology::set_params(uint32_t no_of_nodes) {
     _agg_switches_per_pod = K/2;
     _hosts_per_pod = _no_of_nodes / NPOD;
 
+    // Print all the var above from _radix_down to _hosts_per_pod
+    cout << "_radix_down[TOR_TIER] " << _radix_down[TOR_TIER] << endl;
+    cout << "_radix_up[TOR_TIER]" << _radix_up[TOR_TIER] << endl;
+    cout << "_radix_down[AGG_TIER] " << _radix_down[AGG_TIER] << endl;
+    cout << "_radix_up[AGG_TIER] " << _radix_up[AGG_TIER] << endl;
+    cout << "_radix_down[CORE_TIER] " << _radix_down[CORE_TIER] << endl;
+    cout << "_tor_switches_per_pod " << _tor_switches_per_pod << endl;
+    cout << "_agg_switches_per_pod " << _agg_switches_per_pod << endl;
+    cout << "_hosts_per_pod " << _hosts_per_pod << endl;
+    
+
     alloc_vectors();
 }
 

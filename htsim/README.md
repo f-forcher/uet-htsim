@@ -25,6 +25,13 @@ Consider changing the ```-j``` parameter.
 ## Run Validation
 From the ```sim/datacenter/validation``` folder, run:
 ```
-python validate_all.py --json_file example_validate.json > out.txt
+python validate_all.py --config_json_file example_validate.json > out.txt
 ```
 Consider modifying the JSON file for more details (more instructions coming soon).
+
+The results will be saved in ```sim/datacenter/validation/experiments```. There each folder will contain a summary plot and a ```tmp``` folder where more details are stored.
+
+Note that running this can take long time depending on the chosen config.
+
+## Future Work
+The ```validate_all.py``` will be improved to support more combination of runs and more metrics.

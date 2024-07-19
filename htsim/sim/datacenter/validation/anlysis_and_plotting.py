@@ -4,6 +4,23 @@ import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
 
+def get_color_map():
+    """
+    Returns a dictionary mapping CC Algos to specific colors.
+    """
+    return {
+        'NSCC': '#1f77b4',  # Blue
+        'RCCC+DCTCP': '#ff7f0e',  # Orange
+        'RCCC+NSCC': '#2ca02c',  # Green
+        'RCCC': '#d62728',  # Red
+    }
+
+def get_cc_algo_order():
+    """
+    Returns a list defining the order of CC Algos for plotting.
+    """
+    return ['NSCC', 'RCCC', 'RCCC+NSCC', 'RCCC+DCTCP']
+
 def get_list_fct(name_file_to_use):
     """
     Extracts the finished-at runtime values from the file.
@@ -54,7 +71,6 @@ def format_label(group):
     Converts a raw label into a more readable format.
     Example: 'incast_8to1_1048576B' -> 'Incast 8:1 1MiB'
     """
-    print(group)
     ratio = ""
     if 'permutation' in group or 'reduce' in group:
         parts = group.split('_')
@@ -69,8 +85,8 @@ def format_label(group):
     elif 'outcast' in group:
         parts = group.split('_')
         experiment = parts[0].capitalize()
+        experiment += " / Incast"
         ratio = parts[1].replace('to', ':')
-        ratio += ":1"
         size_bytes = int(parts[2].replace('size', '').replace('B', ''))
     elif 'alltoallwindowed' in group:
         parts = group.split('_')
@@ -90,7 +106,7 @@ def format_label(group):
     
     return f'{experiment} {ratio} {size}'
 
-def plot_runtimes(folder_name, folder_name_out):
+def plot_runtimes(folder_name, folder_name_out, args):
     """
     Plots runtimes of each experiment from the files in the specified folder.
     Adds a Ratio field to the DataFrame if 'incast' is in the experiment name.
@@ -113,14 +129,17 @@ def plot_runtimes(folder_name, folder_name_out):
         experiment = parts[0]
         # Extract the numeric part before 'to' in 'XtoY'
         match = re.search(r"size(\d+)", str(filename))
+
         if match:
             size = match.group(1)
-        if ("sender" in filename):
-            method = "Sender"
-        elif ("receiver" in filename):
-            method = "Receiver"
-        elif ("mixed" in filename):
-            method = "Mixed"
+        if ("nscc_" in filename):
+            method = "NSCC"
+        elif ("rccc+os_cc" in filename):
+            method = "RCCC+DCTCP"
+        elif ("nscc+rccc" in filename):
+            method = "RCCC+NSCC"
+        elif ("rccc" in filename):
+            method = "RCCC"
 
         # Initialize ratio as None
         ratio = None
@@ -134,12 +153,12 @@ def plot_runtimes(folder_name, folder_name_out):
 
         if 'outcast' in filename:
             # Extract the numeric part before 'to' in 'XtoY'
-            match = re.search(r"incast(\d+)", str(filename))
-            match2 = re.search(r"outcast(\d+)", str(filename))
+            match = re.search(r"_incast(\d+)", str(filename))
+            match2 = re.search(r"_outcast(\d+)", str(filename))
             if match:
                 ratio_i = str(match.group(1))
             if match2:
-                ratio_o = str(match.group(1))
+                ratio_o = str(match2.group(1))
             ratio = ratio_i + ":" + ratio_o
 
         if 'alltoall' in filename:
@@ -159,8 +178,6 @@ def plot_runtimes(folder_name, folder_name_out):
         })
 
     df = pd.DataFrame(data)
-
-    print(df)
     
     # Create a unique identifier for each group combining Experiment and Size
     if ("incast" in df['Experiment'].values):
@@ -187,8 +204,6 @@ def plot_runtimes(folder_name, folder_name_out):
     
     # Remove rows with zero runtime if any
     df_sorted = df_sorted[df_sorted['Runtime'] > 0]
-
-    print(df_sorted)
     
     # Create the ordered list of groups
     ordered_groups = df_sorted['Group'].unique()
@@ -198,8 +213,13 @@ def plot_runtimes(folder_name, folder_name_out):
     
     # Create the bar plot using Seaborn
     plt.figure(figsize=(14, 8))
+    # Get the color map
+    color_map = get_color_map()
+    cc_algo_order = get_cc_algo_order()
+    # Ensure 'CC Algo' is a categorical type with the specified order
+    df_sorted['CC Algo'] = pd.Categorical(df_sorted['CC Algo'], categories=cc_algo_order, ordered=True)
     ax = sns.barplot(x='Group', y='Runtime', hue='CC Algo', data=df_sorted, errorbar=None, 
-                     order=ordered_groups)
+                     order=ordered_groups, palette=color_map)
     
     # Add the runtime value on top of each bar with color matching the legend
     for p in ax.patches:
@@ -210,11 +230,11 @@ def plot_runtimes(folder_name, folder_name_out):
                     ha='center', va='bottom',
                     xytext=(0, 5),  # 5 points vertical offset
                     textcoords='offset points',
-                    fontsize=10, color=color,
-                    rotation=45)  # Rotate the text to make it less overlapping
+                    fontsize=9, color=color,
+                    rotation=60)  # Rotate the text to make it less overlapping
 
     # Customize the plot
-    plt.title(f'Runtime of {folder_name_out.replace("size", "topologySize")} Experiments')
+    plt.title(f'Runtime of {folder_name_out.replace("size", "topologySize")}')
     plt.xlabel('Experiment and Size')
     plt.ylabel('Runtime (us)')
     
@@ -228,4 +248,5 @@ def plot_runtimes(folder_name, folder_name_out):
     # Save and show the plot
     plt.savefig(os.path.join(folder_name_out, "runtime_plot.png"), bbox_inches='tight')
     plt.savefig(os.path.join(folder_name_out, "runtime_plot.pdf"), bbox_inches='tight')
-    #plt.show()
+    if args.show_plot:
+        plt.show()

@@ -1,9 +1,9 @@
 {
   "global_parameters": {
     "link_speed_Gbps": ["100Gbps"],
-    "oversubscription_ratio": ["1:1", "4:1"],
+    "oversubscription_ratio": ["1:1", "4:1", "8:1"],
     "topology_sizes": [128],
-    "cc_algo": ["receiver_based", "sender_based"]
+    "cc_algo": ["nscc", "rccc", "rccc+os_cc", "nscc+rccc"]
   },
   "experiments": [
     {
@@ -22,17 +22,16 @@
     },
     {
       "name": "all_to_all_windowed",
-      "message_size_bytes": [256000, 512000],
+      "message_size_bytes": [262144, 524288],
       "parallel_connections": [2, 4, 8]
     },
     {
       "name": "all_reduce_ring",
-      "message_size_bytes": [62500, 120000]
+      "message_size_bytes": [65536, 131072]
     },
     {
       "name": "all_reduce_butterfly",
-      "message_size_bytes": [10000, 40000]
+      "message_size_bytes": [16384, 65536]
     }
-
   ]
 }

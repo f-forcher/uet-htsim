@@ -86,6 +86,7 @@ int main(int argc, char **argv) {
 
     filename << "logout.dat";
     int end_time = 1000;//in microseconds
+    bool force_disable_oversubscribed_cc = false;
 
     //unsure how to set this. 
     queue_type snd_type = FAIR_PRIO;
@@ -274,6 +275,11 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i],"-oversubscribed_cc")){
             UecSink::_oversubscribed_cc = true;
             cout << "Using receiver oversubscribed CC " << endl;
+        }
+        else if (!strcmp(argv[i],"-forse_disable_oversubscribed_cc")){
+            UecSink::_oversubscribed_cc = false;
+            force_disable_oversubscribed_cc = true;
+            cout << "Disabling receiver oversubscribed CC even with OS topology" << endl;
         }
         else if (!strcmp(argv[i],"-fastlossrecovery")){
             UecSrc::_enable_fast_loss_recovery = true;
@@ -598,11 +604,11 @@ int main(int argc, char **argv) {
                                           snd_type);
         }
 
-        if (topo[p]->get_oversubscription_ratio() > 1 && !UecSrc::_sender_based_cc){
+        if (topo[p]->get_oversubscription_ratio() > 1 && !UecSrc::_sender_based_cc && !force_disable_oversubscribed_cc) {
             UecSink::_oversubscribed_cc = true;
             OversubscribedCC::setOversubscriptionRatio(topo[p]->get_oversubscription_ratio());
             cout << "Using simple receiver oversubscribed CC. Oversubscription ratio is " << topo[p]->get_oversubscription_ratio() << endl;
-        }
+        } 
 
         if (log_switches) {
             topo[p]->add_switch_loggers(logfile, timeFromUs(20.0));
