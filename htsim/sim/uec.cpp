@@ -990,7 +990,6 @@ void UecSrc::mark_packet_for_retransmission(UecBasePacket::seq_t psn, uint16_t p
 }
 
 void UecSrc::dontUpdateCwndOnAck(bool skip, simtime_picosec delay, mem_b newly_acked_bytes) {
-        sendIfPermitted();
 }
 
 
@@ -1057,7 +1056,6 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
         _cwnd = _maxwnd;
     if (_flow.flow_id() == _debug_flowid)
         cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " final _nscc_cwnd " << _cwnd << " _basertt " << timeAsUs(_base_rtt)<< endl;
-    sendIfPermitted();
 }
 
 void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes) {
@@ -1071,7 +1069,6 @@ void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes) {
 }
 
 void UecSrc::dontUpdateCwndOnNack(bool skip, mem_b nacked_bytes) {
-    sendIfPermitted();
 }
 
 void UecSrc::update_delay(simtime_picosec raw_rtt, bool update_avg, bool skip){
@@ -1485,6 +1482,7 @@ void UecSrc::sendIfPermitted() {
         mem_b sent_bytes = sendPacket(*route);
         if (sent_bytes > 0) {
             _nic.startSending(*this, sent_bytes, route);
+            sendIfPermitted();
         } else {
             _nic.cantSend(*this);
         }
