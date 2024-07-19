@@ -30,7 +30,7 @@ public:
     static pull_quanta quantize_ceil(mem_b bytes);  // quantize and round up
     static pull_quanta quantize_floor(mem_b bytes); // quantize and round down
     static mem_b unquantize(pull_quanta credit_chunks);  // unquantize
-    static int get_ack_size() {return ACKSIZE;}
+    static mem_b get_ack_size() {return ACKSIZE;}
 };
 
 class UecDataPacket : public UecBasePacket {
