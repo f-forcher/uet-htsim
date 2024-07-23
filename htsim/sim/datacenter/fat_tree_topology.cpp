@@ -921,8 +921,8 @@ void FatTreeTopology::init_network(){
                 //cout << queues_nlp_nup[tor][agg][b]->str() << endl;
                 //if (logfile) logfile->writeName(*(queues_nlp_nup[tor][agg]));
 
-                assert(switches_lp[tor]->addPort(queues_nlp_nup[tor][agg][b]) < 96);
-                assert(switches_up[agg]->addPort(queues_nup_nlp[agg][tor][b]) < 64);
+                assert(switches_lp[tor]->addPort(queues_nlp_nup[tor][agg][b]) < 128);
+                assert(switches_up[agg]->addPort(queues_nup_nlp[agg][tor][b]) < 128);
                 queues_nlp_nup[tor][agg][b]->setRemoteEndpoint(switches_up[agg]);
                 queues_nup_nlp[agg][tor][b]->setRemoteEndpoint(switches_lp[tor]);
 

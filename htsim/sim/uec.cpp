@@ -36,7 +36,7 @@ bool UecSrc::_debug = false;
 bool UecSrc::_sender_based_cc = false;
 
 bool UecSrc::_receiver_based_cc = true;
-bool UecSink::_oversubscribed_cc = false; // can only be enabled when receiver_based_cc is set to true
+bool UecSink::_oversubscribed_cc = true; // can only be enabled when receiver_based_cc is set to true
 
 UecSrc::Sender_CC UecSrc::_sender_cc_algo = UecSrc::NSCC;
 UecSrc::LoadBalancing_Algo UecSrc::_load_balancing_algo = UecSrc::BITMAP;
@@ -84,7 +84,7 @@ void UecSrc::parameterScaleToTargetQ(){
 
 flowid_t UecSrc::_debug_flowid = UINT32_MAX;
 
-#define INIT_PULL 10000000  // needs to be large enough we don't map
+#define INIT_PULL 100000000  // needs to be large enough we don't map
                             // negative pull targets (where
                             // credit_spec > backlog) to less than
                             // zero and suffer underflow.  Real
@@ -1387,6 +1387,7 @@ void UecSrc::stopSpeculating() {
         _speculating = false;
             if (_credit > 0)
             _credit = 0;
+
         if (_flow.flow_id() == _debug_flowid){
             cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " stopSpeculating _credit " << _credit << endl;
         }
@@ -1411,6 +1412,10 @@ UecBasePacket::pull_quanta UecSrc::computePullTarget() {
     }
 
     pull_target -= _credit;
+
+    if (_speculating && pull_target < _mtu && _backlog >0)//always request at least an MTU of credit if we have a backlog, regardless of how much credit we have already have. Saves our bacon for short transfers 
+        pull_target = _mtu;
+        
     if(_flow.flow_id() == _debug_flowid){
         cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " _credit " << _credit 
             << " pull_target " << _pull_target << endl;
@@ -1966,7 +1971,7 @@ void UecSrc::rtxTimerExpired() {
     // update flightsize?
 
     //_send_times.erase(first_entry);
-    delFromSendTimes(first_entry->first,seqno);
+    delFromSendTimes(send_record->second.send_time,seqno);
 
     if (_debug_src)
         cout << _nodename << " rtx timer expired for seqno " << seqno << " flow " << _flow.str() << " packet sent at " << timeAsUs(send_record->second.send_time) << " now time is " << timeAsUs(eventlist().now()) << endl;
@@ -2575,10 +2580,10 @@ void UecSink::setEndTrigger(Trigger& end_trigger) {
 };
 
 
-static unsigned pktByteTimes(unsigned size) {
+/*static unsigned pktByteTimes(unsigned size) {
     // IPG (96 bit times) + preamble + SFD + ether header + FCS = 38B
-    return size;//max(size, 46u) + 38;
-}
+    return max(size, 46u) + 38;
+}*/
 
 uint32_t UecSink::reorder_buffer_size() {
     uint32_t count = 0;
