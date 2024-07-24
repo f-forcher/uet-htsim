@@ -6,6 +6,32 @@ htsim is a high performance discrete event simulator, inspired by ns2, but much 
 
 There are some limited instructions in the [wiki](https://github.com/Broadcom/csg-htsim/wiki).  
 
-htsim is written in C++, and has no dependencies.  It should compile and run with g++ or clang on MacOS or Linux.  To compile htsim, cd into the sim directory and run make.
+htsim is written in C++, and has no major dependencies.  It should compile and run with g++ or clang on MacOS or Linux.  To compile htsim, cd into the sim directory and run make.
 
 To get started with running experiments, take a look in the experiments directory where there are some examples.  These examples generally require bash, python3 and gnuplot.
+
+## Getting Started
+Install the Python requirements by running:
+```
+pip install -r requirements.txt
+```
+
+Then compile the project from the ```sim/``` folder by running
+```
+make all -j 4
+```
+Consider changing the ```-j``` parameter. 
+
+## Run Validation
+From the ```sim/datacenter/validation``` folder, run:
+```
+python validate_all.py --config_json_file example_validate.json > out.txt
+```
+Consider modifying the JSON file for more details (more instructions coming soon).
+
+The results will be saved in ```sim/datacenter/validation/experiments```. There each folder will contain a summary plot and a ```tmp``` folder where more details are stored.
+
+Note that running this can take long time depending on the chosen config.
+
+## Future Work
+The ```validate_all.py``` will be improved to support more combination of runs and more metrics.

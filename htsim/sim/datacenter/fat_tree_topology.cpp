@@ -651,6 +651,7 @@ void FatTreeTopology::set_params(uint32_t no_of_nodes) {
     _agg_switches_per_pod = K/2;
     _hosts_per_pod = _no_of_nodes / NPOD;
 
+
     alloc_vectors();
 }
 
