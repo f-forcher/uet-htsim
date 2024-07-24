@@ -639,7 +639,7 @@ int main(int argc, char **argv) {
     vector<UecNIC*> nics;
 
     for (size_t ix = 0; ix < no_of_nodes; ix++){
-        pacers.push_back(new UecPullPacer(linkspeed, 0.97, UecBasePacket::unquantize(UecSink::_credit_per_pull), eventlist, ports));
+        pacers.push_back(new UecPullPacer(linkspeed, 0.99, UecBasePacket::unquantize(UecSink::_credit_per_pull), eventlist, ports));
 
         if (UecSink::_model_pcie)
             pcie_models.push_back(new PCIeModel(linkspeed * pcie_rate,UecSrc::_mtu,eventlist,pacers[ix]));

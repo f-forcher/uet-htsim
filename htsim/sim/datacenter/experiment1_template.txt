@@ -1,0 +1,34 @@
+connection_matrices/perm_8192n_8192c_YYMB.cm
+!Experiment 8K permutation, 8K leaf-spine, 200Gbps, XX paths, YYMB messages, Sender
+!Binary ./htsim_uec
+!Param -end 400
+!Param -paths XX
+!Param -sender_cc_only
+!Param -topo topologies/leaf_spine_8192_200g.topo
+!Param -linkspeed 200000
+!Param -q 50
+!Param -ecn 12 37
+!Param -cwnd 75
+!tailFCT 60
+connection_matrices/perm_8192n_8192c_YYMB.cm
+!Experiment 8K permutation, 8K leaf-spine, 200Gbps, XX paths, YYMB messages, Receiver.
+!Binary ./htsim_uec
+!Param -end 400
+!Param -paths XX
+!Param -linkspeed 200000
+!Param -topo topologies/leaf_spine_8192_200g.topo
+!Param -q 50
+!Param -ecn 12 37
+!Param -cwnd 75
+!tailFCT 60
+connection_matrices/perm_8192n_8192c_YYMB.cm
+!Experiment 8K permutation, 8K leaf-spine, 200Gbps, XX paths, YYMB messages, Both.
+!Binary ./htsim_uec
+!Param -end 400
+!Param -paths XX
+!Param -linkspeed 200000
+!Param -topo topologies/leaf_spine_8192_200g.topo
+!Param -q 50
+!Param -ecn 12 37
+!Param -cwnd 75
+!tailFCT 60

@@ -36,7 +36,7 @@ bool UecSrc::_debug = false;
 bool UecSrc::_sender_based_cc = false;
 
 bool UecSrc::_receiver_based_cc = true;
-bool UecSink::_oversubscribed_cc = true; // can only be enabled when receiver_based_cc is set to true
+bool UecSink::_oversubscribed_cc = false; // can only be enabled when receiver_based_cc is set to true
 
 UecSrc::Sender_CC UecSrc::_sender_cc_algo = UecSrc::NSCC;
 UecSrc::LoadBalancing_Algo UecSrc::_load_balancing_algo = UecSrc::BITMAP;
@@ -1081,11 +1081,13 @@ void UecSrc::update_base_rtt(simtime_picosec raw_rtt, uint16_t packet_size){
         _base_rtt = _raw_rtt;
         _bdp = timeAsUs(_raw_rtt) * _nic.linkspeed() / 8000000; 
         _maxwnd = 1.5 * _bdp;
+        
+        if (UecSrc::_debug)
+            cout << "Reinit BDP and MAXWND to "  << _bdp << " " << _maxwnd << " in pkts " << _maxwnd/_mtu << endl;
     }
 }
 
 void UecSrc::update_delay(simtime_picosec raw_rtt, bool update_avg, bool skip){
-
     simtime_picosec delay = _raw_rtt - _base_rtt;
     if(update_avg){
 

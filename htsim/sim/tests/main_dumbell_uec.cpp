@@ -157,7 +157,7 @@ int main(int argc, char **argv) {
   
     logfile.setStartTime(timeFromSec(0.0));
 
-    //Packet::set_packet_size(mtu);
+    Packet::set_packet_size(mtu);
 
     queuesize = memFromPkt(queuesize);
     ecn_threshold_min = memFromPkt(ecn_threshold_min);
@@ -188,7 +188,9 @@ int main(int argc, char **argv) {
 
     UecSrc::_min_rto = 10*timeFromUs(2.0 + queuesize * 8 * 1000000 / linkspeed)+2 * compute_latency(max_cl);
     cout << "Setting min RTO to " << timeAsUs(UecSrc::_min_rto) << endl;
-    cout << "BDP is " << (int)(linkspeed * timeAsSec(compute_latency(max_cl)+timeFromUs(2.0))) << "B , or " << (int)(linkspeed * timeAsSec(compute_latency(max_cl)+timeFromUs(2.0)))/mtu << "pkts" << endl;
+    cout << "Max wire latency is " << timeAsUs(compute_latency(max_cl)+timeFromUs(2.0)) << endl;
+    cout << "Speed is " << speedAsGbps(linkspeed) << "Gbps" << endl;
+    cout << "BDP is " << 2*timeAsUs(compute_latency(max_cl)+2) * linkspeed / 8000000 << "B or " << (int)(2*timeAsUs(compute_latency(max_cl)+2) * linkspeed / 8000000)/mtu << "pkts" << endl;
 
     UecSrc* uecSrc;
     UecNIC* uecNic;
@@ -207,6 +209,7 @@ int main(int argc, char **argv) {
     vector<UecSrc*> Uec_srcs;
 
     OversubscribedCC::setOversubscriptionRatio(flow_count);
+    UecSink::_oversubscribed_cc = false;
 
     UecPullPacer* pacer = new UecPullPacer(linkspeed, 0.97, UecBasePacket::unquantize(UecSink::_credit_per_pull), eventlist, 1);
 
@@ -253,7 +256,7 @@ int main(int argc, char **argv) {
         routein->push_back(new Pipe(compute_latency(cable_length[i]),eventlist));
         routein->push_back(uecSrc->getPort(0)); 
 
-        uecSrc->connectPort(0, *routeout, *routein, *uecSnk, 0/*i * 1000.0*/);
+        uecSrc->connectPort(0, *routeout, *routein, *uecSnk, i * 500.0);
         sinkLogger.monitorSink(uecSnk);
     }
 

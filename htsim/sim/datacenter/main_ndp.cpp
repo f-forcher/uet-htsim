@@ -234,6 +234,11 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i],"-mtu")){
             packet_size = atoi(argv[i+1]);
             i++;
+        } else if (!strcmp(argv[i],"-failed")){
+            // number of failed links (failed to 10% linkspeed)
+            int num_failed = atoi(argv[i+1]);
+            FatTreeTopology::set_failed_links(num_failed);
+            i++;
         } else if (!strcmp(argv[i],"-paths")){
             path_entropy_size = atoi(argv[i+1]);
             cout << "no of paths " << path_entropy_size << endl;
