@@ -67,7 +67,7 @@ connection_matrices/perm_8192n_8192c_2MB.cm
 connection_matrices/perm_8192n_8192c_4MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 4MB messages, RCCC
 !!Binary ./htsim_uec
-!Param -end 1000
+!Param -end 1424
 !Param -paths 32
 !Param -linkspeed 400000
 !Param -topo topologies/leaf_spine_8192_400g_4_to_1.topo
@@ -78,7 +78,7 @@ connection_matrices/perm_8192n_8192c_4MB.cm
 connection_matrices/perm_8192n_8192c_4MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 4MB messages, RCCC
 !!Binary ./htsim_uec
-!Param -end 1000
+!Param -end 1424
 !Param -paths 64
 !Param -linkspeed 400000
 !Param -topo topologies/leaf_spine_8192_400g_4_to_1.topo
@@ -89,7 +89,7 @@ connection_matrices/perm_8192n_8192c_4MB.cm
 connection_matrices/perm_8192n_8192c_4MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 4MB messages, RCCC
 !!Binary ./htsim_uec
-!Param -end 1000
+!Param -end 1424
 !Param -paths 128
 !Param -linkspeed 400000
 !Param -topo topologies/leaf_spine_8192_400g_4_to_1.topo
@@ -100,7 +100,7 @@ connection_matrices/perm_8192n_8192c_4MB.cm
 connection_matrices/perm_8192n_8192c_8MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 8MB messages, RCCC
 !!Binary ./htsim_uec
-!Param -end 1000
+!Param -end 2704
 !Param -paths 32
 !Param -linkspeed 400000
 !Param -topo topologies/leaf_spine_8192_400g_4_to_1.topo
@@ -111,7 +111,7 @@ connection_matrices/perm_8192n_8192c_8MB.cm
 connection_matrices/perm_8192n_8192c_8MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 8MB messages, RCCC
 !!Binary ./htsim_uec
-!Param -end 1000
+!Param -end 2704
 !Param -paths 64
 !Param -linkspeed 400000
 !Param -topo topologies/leaf_spine_8192_400g_4_to_1.topo
@@ -122,7 +122,7 @@ connection_matrices/perm_8192n_8192c_8MB.cm
 connection_matrices/perm_8192n_8192c_8MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 8MB messages, RCCC
 !!Binary ./htsim_uec
-!Param -end 1000
+!Param -end 2704
 !Param -paths 128
 !Param -linkspeed 400000
 !Param -topo topologies/leaf_spine_8192_400g_4_to_1.topo
@@ -133,7 +133,7 @@ connection_matrices/perm_8192n_8192c_8MB.cm
 connection_matrices/perm_8192n_8192c_16MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 16MB messages, RCCC
 !!Binary ./htsim_uec
-!Param -end 1316
+!Param -end 5264
 !Param -paths 32
 !Param -linkspeed 400000
 !Param -topo topologies/leaf_spine_8192_400g_4_to_1.topo
@@ -144,7 +144,7 @@ connection_matrices/perm_8192n_8192c_16MB.cm
 connection_matrices/perm_8192n_8192c_16MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 16MB messages, RCCC
 !!Binary ./htsim_uec
-!Param -end 1316
+!Param -end 5264
 !Param -paths 64
 !Param -linkspeed 400000
 !Param -topo topologies/leaf_spine_8192_400g_4_to_1.topo
@@ -155,7 +155,7 @@ connection_matrices/perm_8192n_8192c_16MB.cm
 connection_matrices/perm_8192n_8192c_16MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 16MB messages, RCCC
 !!Binary ./htsim_uec
-!Param -end 1316
+!Param -end 5264
 !Param -paths 128
 !Param -linkspeed 400000
 !Param -topo topologies/leaf_spine_8192_400g_4_to_1.topo
@@ -166,7 +166,7 @@ connection_matrices/perm_8192n_8192c_16MB.cm
 connection_matrices/perm_8192n_8192c_32MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 32MB messages, RCCC
 !!Binary ./htsim_uec
-!Param -end 2596
+!Param -end 10384
 !Param -paths 32
 !Param -linkspeed 400000
 !Param -topo topologies/leaf_spine_8192_400g_4_to_1.topo
@@ -177,7 +177,7 @@ connection_matrices/perm_8192n_8192c_32MB.cm
 connection_matrices/perm_8192n_8192c_32MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 32MB messages, RCCC
 !!Binary ./htsim_uec
-!Param -end 2596
+!Param -end 10384
 !Param -paths 64
 !Param -linkspeed 400000
 !Param -topo topologies/leaf_spine_8192_400g_4_to_1.topo
@@ -188,7 +188,7 @@ connection_matrices/perm_8192n_8192c_32MB.cm
 connection_matrices/perm_8192n_8192c_32MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 32MB messages, RCCC
 !!Binary ./htsim_uec
-!Param -end 2596
+!Param -end 10384
 !Param -paths 128
 !Param -linkspeed 400000
 !Param -topo topologies/leaf_spine_8192_400g_4_to_1.topo
@@ -199,7 +199,7 @@ connection_matrices/perm_8192n_8192c_32MB.cm
 connection_matrices/perm_8192n_8192c_64MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 64MB messages, RCCC
 !!Binary ./htsim_uec
-!Param -end 5156
+!Param -end 20624
 !Param -paths 32
 !Param -linkspeed 400000
 !Param -topo topologies/leaf_spine_8192_400g_4_to_1.topo
@@ -210,7 +210,7 @@ connection_matrices/perm_8192n_8192c_64MB.cm
 connection_matrices/perm_8192n_8192c_64MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 64MB messages, RCCC
 !!Binary ./htsim_uec
-!Param -end 5156
+!Param -end 20624
 !Param -paths 64
 !Param -linkspeed 400000
 !Param -topo topologies/leaf_spine_8192_400g_4_to_1.topo
@@ -221,7 +221,7 @@ connection_matrices/perm_8192n_8192c_64MB.cm
 connection_matrices/perm_8192n_8192c_64MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 64MB messages, RCCC
 !!Binary ./htsim_uec
-!Param -end 5156
+!Param -end 20624
 !Param -paths 128
 !Param -linkspeed 400000
 !Param -topo topologies/leaf_spine_8192_400g_4_to_1.topo
@@ -232,7 +232,7 @@ connection_matrices/perm_8192n_8192c_64MB.cm
 connection_matrices/perm_8192n_8192c_100MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 100MB messages, RCCC
 !!Binary ./htsim_uec
-!Param -end 8036
+!Param -end 32144
 !Param -paths 32
 !Param -linkspeed 400000
 !Param -topo topologies/leaf_spine_8192_400g_4_to_1.topo
@@ -243,7 +243,7 @@ connection_matrices/perm_8192n_8192c_100MB.cm
 connection_matrices/perm_8192n_8192c_100MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 100MB messages, RCCC
 !!Binary ./htsim_uec
-!Param -end 8036
+!Param -end 32144
 !Param -paths 64
 !Param -linkspeed 400000
 !Param -topo topologies/leaf_spine_8192_400g_4_to_1.topo
@@ -254,7 +254,7 @@ connection_matrices/perm_8192n_8192c_100MB.cm
 connection_matrices/perm_8192n_8192c_100MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 100MB messages, RCCC
 !!Binary ./htsim_uec
-!Param -end 8036
+!Param -end 32144
 !Param -paths 128
 !Param -linkspeed 400000
 !Param -topo topologies/leaf_spine_8192_400g_4_to_1.topo
