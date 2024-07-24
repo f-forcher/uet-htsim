@@ -1,3 +1,0 @@
-connection_matrices/
--
-./htsim_uec -topo topologies/leaf_spine_8192_200g.topo -linkspeed 200000 -tm connection_matrices/perm_8192n_8192c_8MB.cm -q 70 -cwnd 100 -ecn 17 52

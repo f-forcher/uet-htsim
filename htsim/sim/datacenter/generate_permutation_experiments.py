@@ -8,7 +8,7 @@ def generate_experiment(messagesize,linkspeed,paths,mode,oversub):
     print ("connection_matrices/perm_8192n_8192c_",messagesize,"MB.cm",sep='')
     print ("!Experiment 8K permutation, 8K leaf-spine, ",linkspeed,"Gbps, ",paths," paths, ",messagesize,"MB messages, ",mode,sep='')
     print ("!!Binary ./htsim_uec")
-    idealfct = int(messagesize * 8000 / linkspeed + 9)
+    idealfct = int(messagesize * 8000 / linkspeed + 9) * oversub
     print ("!Param -end ",max(oversub*4*idealfct,1000),sep='')
     print ("!Param -paths ",paths,sep='')
     print ("!Param -linkspeed ",linkspeed,"000",sep='')
