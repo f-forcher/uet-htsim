@@ -330,6 +330,7 @@ private:
     void fulfill_adjustment();
     void mark_packet_for_retransmission(UecBasePacket::seq_t psn, uint16_t pktsize);
     void update_delay(simtime_picosec delay, bool update_avg, bool skip);
+    void update_base_rtt(simtime_picosec raw_rtt, uint16_t packet_size);
     simtime_picosec get_avg_delay();
     uint16_t get_avg_pktsize();
     void average_ecn_bytes(uint32_t pktsize, uint32_t newly_acked_bytes, bool skip);

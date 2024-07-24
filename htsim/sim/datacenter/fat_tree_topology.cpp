@@ -286,6 +286,7 @@ FatTreeTopology::FatTreeTopology(uint32_t no_of_nodes, linkspeed_bps linkspeed, 
     _switch_latency = switch_latency;
 
     _diameter_latency = 0;
+    _diameter = (2 * _tiers);
     if (_link_latencies[TOR_TIER] == 0) {
         _diameter_latency = (_hop_latency * (2 * _tiers)) + (_switch_latency * (2 * _tiers - 1));
         cout << "Fat Tree topology (0) with " << timeAsUs(_hop_latency) << "us links and " 
@@ -368,6 +369,7 @@ FatTreeTopology::FatTreeTopology(uint32_t no_of_nodes, linkspeed_bps linkspeed, 
         _diameter_latency += 2 * _hop_latency \
                                 + 2 * _switch_latency;
     }
+    _diameter = (2 * _tiers);
  
     _logger_factory = logger_factory;
     _qt = q;
@@ -403,6 +405,7 @@ FatTreeTopology::FatTreeTopology(uint32_t no_of_nodes, linkspeed_bps linkspeed, 
         _diameter_latency += 2 * _hop_latency \
                                 + 2 * _switch_latency;
     }
+    _diameter = (2 * _tiers);
     _logger_factory = logger_factory;
     _qt = qtype;
     _sender_qt = sender_qtype;

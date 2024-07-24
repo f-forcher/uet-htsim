@@ -762,7 +762,8 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
         send_time = i->second.send_time;
         pkt_size = i->second.pkt_size;
         _raw_rtt = eventlist().now() - send_time;
-        if(_raw_rtt > _base_rtt){
+        update_base_rtt(_raw_rtt, pkt_size);
+        if(_raw_rtt >= _base_rtt){
             update_delay(_raw_rtt, true, pkt.ecn_echo());
             delay = _raw_rtt - _base_rtt; 
         }else{
@@ -941,8 +942,9 @@ void UecSrc::fast_increase(uint32_t newly_acked_bytes,simtime_picosec delay){
             return;
         }
     }
-    else _fi_count = 0;
-
+    else  {
+        _fi_count = 0;
+    }
     _increase = false;
 }
 
@@ -1074,20 +1076,15 @@ void UecSrc::dontUpdateCwndOnNack(bool skip, mem_b nacked_bytes) {
     sendIfPermitted();
 }
 
+void UecSrc::update_base_rtt(simtime_picosec raw_rtt, uint16_t packet_size){
+    if (_base_rtt > _raw_rtt && packet_size == _mtu) {
+        _base_rtt = _raw_rtt;
+        _bdp = timeAsUs(_raw_rtt) * _nic.linkspeed() / 8000000; 
+        _maxwnd = 1.5 * _bdp;
+    }
+}
+
 void UecSrc::update_delay(simtime_picosec raw_rtt, bool update_avg, bool skip){
-    bool new_base_rtt = false;
-
-    if (_base_rtt == 0 || _base_rtt > _raw_rtt){
-         _base_rtt = _raw_rtt;
-         new_base_rtt = true;
-    }
-
-    if ((_bdp == 0 || new_base_rtt) && _sender_based_cc){
-         //reinitialize BDP, we have new RTT sample.
-         
-         _bdp = timeAsUs(_raw_rtt) * _nic.linkspeed() / 8000000; 
-         _maxwnd = 1.5 * _bdp;
-    }
 
     simtime_picosec delay = _raw_rtt - _base_rtt;
     if(update_avg){

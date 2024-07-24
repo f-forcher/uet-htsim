@@ -92,7 +92,8 @@ public:
                            link_direction dir,  int switch_tier, bool tor);
     static void set_tiers(uint32_t tiers) {_tiers = tiers;}
     static uint32_t get_tiers() {return _tiers;}
-    uint32_t get_diameter_latency() {return _diameter_latency;}
+    simtime_picosec get_diameter_latency() {return _diameter_latency;}
+    uint16_t get_diameter() {return _diameter;}
     static void set_latencies(simtime_picosec src_lp, simtime_picosec lp_up, simtime_picosec up_cs,
                               simtime_picosec lp_switch, simtime_picosec up_switch, simtime_picosec core_switch) {
         _link_latencies[0] = src_lp;
@@ -243,6 +244,7 @@ private:
     uint32_t _no_of_nodes;
     simtime_picosec _hop_latency,_switch_latency;
     simtime_picosec _diameter_latency;
+    uint16_t _diameter;
 };
 
 #endif
