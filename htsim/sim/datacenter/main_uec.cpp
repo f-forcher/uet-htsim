@@ -788,7 +788,7 @@ int main(int argc, char **argv) {
         bounce_pkts += uec_srcs[ix]->_bounces_received;
         ack_pkts += uec_srcs[ix]->_acks_received;
     }
-    cout << "New: " << new_pkts << " Rtx: " << rtx_pkts << " RTS: " << rts_pkts << " Bounced: " << bounce_pkts << " ACKs:" << ack_pkts << endl;
+    cout << "New: " << new_pkts << " Rtx: " << rtx_pkts << " RTS: " << rts_pkts << " Bounced: " << bounce_pkts << " ACKs: " << ack_pkts << endl;
     /*
     list <const Route*>::iterator rt_i;
     int counts[10]; int hop;
