@@ -32,7 +32,7 @@
 
 int DEFAULT_NODES = 128;
 #define DEFAULT_QUEUE_SIZE 35
-#define DEFAULT_CWND 50
+// #define DEFAULT_CWND 50
 
 EventList eventlist;
 
@@ -43,11 +43,12 @@ void exit_error(char* progr) {
 
 int main(int argc, char **argv) {
     Clock c(timeFromSec(5 / 100.), eventlist);
+    bool param_queuesize_set = false;
     mem_b queuesize = DEFAULT_QUEUE_SIZE;
     linkspeed_bps linkspeed = speedFromMbps((double)HOST_NIC);
     int packet_size = 4150;
     uint32_t path_entropy_size = 64;
-    uint32_t no_of_conns = 0, cwnd = DEFAULT_CWND, no_of_nodes = 0;
+    uint32_t no_of_conns = 0, cwnd = 0, no_of_nodes = 0;
     uint32_t tiers = 3; // we support 2 and 3 tier fattrees
     uint32_t planes = 1;  // multi-plane topologies
     uint32_t ports = 1;  // ports per NIC
@@ -72,6 +73,7 @@ int main(int argc, char **argv) {
     bool log_queue_usage = false;
     double ecn_thresh = 0.5; // default marking threshold for ECN load balancing
 
+    bool param_ecn_set = false;
     bool ecn = true;
     mem_b ecn_low = 0.2 * queuesize, ecn_high = 0.8 * queuesize;
 
@@ -87,6 +89,7 @@ int main(int argc, char **argv) {
     filename << "logout.dat";
     int end_time = 1000;//in microseconds
     bool force_disable_oversubscribed_cc = false;
+    bool enable_accurate_base_rtt = true;
 
     //unsure how to set this. 
     queue_type snd_type = FAIR_PRIO;
@@ -263,6 +266,7 @@ int main(int argc, char **argv) {
             cout << "FatTree topology input file: "<< topo_file << endl;
             i++;
         } else if (!strcmp(argv[i],"-q")){
+            param_queuesize_set = true;
             queuesize = atoi(argv[i+1]);
             cout << "Setting queuesize to " << queuesize << " packets " << endl;
             i++;
@@ -281,12 +285,17 @@ int main(int argc, char **argv) {
             force_disable_oversubscribed_cc = true;
             cout << "Disabling receiver oversubscribed CC even with OS topology" << endl;
         }
+        else if (!strcmp(argv[i],"-disable_accurate_base_rtt")){
+            enable_accurate_base_rtt = false;
+            cout << "Disabling accurate base rtt configuration, each flow takes network wide rtt as the base rtt upper bound." << endl;
+        }
         else if (!strcmp(argv[i],"-fastlossrecovery")){
             UecSrc::_enable_fast_loss_recovery = true;
             cout << "Using sender fast loss recovery heuristic " << endl;
         }
         else if (!strcmp(argv[i],"-ecn")){
             // fraction of queuesize, between 0 and 1
+            param_ecn_set = true;
             ecn = true;
             ecn_low = atoi(argv[i+1]); 
             ecn_high = atoi(argv[i+2]);
@@ -439,6 +448,10 @@ int main(int argc, char **argv) {
         i++;
     }
 
+    if (!param_queuesize_set || !param_ecn_set){
+        cout << "queuesizes and ecn threshold should be input from the parameters, otherwise, queuesize = BDP of 100Gbps and 12us RTT and ecn_low is 20\% of queuesize and 80\% of queuesize."<< endl;
+        abort();
+    }
     assert(trimsize >= 64 && trimsize <= (uint32_t)packet_size);
 
     srand(seed);
@@ -465,10 +478,10 @@ int main(int argc, char **argv) {
         cout << "enable quick adapt gate" << endl;            
     }
 
-    if(disable_fair_decrease){
-        UecSrc::disableFairDecrease();
-    }
-    UecSrc::parameterScaleToTargetQ();
+    // if(disable_fair_decrease){
+    //     UecSrc::disableFairDecrease();
+    // }
+
     /*
     UecSink::_oversubscribed_congestion_control = oversubscribed_congestion_control;
     */
@@ -632,6 +645,14 @@ int main(int argc, char **argv) {
         topo[0]->add_failed_link(crt->switch_type,crt->switch_id,crt->link_id);
     }
 
+    // Initialize congestion control algorithms
+    if (receiver_driven) {
+        // TBD
+    } else {
+        // UecSrc::parameterScaleToTargetQ();
+        UecSrc::initNsccParams(network_max_unloaded_rtt, linkspeed);
+    }
+
     vector<UecPullPacer*> pacers;
     vector<PCIeModel*> pcie_models;
     vector<OversubscribedCC*> oversubscribed_ccs;
@@ -666,16 +687,37 @@ int main(int argc, char **argv) {
         assert(false);
     }
 
+    mem_b cwnd_b = cwnd*Packet::data_packet_size();
     for (size_t c = 0; c < all_conns->size(); c++){
         connection* crt = all_conns->at(c);
         int src = crt->src;
         int dest = crt->dst;
+        assert(planes > 0);
+        simtime_picosec transmission_delay = (Packet::data_packet_size() * 8 / speedAsGbps(linkspeed) * topo[0]->get_diameter() * 1000) + (UecBasePacket::get_ack_size() * 8 / speedAsGbps(linkspeed) * topo[0]->get_diameter() * 1000);
+        simtime_picosec base_rtt_bw_two_points = 2*topo[0]->get_two_point_diameter_latency(src, dest) + transmission_delay;
+
         //cout << "Connection " << crt->src << "->" <<crt->dst << " starting at " << crt->start << " size " << crt->size << endl;
+        cout << "base_rtt_bw_two_points " << timeAsUs(base_rtt_bw_two_points)  << endl;
 
         uec_src = new UecSrc(traffic_logger, eventlist, *nics.at(src), ports);
-        uec_src->setCwnd(cwnd*Packet::data_packet_size());
-        uec_src->setMaxWnd(cwnd*Packet::data_packet_size());
-        uec_src->boundBaseRTT(network_max_unloaded_rtt);
+
+        // If cwnd is 0 initXXcc will set a sensible default value 
+        if (receiver_driven) {
+            // uec_src->setCwnd(cwnd*Packet::data_packet_size());
+            // uec_src->setMaxWnd(cwnd*Packet::data_packet_size());
+
+            if (enable_accurate_base_rtt) {
+            	uec_src->initRccc(cwnd_b, base_rtt_bw_two_points);
+        	} else {
+            	uec_src->initRccc(cwnd_b, network_max_unloaded_rtt);
+        	}
+        } else {
+            if (enable_accurate_base_rtt) {
+            	uec_src->initNscc(cwnd_b, base_rtt_bw_two_points);
+        	} else {
+            	uec_src->initNscc(cwnd_b, network_max_unloaded_rtt);
+        	}
+        }
         uec_srcs.push_back(uec_src);
         uec_src->setDst(dest);
 

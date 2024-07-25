@@ -42,12 +42,18 @@ bool UecSink::_oversubscribed_cc = false; // can only be enabled when receiver_b
 UecSrc::Sender_CC UecSrc::_sender_cc_algo = UecSrc::NSCC;
 UecSrc::LoadBalancing_Algo UecSrc::_load_balancing_algo = UecSrc::BITMAP;
 
+linkspeed_bps UecSrc::_reference_network_linkspeed = 0; // set by initNsccParams
+simtime_picosec UecSrc::_reference_network_rtt = timeFromUs(12u); 
+mem_b UecSrc::_reference_network_bdp = 0; // set by initNsccParams
+linkspeed_bps UecSrc::_network_linkspeed = 0; // set by initNsccParams
+simtime_picosec UecSrc::_network_rtt = 0; // set by initNsccParams
+mem_b UecSrc::_network_bdp = 0; // set by initNsccParams
 double UecSrc::_scaling_factor_a = 1; //for 400Gbps. cf. spec must be set to BDP/(100Gbps*12us)
+double UecSrc::_scaling_factor_b = 0; // Needs to be inialized in initNscc
 uint32_t UecSrc::_qa_scaling = 1; //quick adapt scaling - how much of the achieved bytes should we use as new CWND?
 double UecSrc::_gamma = 0.8; //used for aggressive decrease
 uint32_t UecSrc::_pi = 5000 * _scaling_factor_a;//pi = 5 * mtu_size for 400Gbps; proportional increase constant
 double UecSrc::_alpha = UecSrc::_scaling_factor_a * 1000 * 4000 / timeFromUs(6u);
-//double UecSrc::_scaling_c = 4000 / 6 / UecSrc::_pi;//scaling_c = mtu_size/(((target_rtt-base_rtt)* pi) ; UNUSED!
 double UecSrc::_fi = 1; //fair_increase constant
 double UecSrc::_fi_scale = .25 * UecSrc::_scaling_factor_a;
 
@@ -59,27 +65,114 @@ simtime_picosec UecSrc::_target_Qdelay = timeFromUs(6u);
 uint32_t UecSrc::_adjust_bytes_threshold = (simtime_picosec)32000*_target_Qdelay/timeFromUs(12u);
 double UecSrc::_qa_threshold = 4 * UecSrc::_target_Qdelay; 
 
-// constants for when FairDecrease is used
-double UecSrc::_fd = 0.8; //fair_decrease constant
-//double UecSrc::_eta = 0.15 * 4000 * _scaling_factor_a;
 double UecSrc::_eta = 0;
-double UecSrc::_ecn_thresh = 0.3;
 bool UecSrc::_enable_qa_gate = false;
 bool UecSrc::_enable_avg_ecn_over_path = false;
 bool UecSrc::_enable_fast_loss_recovery = false;
 
-void UecSrc::disableFairDecrease() {
-    // constants for when FairDecrease is not used
-    _fd = 0.0; //fair_decrease constant
-    _eta = 0.15 * _target_Qdelay/timeFromUs(12u) * 4000.0 * UecSrc::_scaling_factor_a;
-    _ecn_thresh = 0.0;
+
+void UecSrc::initNsccParams(simtime_picosec network_rtt,
+                            linkspeed_bps linkspeed){
+    _reference_network_linkspeed = speedFromGbps(100);
+    _reference_network_rtt = timeFromUs(12u); 
+    _reference_network_bdp = timeAsSec(_reference_network_rtt)*(_reference_network_linkspeed/8);
+
+    _network_linkspeed = linkspeed;
+    _network_rtt = network_rtt; 
+    _network_bdp = timeAsSec(_network_rtt)*(_network_linkspeed/8);
+
+    _target_Qdelay = timeFromUs(6u);
+
+    _qa_threshold = 4 * _target_Qdelay; 
+
+    _scaling_factor_a = (double)_network_bdp/(double)_reference_network_bdp;
+    _scaling_factor_b = (double)_target_Qdelay/(double)_reference_network_rtt; // no unit
+
+    _alpha = 4.0*_scaling_factor_a*_scaling_factor_b*_mss/_target_Qdelay; // bytes/picosec
+    _fi = 5*_scaling_factor_a;
+    _eta = 0.15*_mss*_scaling_factor_a;
+
+    _qa_scaling = 1; //quick adapt scaling - how much of the achieved bytes should we use as new CWND?
+    _gamma = 0.8; //used for aggressive decrease
+    _pi = 5000*_scaling_factor_a; // proportional increase constant
+    _fi_scale = .25*_scaling_factor_a;
+
+    _delay_alpha = 0.0125;
+
+    _adjust_period_threshold = _reference_network_rtt;
+    _adjust_bytes_threshold = (uint32_t)(16000*_scaling_factor_b);
+
+    // Deprecated parameters, will be removed in the future.
+    // constants for when FairDecrease is used
+    // _fd = 0.8; //fair_decrease constant
+    // Only in effect when fair decrease is enabled
+    _ecn_alpha = 0.125;
+    // _ecn_thresh = 0.3;
+
+    cout << "Initializing static NSCC parameters:"
+        << " _reference_network_linkspeed=" << _reference_network_linkspeed
+        << " _reference_network_rtt=" << _reference_network_rtt
+        << " _reference_network_bdp=" << _reference_network_bdp
+        << " _target_Qdelay=" << _target_Qdelay
+        << " _network_linkspeed=" << _network_linkspeed
+        << " _network_rtt=" << _network_rtt
+        << " _network_bdp=" << _network_bdp
+        << " _qa_threshold=" << _qa_threshold
+        << " _scaling_factor_a=" << _scaling_factor_a
+        << " _scaling_factor_b=" << _scaling_factor_b
+        << " _alpha=" << _alpha
+        << " _fi=" << _fi
+        << " _eta=" << _eta
+        << " _qa_scaling=" << _qa_scaling
+        << " _gamma=" << _gamma
+        << " _pi=" << _pi
+        << " _fi_scale=" << _fi_scale
+        << " _delay_alpha=" << _delay_alpha 
+        << " _adjust_period_threshold=" << _adjust_period_threshold
+        << " _adjust_bytes_threshold=" << _adjust_bytes_threshold
+        << endl;
 }
 
-void UecSrc::parameterScaleToTargetQ(){
-    double scale_factor = timeAsUs(_target_Qdelay)/12.0;
-    scale_factor = max(scale_factor, 1.0);
-    _adjust_bytes_threshold = (uint32_t)(16000*scale_factor);
-    _qa_threshold = 4 * _target_Qdelay; 
+void UecSrc::initNscc(mem_b cwnd, simtime_picosec peer_rtt) {
+    _base_rtt = peer_rtt;
+    _base_bdp = timeAsSec(_base_rtt)*(_nic.linkspeed()/8);
+    _bdp = _base_bdp;
+    _maxwnd =  1.5*_bdp;
+    if (cwnd == 0) {
+        _cwnd = _maxwnd;
+    } else {
+        _cwnd = cwnd;
+    }
+
+    cout << "Initialize per-instance NSCC parameters:"
+        << " flowid " << _flow.flow_id()
+        << " _base_rtt=" << _base_rtt
+        << " _base_bdp=" << _base_bdp
+        << " _bdp=" << _bdp
+        << " _maxwnd=" << _maxwnd
+        << " _cwnd=" << _cwnd
+        << endl;
+}
+
+void UecSrc::initRccc(mem_b cwnd, simtime_picosec peer_rtt) {
+    _base_rtt = peer_rtt;
+    _base_bdp = timeAsSec(_base_rtt)*(_nic.linkspeed()/8);
+    _bdp = _base_bdp;
+    _maxwnd =  1.5*_bdp;
+    if (cwnd == 0) {
+        _cwnd = _maxwnd;
+    } else {
+        _cwnd = cwnd;
+    }
+
+    cout << "Initialize per-instance RCCC parameters:"
+        << " flowid " << _flow.flow_id()
+        << " _base_rtt=" << _base_rtt
+        << " _base_bdp=" << _base_bdp
+        << " _bdp=" << _bdp
+        << " _maxwnd=" << _maxwnd
+        << " _cwnd=" << _cwnd
+        << endl;
 }
 
 
@@ -898,7 +991,7 @@ bool UecSrc::quick_adapt(bool is_loss, simtime_picosec avgqdelay) {
                 }
             }
             else {
-                _cwnd = max(_achieved_bytes, (mem_b)_mtu) * _qa_scaling;
+                _cwnd = max(_achieved_bytes, (mem_b)_mtu); //* _qa_scaling;
                 if(_flow.flow_id() == _debug_flowid)
                     cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " quick_adapt  _cwnd " << _cwnd << " is_loss " << is_loss << endl;
                 _bytes_to_ignore = _in_flight;
@@ -908,7 +1001,7 @@ bool UecSrc::quick_adapt(bool is_loss, simtime_picosec avgqdelay) {
             }
         }
         _achieved_bytes = 0;
-        _qa_endtime = eventlist().now() + _base_rtt;
+        _qa_endtime = eventlist().now() + _base_rtt + _target_Qdelay;
     }
     return false;
 }
@@ -925,7 +1018,9 @@ void UecSrc::proportional_increase(uint32_t newly_acked_bytes,simtime_picosec de
     //make sure targetQdelay > delay;
     assert(_target_Qdelay > delay);
 
-    _inc_bytes += min((double)newly_acked_bytes * _pi, _alpha * (_target_Qdelay - delay));
+    _inc_bytes += min(_adjust_bytes_threshold, 
+                      (uint32_t)round(_alpha * (_target_Qdelay - delay) * (double)newly_acked_bytes));
+    // _strack_cwnd += _alpha * diff_us* acked_bytes /old_cwnd;
 
     fair_increase(newly_acked_bytes);
 }
@@ -949,23 +1044,23 @@ void UecSrc::fast_increase(uint32_t newly_acked_bytes,simtime_picosec delay){
     _increase = false;
 }
 
-void UecSrc::fair_decrease(bool can_decrease, uint32_t newly_acked_bytes){
-    _increase = false;
-    _fi_count = 0;
-    if (can_decrease)
-        _dec_bytes += _fd * newly_acked_bytes;
-}
+// void UecSrc::fair_decrease(bool can_decrease, uint32_t newly_acked_bytes){
+//     _increase = false;
+//     _fi_count = 0;
+//     if (can_decrease)
+//         _dec_bytes += _fd * newly_acked_bytes;
+// }
 
-void UecSrc::multiplicative_decrease(bool can_decrease, uint32_t newly_acked_bytes){
+void UecSrc::multiplicative_decrease(uint32_t newly_acked_bytes){
     _increase = false;
     _fi_count = 0;
     simtime_picosec avg_delay = get_avg_delay();
-    if (can_decrease && avg_delay > _target_Qdelay){
+    if (avg_delay > _target_Qdelay){
         if (eventlist().now() - _last_dec_time > _base_rtt){
             _cwnd *= max(1-_gamma*(avg_delay-_target_Qdelay)/avg_delay, 0.5);/*_max_md_jump instead of 1*/
             _last_dec_time = eventlist().now();
         }
-        fair_decrease(can_decrease, newly_acked_bytes);
+        // fair_decrease(can_decrease, newly_acked_bytes);
     }
 }
 
@@ -998,7 +1093,7 @@ void UecSrc::dontUpdateCwndOnAck(bool skip, simtime_picosec delay, mem_b newly_a
 
 
 void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_acked_bytes) {
-    bool can_decrease = _exp_avg_ecn > _ecn_thresh;
+    // bool can_decrease = _exp_avg_ecn > _ecn_thresh;
 
     if (_bytes_ignored < _bytes_to_ignore && skip)
         return;
@@ -1019,19 +1114,22 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
             cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " proportional_increase _nscc_cwnd " << _cwnd << endl;
         }
     } else if (skip && delay >= _target_Qdelay) {    
-        multiplicative_decrease(can_decrease,newly_acked_bytes);
+        multiplicative_decrease(newly_acked_bytes);
         if (_flow.flow_id() == _debug_flowid || UecSrc::_debug) {
             cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " multiplicative_decrease _nscc_cwnd " << _cwnd << endl;
         }
     } else if (skip && delay < _target_Qdelay) {
-        fair_decrease(can_decrease,newly_acked_bytes);
-        if (_flow.flow_id() == _debug_flowid || UecSrc::_debug) {
-            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " fair_decrease _nscc_cwnd " << _cwnd
-                <<" mtu " << _mtu
-                << "_maxwnd " << _maxwnd << endl;
-        }
+        // fair_decrease(can_decrease,newly_acked_bytes);
+        // if (_flow.flow_id() == _debug_flowid || UecSrc::_debug) {
+        //     cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " fair_decrease _nscc_cwnd " << _cwnd
+        //         <<" mtu " << _mtu
+        //         << "_maxwnd " << _maxwnd << endl;
+        // }
+        // FD is out.
+        // NOOP, just switch path
     }
 
+    // if ( _received_bytes > _adjust_bytes_threshold || eventlist().now() - _last_adjust_time > _adjust_period_threshold ) {
     if ( _received_bytes > _adjust_bytes_threshold || eventlist().now() - _last_adjust_time > _adjust_period_threshold ) {
         if (_flow.flow_id() == _debug_flowid || UecSrc::_debug) {
             cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<<  " " << _flow.str() << " fulfill_adjustmentx _nscc_cwnd " << _cwnd
@@ -1159,7 +1257,6 @@ void UecSrc::fastLossRecovery(uint32_t ooo, UecBasePacket::seq_t cum_ack) {
     }
 
     // move the packet to the RTX queue
-    
     for (UecBasePacket::seq_t rtx_seqno = cum_ack; rtx_seqno < _recovery_seqno &&  _loss_counter < _cwnd/get_avg_pktsize() ; rtx_seqno ++ ){
         if (rtx_seqno < _highest_rtx_sent)
             continue;

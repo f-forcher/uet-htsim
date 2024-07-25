@@ -50,6 +50,8 @@ class CompositeQueue : public Queue {
     void set_ecn_thresholds(mem_b min_thresh, mem_b max_thresh) {
         _ecn_minthresh = min_thresh;
         _ecn_maxthresh = max_thresh;
+        if (_queue_id == 2)
+            cout << "queue_id " << _queue_id << " ecn_low " << _ecn_minthresh << " ecn_high " << _ecn_maxthresh << endl;
     }
 
     int _num_packets;
