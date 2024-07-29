@@ -1443,3 +1443,42 @@ void FatTreeTopology::add_switch_loggers(Logfile& log, simtime_picosec sample_pe
         switches_c[i]->add_logger(log, sample_period);
     }
 }
+
+simtime_picosec FatTreeTopology::get_two_point_diameter_latency(int src, int dst) {
+    simtime_picosec diameter_latency_end_point = 0;
+    simtime_picosec one_hop_delay = 0;
+    if(_link_latencies[TOR_TIER] == 0){
+        one_hop_delay = 2* (_hop_latency + _switch_latency);
+    }
+    if (_tiers == 2) {
+        if (HOST_POD_SWITCH(src) != HOST_POD_SWITCH(dst)) {
+            diameter_latency_end_point = _diameter_latency;
+        } else {
+            if(_link_latencies[TOR_TIER] == 0){
+                diameter_latency_end_point = one_hop_delay;
+            }else{
+                diameter_latency_end_point = 2 * _link_latencies[TOR_TIER] + _switch_latencies[TOR_TIER];
+            }
+        }
+    }else if (_tiers == 3) {
+        if (HOST_POD_SWITCH(src) == HOST_POD_SWITCH(dst)) {
+            if(_link_latencies[TOR_TIER] == 0){
+                diameter_latency_end_point = one_hop_delay;
+            }else{
+                diameter_latency_end_point = 2 * _link_latencies[TOR_TIER] + _switch_latencies[TOR_TIER];
+            }
+        } else if (HOST_POD(src) == HOST_POD(dst)) {
+            if (_link_latencies[TOR_TIER] == 0){
+                diameter_latency_end_point = 2*one_hop_delay;
+            }else{
+                diameter_latency_end_point = 2 * _link_latencies[TOR_TIER] + 2 * _switch_latencies[TOR_TIER] +
+                                             2 * _link_latencies[AGG_TIER] + _switch_latencies[AGG_TIER];
+            }
+        } else {
+            diameter_latency_end_point = _diameter_latency;
+        }
+    }
+    // cout << " _tiers " << _tiers <<  " HOST_POD_SWITCH src " << HOST_POD_SWITCH(src) << " dst " << HOST_POD_SWITCH(dst) << " diameter_latency_end_point " << diameter_latency_end_point<< endl;
+
+    return diameter_latency_end_point;
+}
