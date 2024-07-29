@@ -1,6 +1,6 @@
 import sys
 
-def generate_experiment(messagesize,linkspeed,paths,mode,oversub):
+def generate_experiment(messagesize,linkspeed,paths,mode,oversub,failed):
     ovs = ""
     if (oversub!=1):
         ovs = "_" + str(oversub)+"_to_1"
@@ -9,6 +9,7 @@ def generate_experiment(messagesize,linkspeed,paths,mode,oversub):
     print ("!Experiment 8K permutation, 8K leaf-spine, ",linkspeed,"Gbps, ",paths," paths, ",messagesize,"MB messages, ",mode,sep='')
     print ("!Binary ./htsim_uec")
     idealfct = int(messagesize * 8000 / linkspeed + 9) * oversub
+    idealfct = int(idealfct * 64 / (64 - failed + failed / 4))
     print ("!Param -end ",max(4*idealfct,1000),sep='')
     print ("!Param -paths ",paths,sep='')
     print ("!Param -linkspeed ",linkspeed,"000",sep='')
@@ -20,7 +21,9 @@ def generate_experiment(messagesize,linkspeed,paths,mode,oversub):
     print ("!Param -q ",queuesize,sep='')
     print ("!Param -ecn ",ecnmin," ",ecnmax,sep='')
     print ("!Param -cwnd ",int(3*queuesize/2),sep='')
-
+    if failure>0:
+        print ("!Param -failed ",failure,sep='')
+    
     if (mode == "NSCC"):
         print ("!Param -sender_cc_only")
     elif (mode == "BOTH"):
@@ -46,7 +49,7 @@ n = len(sys.argv)
 i = 1;
 
 if (n<3):
-    print ("Expected arguments not supplied. Please specify linkspeed [e.g. 200] and algorithm [NSCC, RCCC or BOTH]; optional argument is oversub ratio (4 and 8 supported)")
+    print ("Expected arguments not supplied. Please specify linkspeed [e.g. 200] and algorithm [NSCC, RCCC or BOTH]; optional argument is oversub ratio (4 and 8 supported); another optional argument is link failure count (applied per rack)")
     sys.exit()
 
 linkspeed = int(sys.argv[1])
@@ -55,6 +58,10 @@ mode = sys.argv[2]
 oversub = 1
 if (n>3):
     oversub = int(sys.argv[3])
+
+failure = 0
+if (n>4):
+    failure = int(sys.argv[4])
 
 if linkspeed not in (200,400,800):
     print ("Supported linkspeeds are 200,400 and 800, you supplied ", linkspeed)
@@ -65,9 +72,12 @@ if mode not in ("NSCC","RCCC","BOTH"):
     sys.exit()
 
 if oversub not in (1,4,8):
-    print ("Oversub ration can be 1,4 or 8, but you supplied ", oversub)
+    print ("Oversub ratio can be 1,4 or 8, but you supplied ", oversub)
     sys.exit()
+
+if failure<0 or failure>64:
+    print ("Failure can be in interval 0-64, but you supplied ", failure)
 
 for msgsize in (1,2,4,8,16,32,64,100):
     for paths in (32,64,128):
-        generate_experiment(msgsize,linkspeed,paths,mode,oversub);
+        generate_experiment(msgsize,linkspeed,paths,mode,oversub,failure);

@@ -88,8 +88,7 @@ public:
 
     BaseQueue* alloc_src_queue(QueueLogger* q);
     BaseQueue* alloc_queue(QueueLogger* q, mem_b queuesize, link_direction dir, int switch_tier, bool tor);
-    BaseQueue* alloc_queue(QueueLogger* q, uint64_t speed, mem_b queuesize,
-                           link_direction dir,  int switch_tier, bool tor);
+    BaseQueue* alloc_queue(QueueLogger* q, uint64_t speed, mem_b queuesize, link_direction dir,  int switch_tier, bool tor, bool reduced_speed);
     static void set_tiers(uint32_t tiers) {_tiers = tiers;}
     static uint32_t get_tiers() {return _tiers;}
     simtime_picosec get_diameter_latency() {return _diameter_latency;}
