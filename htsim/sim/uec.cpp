@@ -14,6 +14,7 @@ using namespace std;
 // to all paths.
 uint32_t UecSrc::_path_entropy_size = 256;
 int UecSrc::_global_node_count = 0;
+bool UecSrc::_shown = false;
 
 /* _min_rto can be tuned using setMinRTO. Don't change it here.  */
 simtime_picosec UecSrc::_min_rto = timeFromUs((uint32_t)DEFAULT_UEC_RTO_MIN);

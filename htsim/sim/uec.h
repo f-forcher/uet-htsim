@@ -133,7 +133,11 @@ public:
         _base_rtt = network_rtt;
         _bdp = timeAsUs(_base_rtt) * _nic.linkspeed() / 8000000;
         _maxwnd =  1.5*_bdp;
-        cout << "_bdp " << _bdp << " _maxwnd " << _maxwnd << " _base_rtt " << timeAsUs(_base_rtt) << endl;
+
+        if (!_shown){
+            cout << "Bound base RTT: _bdp " << _bdp << " _maxwnd " << _maxwnd << " _base_rtt " << timeAsUs(_base_rtt) << endl;
+            _shown = true;
+        }
     }
     mem_b maxWnd() const { return _maxwnd; }
 
@@ -180,6 +184,7 @@ public:
     uint32_t _acks_received;
 
     static bool _debug;
+    static bool _shown;
     bool _debug_src;
     bool debug() const { return _debug_src; }
 
