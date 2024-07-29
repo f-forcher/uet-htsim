@@ -239,7 +239,8 @@ private:
     static mem_b _ecn_high;
 
     //failed links hack
-    static int _num_failed_links;
+    static uint32_t _num_failed_links;
+    static double _failed_link_ratio;
     
     uint32_t _no_of_nodes;
     simtime_picosec _hop_latency,_switch_latency;

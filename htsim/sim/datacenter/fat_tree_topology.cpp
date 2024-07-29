@@ -38,8 +38,8 @@ bool FatTreeTopology::_enable_ecn = false;
 bool FatTreeTopology::_enable_ecn_on_tor_downlink = false;
 mem_b FatTreeTopology::_ecn_low = 0;
 mem_b FatTreeTopology::_ecn_high = 0;
-int FatTreeTopology::_num_failed_links = 0;
-
+uint32_t FatTreeTopology::_num_failed_links = 0;
+double FatTreeTopology::_failed_link_ratio = 0.25;
 
 void
 FatTreeTopology::set_tier_parameters(int tier, int radix_up, int radix_down, mem_b queue_up, mem_b queue_down, int bundlesize, linkspeed_bps linkspeed, int oversub) {
@@ -905,7 +905,13 @@ void FatTreeTopology::init_network(){
                 } else {
                     queueLogger = NULL;
                 }
-                queues_nup_nlp[agg][tor][b] = alloc_queue(queueLogger, _queue_down[AGG_TIER], DOWNLINK, AGG_TIER);
+
+                if (_tiers == 2 && (agg - agg_min) < _num_failed_links){
+                    queues_nup_nlp[agg][tor][b] = alloc_queue(queueLogger, _queue_down[AGG_TIER] * _failed_link_ratio, DOWNLINK, AGG_TIER);
+                    cout << "Failure: US" + ntoa(agg) + "->LS_" + ntoa(tor) + "(" + ntoa(b) + ") linkspeed set to " << speedAsGbps(_queue_down[AGG_TIER] * _failed_link_ratio) << endl;
+                }
+                else
+                    queues_nup_nlp[agg][tor][b] = alloc_queue(queueLogger, _queue_down[AGG_TIER], DOWNLINK, AGG_TIER);
                 queues_nup_nlp[agg][tor][b]->setName("US" + ntoa(agg) + "->LS_" + ntoa(tor) + "(" + ntoa(b) + ")");
                 //if (logfile) logfile->writeName(*(queues_nup_nlp[agg][tor]));
             
@@ -920,7 +926,13 @@ void FatTreeTopology::init_network(){
                 } else {
                     queueLogger = NULL;
                 }
-                queues_nlp_nup[tor][agg][b] = alloc_queue(queueLogger, _queue_up[TOR_TIER], UPLINK, TOR_TIER, true);
+
+                if (_tiers == 2 && (agg - agg_min) < _num_failed_links){
+                    queues_nlp_nup[tor][agg][b] = alloc_queue(queueLogger, _queue_up[TOR_TIER] * _failed_link_ratio, UPLINK, TOR_TIER, true);
+                    cout << "Failure: LS" + ntoa(tor) + "->US" + ntoa(agg) + "(" + ntoa(b) + ") linkspeed set to " << speedAsGbps(_queue_up[TOR_TIER] * _failed_link_ratio) << endl;
+                }
+                else queues_nlp_nup[tor][agg][b] = alloc_queue(queueLogger, _queue_up[TOR_TIER], UPLINK, TOR_TIER, true);
+
                 queues_nlp_nup[tor][agg][b]->setName("LS" + ntoa(tor) + "->US" + ntoa(agg) + "(" + ntoa(b) + ")");
                 //cout << queues_nlp_nup[tor][agg][b]->str() << endl;
                 //if (logfile) logfile->writeName(*(queues_nlp_nup[tor][agg]));
@@ -992,7 +1004,7 @@ void FatTreeTopology::init_network(){
                     }
         
                     if ((l+agg*_agg_switches_per_pod)<failed_links){
-                        queues_nc_nup[core][agg][b] = alloc_queue(queueLogger, _downlink_speeds[CORE_TIER]/4, _queue_down[CORE_TIER],
+                        queues_nc_nup[core][agg][b] = alloc_queue(queueLogger, _downlink_speeds[CORE_TIER] * _failed_link_ratio, _queue_down[CORE_TIER],
                                                                DOWNLINK, CORE_TIER, false);
                         cout << "Adding link failure for agg_sw " << ntoa(agg) << " l " << ntoa(l) << " b " << ntoa(b) << endl;
                     } else {
