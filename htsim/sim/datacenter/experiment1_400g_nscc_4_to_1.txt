@@ -1,6 +1,6 @@
 connection_matrices/perm_8192n_8192c_1MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 1MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 1000
 !Param -paths 32
 !Param -linkspeed 400000
@@ -9,10 +9,10 @@ connection_matrices/perm_8192n_8192c_1MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 34
+!tailFCT 139
 connection_matrices/perm_8192n_8192c_1MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 1MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 1000
 !Param -paths 64
 !Param -linkspeed 400000
@@ -21,10 +21,10 @@ connection_matrices/perm_8192n_8192c_1MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 34
+!tailFCT 139
 connection_matrices/perm_8192n_8192c_1MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 1MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 1000
 !Param -paths 128
 !Param -linkspeed 400000
@@ -33,10 +33,10 @@ connection_matrices/perm_8192n_8192c_1MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 34
+!tailFCT 139
 connection_matrices/perm_8192n_8192c_2MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 2MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 1000
 !Param -paths 32
 !Param -linkspeed 400000
@@ -45,10 +45,10 @@ connection_matrices/perm_8192n_8192c_2MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 58
+!tailFCT 235
 connection_matrices/perm_8192n_8192c_2MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 2MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 1000
 !Param -paths 64
 !Param -linkspeed 400000
@@ -57,10 +57,10 @@ connection_matrices/perm_8192n_8192c_2MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 58
+!tailFCT 235
 connection_matrices/perm_8192n_8192c_2MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 2MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 1000
 !Param -paths 128
 !Param -linkspeed 400000
@@ -69,10 +69,10 @@ connection_matrices/perm_8192n_8192c_2MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 58
+!tailFCT 235
 connection_matrices/perm_8192n_8192c_4MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 4MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 1424
 !Param -paths 32
 !Param -linkspeed 400000
@@ -81,10 +81,10 @@ connection_matrices/perm_8192n_8192c_4MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 106
+!tailFCT 427
 connection_matrices/perm_8192n_8192c_4MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 4MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 1424
 !Param -paths 64
 !Param -linkspeed 400000
@@ -93,10 +93,10 @@ connection_matrices/perm_8192n_8192c_4MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 106
+!tailFCT 427
 connection_matrices/perm_8192n_8192c_4MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 4MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 1424
 !Param -paths 128
 !Param -linkspeed 400000
@@ -105,10 +105,10 @@ connection_matrices/perm_8192n_8192c_4MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 106
+!tailFCT 427
 connection_matrices/perm_8192n_8192c_8MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 8MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 2704
 !Param -paths 32
 !Param -linkspeed 400000
@@ -117,10 +117,10 @@ connection_matrices/perm_8192n_8192c_8MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 202
+!tailFCT 811
 connection_matrices/perm_8192n_8192c_8MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 8MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 2704
 !Param -paths 64
 !Param -linkspeed 400000
@@ -129,10 +129,10 @@ connection_matrices/perm_8192n_8192c_8MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 202
+!tailFCT 811
 connection_matrices/perm_8192n_8192c_8MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 8MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 2704
 !Param -paths 128
 !Param -linkspeed 400000
@@ -141,10 +141,10 @@ connection_matrices/perm_8192n_8192c_8MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 202
+!tailFCT 811
 connection_matrices/perm_8192n_8192c_16MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 16MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 5264
 !Param -paths 32
 !Param -linkspeed 400000
@@ -153,10 +153,10 @@ connection_matrices/perm_8192n_8192c_16MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 394
+!tailFCT 1579
 connection_matrices/perm_8192n_8192c_16MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 16MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 5264
 !Param -paths 64
 !Param -linkspeed 400000
@@ -165,10 +165,10 @@ connection_matrices/perm_8192n_8192c_16MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 394
+!tailFCT 1579
 connection_matrices/perm_8192n_8192c_16MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 16MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 5264
 !Param -paths 128
 !Param -linkspeed 400000
@@ -177,10 +177,10 @@ connection_matrices/perm_8192n_8192c_16MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 394
+!tailFCT 1579
 connection_matrices/perm_8192n_8192c_32MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 32MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 10384
 !Param -paths 32
 !Param -linkspeed 400000
@@ -189,10 +189,10 @@ connection_matrices/perm_8192n_8192c_32MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 778
+!tailFCT 3115
 connection_matrices/perm_8192n_8192c_32MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 32MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 10384
 !Param -paths 64
 !Param -linkspeed 400000
@@ -201,10 +201,10 @@ connection_matrices/perm_8192n_8192c_32MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 778
+!tailFCT 3115
 connection_matrices/perm_8192n_8192c_32MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 32MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 10384
 !Param -paths 128
 !Param -linkspeed 400000
@@ -213,10 +213,10 @@ connection_matrices/perm_8192n_8192c_32MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 778
+!tailFCT 3115
 connection_matrices/perm_8192n_8192c_64MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 64MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 20624
 !Param -paths 32
 !Param -linkspeed 400000
@@ -225,10 +225,10 @@ connection_matrices/perm_8192n_8192c_64MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 1546
+!tailFCT 6187
 connection_matrices/perm_8192n_8192c_64MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 64MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 20624
 !Param -paths 64
 !Param -linkspeed 400000
@@ -237,10 +237,10 @@ connection_matrices/perm_8192n_8192c_64MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 1546
+!tailFCT 6187
 connection_matrices/perm_8192n_8192c_64MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 64MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 20624
 !Param -paths 128
 !Param -linkspeed 400000
@@ -249,10 +249,10 @@ connection_matrices/perm_8192n_8192c_64MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 1546
+!tailFCT 6187
 connection_matrices/perm_8192n_8192c_100MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 100MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 32144
 !Param -paths 32
 !Param -linkspeed 400000
@@ -261,10 +261,10 @@ connection_matrices/perm_8192n_8192c_100MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 2410
+!tailFCT 9643
 connection_matrices/perm_8192n_8192c_100MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 100MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 32144
 !Param -paths 64
 !Param -linkspeed 400000
@@ -273,10 +273,10 @@ connection_matrices/perm_8192n_8192c_100MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 2410
+!tailFCT 9643
 connection_matrices/perm_8192n_8192c_100MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 100MB messages, NSCC
-!!Binary ./htsim_uec
+!Binary ./htsim_uec
 !Param -end 32144
 !Param -paths 128
 !Param -linkspeed 400000
@@ -285,4 +285,4 @@ connection_matrices/perm_8192n_8192c_100MB.cm
 !Param -ecn 25 75
 !Param -cwnd 150
 !Param -sender_cc_only
-!tailFCT 2410
+!tailFCT 9643
