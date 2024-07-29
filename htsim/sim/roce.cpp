@@ -19,7 +19,7 @@ using namespace std;
    alone. */
 //#define LOGSINK 2332
 #define LOGSINK   0 
-bool RoceSink::ooo_enabled = true;
+bool RoceSink::ooo_enabled = false;
 
 /* keep track of RTOs.  Generally, we shouldn't see RTOs if
    return-to-sender is enabled.  Otherwise we'll see them with very
@@ -425,11 +425,11 @@ void RoceSink::receivePacket(Packet& pkt) {
 
     if (seqno == _cumulative_ack+1) { // it's the next expected seq no
         if (ooo_enabled){
-            while (_epsn_rx_bitmap[++_expected_epsn]) {
+            /*while (_epsn_rx_bitmap[++_expected_epsn]) {
                 // clean OOO state, this will wrap at some point.
                 _epsn_rx_bitmap[_expected_epsn] = 0;
                 _out_of_order_count--;
-            }
+            }*/
         }
         else {
             _cumulative_ack = seqno + size - 1;
