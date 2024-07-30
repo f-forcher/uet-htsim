@@ -72,6 +72,7 @@ def format_label(group):
     Example: 'incast_8to1_1048576B' -> 'Incast 8:1 1MiB'
     """
     ratio = ""
+    print(group)
     if 'permutation' in group or 'reduce' in group:
         parts = group.split('_')
         experiment = parts[0].capitalize()
@@ -94,6 +95,15 @@ def format_label(group):
         ratio = parts[1]
         size_bytes = int(parts[2].replace('size', '').replace('B', ''))
 
+    degraded = ""
+    
+    if ("degrade" in group):
+        match = re.search(r"degrade(\d+)", str(group))
+        if match:
+            degraded = str(match.group(1))
+    print(degraded)
+
+
     # Convert size from bytes to a human-readable format
     if size_bytes >= 1024**3:
         size = f'{size_bytes // 1024**3}GiB'
@@ -104,7 +114,7 @@ def format_label(group):
     else:
         size = f'{size_bytes}B'
     
-    return f'{experiment} {ratio} {size}'
+    return f'{experiment} {ratio} {size} {degraded}'
 
 def plot_runtimes(folder_name, folder_name_out, args):
     """
@@ -144,7 +154,13 @@ def plot_runtimes(folder_name, folder_name_out, args):
         # Initialize ratio as None
         ratio = None
         window = None
+        degraded = None
+
         
+        match = re.search(r"_degrade(\d+)", str(filename))
+        if match:
+            degraded = str(match.group(1))
+    
         if 'incast' in filename:
             # Extract the numeric part before 'to' in 'XtoY'
             match = re.search(r"(\d+)to(\d+)", str(filename))
@@ -175,6 +191,7 @@ def plot_runtimes(folder_name, folder_name_out, args):
             'Runtime': runtime,
             'Ratio': ratio,
             'Window': window,
+            'Degraded': degraded,
         })
 
     df = pd.DataFrame(data)
@@ -191,8 +208,13 @@ def plot_runtimes(folder_name, folder_name_out, args):
     else:
         print("Unknown experiment type. Exiting.")
         exit(1)
+
+    if (df['Degraded'].values is not None):
+        df['Group'] = df['Group'] +  '_degrade' + df['Degraded'].astype(str)
     # Ensure 'Size' is numeric for sorting
     df['Size'] = pd.to_numeric(df['Size'], errors='coerce')
+
+    print(df)
     
     # Sort the DataFrame by 'Ratio' and then by 'Size'
     if ("outcast" in df['Experiment'].values):
@@ -216,6 +238,7 @@ def plot_runtimes(folder_name, folder_name_out, args):
     # Get the color map
     color_map = get_color_map()
     cc_algo_order = get_cc_algo_order()
+    print(df_sorted)
     # Ensure 'CC Algo' is a categorical type with the specified order
     df_sorted['CC Algo'] = pd.Categorical(df_sorted['CC Algo'], categories=cc_algo_order, ordered=True)
     ax = sns.barplot(x='Group', y='Runtime', hue='CC Algo', data=df_sorted, errorbar=None, 

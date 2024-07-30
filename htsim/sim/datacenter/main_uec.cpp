@@ -276,7 +276,7 @@ int main(int argc, char **argv) {
             UecSink::_oversubscribed_cc = true;
             cout << "Using receiver oversubscribed CC " << endl;
         }
-        else if (!strcmp(argv[i],"-forse_disable_oversubscribed_cc")){
+        else if (!strcmp(argv[i],"-force_disable_oversubscribed_cc")){
             UecSink::_oversubscribed_cc = false;
             force_disable_oversubscribed_cc = true;
             cout << "Disabling receiver oversubscribed CC even with OS topology" << endl;

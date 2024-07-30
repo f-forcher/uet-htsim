@@ -1,37 +1,14 @@
 {
   "global_parameters": {
-    "link_speed_Gbps": ["100Gbps"],
-    "oversubscription_ratio": ["1:1", "4:1", "8:1"],
+    "link_speed_Gbps": ["200Gbps"],
+    "oversubscription_ratio": ["1:1"],
     "topology_sizes": [128],
     "cc_algo": ["nscc", "rccc", "rccc+os_cc", "nscc+rccc"]
   },
   "experiments": [
     {
-      "name": "incast",
-      "ratio": [2, 4, 8, 16, 32],
-      "message_size_bytes": [262144, 1048576, 4194304, 16777216]
-    },
-    {
       "name": "permutation",
-      "message_size_bytes": [262144, 1048576, 4194304, 16777216]
-    },
-    {
-      "name": "outcast_incast",
-      "ratio": ["10:2", "20:2", "10:5", "3:7"],
-      "message_size_bytes": [262144, 1048576, 4194304, 16777216]
-    },
-    {
-      "name": "all_to_all_windowed",
-      "message_size_bytes": [262144, 524288],
-      "parallel_connections": [2, 4, 8]
-    },
-    {
-      "name": "all_reduce_ring",
-      "message_size_bytes": [65536, 131072]
-    },
-    {
-      "name": "all_reduce_butterfly",
-      "message_size_bytes": [16384, 65536]
+      "message_size_bytes": [262144, 1048576, 4194304]
     }
   ]
 }
