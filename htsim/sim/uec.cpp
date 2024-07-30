@@ -574,19 +574,18 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
 }
 
 void UecSrc::delFromSendTimes(simtime_picosec time, UecDataPacket::seq_t seq_no) {
-    // cout << eventlist().now() << " flowid " << _flow.flow_id() << " _send_times.erase " << time << " for " << seq_no << endl;
+    //cout << eventlist().now() << " flowid " << _flow.flow_id() << " _send_times.erase " << time << " for " << seq_no << endl;
     auto snd_seq_range = _send_times.equal_range(time);
     auto snd_it = snd_seq_range.first;
     while (snd_it != snd_seq_range.second) {
         if (snd_it->second == seq_no) {
+            cout << "erasing from _send_times\n";
             _send_times.erase(snd_it);
             break;
         } else {
             ++snd_it;
         }
     }
-    //assert(snd_it->second == seq_no);
-    //assert(snd_it!=snd_seq_range.second);
 }
 
 void UecSrc::connectPort(uint32_t port_num,
@@ -696,7 +695,8 @@ mem_b UecSrc::handleAckno(UecDataPacket::seq_t ackno) {
         return pkt_size;
     }
 
-
+    abort();
+    /*
     // mem_b pkt_size = i->second.pkt_size;
     simtime_picosec send_time = i->second.send_time;
 
@@ -717,6 +717,7 @@ mem_b UecSrc::handleAckno(UecDataPacket::seq_t ackno) {
     }
 
     return pkt_size;
+    */
 }
 
 mem_b UecSrc::handleCumulativeAck(UecDataPacket::seq_t cum_ack) {
