@@ -22,7 +22,7 @@
 #include "modular_vector.h"
 
 #define timeInf 0
-#define roceMaxReorder 256
+#define roceMaxReorder 64
 
 //min RTO bound in us
 // *** don't change this default - override it by calling RoceSrc::setMinRTO()
@@ -173,6 +173,9 @@ public:
     uint32_t _srcaddr;
 
     static bool ooo_enabled;
+
+    ModularVector<uint8_t, roceMaxReorder> _epsn_rx_bitmap;  // list of packets above a hole, that we've received
+
     
 protected:
  

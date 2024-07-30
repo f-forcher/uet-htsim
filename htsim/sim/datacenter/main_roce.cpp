@@ -215,6 +215,10 @@ int main(int argc, char **argv) {
             hop_latency = timeFromUs(atof(argv[i+1]));
             cout << "Hop latency set to " << timeAsUs(hop_latency) << endl;
             i++;
+        } else if (!strcmp(argv[i],"-out_of_order")){
+            cout << "Enabling ROCE out of order data reception " << endl;
+            RoceSink::ooo_enabled = true;
+
         } else if (!strcmp(argv[i],"-switch_latency")){
             switch_latency = timeFromUs(atof(argv[i+1]));
             cout << "Switch latency set to " << timeAsUs(hop_latency) << endl;
@@ -319,8 +323,13 @@ int main(int argc, char **argv) {
     cout << "Parsed args\n";
     Packet::set_packet_size(packet_size);
 
-    FatTreeSwitch::_ar_sticky = FatTreeSwitch::PER_FLOWLET;
-    FatTreeSwitch::_sticky_delta = timeFromUs(ar_sticky_delta);
+    if (RoceSink::ooo_enabled){
+        FatTreeSwitch::_ar_sticky = FatTreeSwitch::PER_PACKET;    
+    }
+    else {
+        FatTreeSwitch::_ar_sticky = FatTreeSwitch::PER_FLOWLET;
+        FatTreeSwitch::_sticky_delta = timeFromUs(ar_sticky_delta);
+    }
 
     LosslessInputQueue::_high_threshold = Packet::data_packet_size()*high_pfc;
     LosslessInputQueue::_low_threshold = Packet::data_packet_size()*low_pfc;

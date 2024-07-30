@@ -203,7 +203,8 @@ void RoceSrc::processAck(const RoceAck& ack) {
 
     if (_log_me)
         cout << "Src " << get_id() << " ackno " << ackno << endl;
-    if (ackno >= _flow_size){
+
+    if (ackno * _mss >= _flow_size){
         cout << "Flow " << _name << " " << get_id() << " finished at " << timeAsUs(eventlist().now()) << " total bytes " << ackno << endl;
         _done = true;
         if (_end_trigger) {
@@ -238,7 +239,7 @@ void RoceSrc::receivePacket(Packet& pkt)
 
     if (_stop_time && eventlist().now() >= _stop_time) {
         // stop sending new data, but allow us to finish any retransmissions
-        _flow_size = _highest_sent+_mss;
+        _flow_size = _highest_sent * _mss + _mss;
         _stop_time = 0;
     }
 
@@ -273,14 +274,14 @@ void RoceSrc::send_packet() {
         cout << "Src " << get_id() << " send_packet\n";
     assert(_flow_started);
 
-    if (_flow_size && (_last_acked >= _flow_size || _highest_sent > _flow_size)) {
-        //flow is finished
+    if (_flow_size && (_last_acked * _mss >= _flow_size || _highest_sent * _mss  > _flow_size)) {
+        //flow is finished or I've already sent all packets, waiting for ACK.
         if (_log_me)
             cout << "Src " << get_id() << " flow is finished, not sending\n";
         return;
     }
 
-    if (_flow_size && _highest_sent + _mss >= _flow_size) {
+    if (_flow_size && (_highest_sent + 1) * _mss >= _flow_size) {
         last_packet = true;
         if (_log_me) {
             cout << _name << " " << get_id() << " sending last packet with SEQNO " << _highest_sent+1 << " at " << timeAsUs(eventlist().now()) << endl;
@@ -298,7 +299,7 @@ void RoceSrc::send_packet() {
     if (_log_me) {
         cout << "Src " << get_id() << " sent " << _highest_sent+1 << " Flow Size: " << _flow_size << endl;
     }
-    _highest_sent += _mss;
+    _highest_sent ++;
     _packets_sent++;
 
     //cout << "Sent " << _highest_sent+1 << " Flow Size: " << _flow_size << " Flow " << _name << " time " << timeAsUs(eventlist().now()) << endl;
@@ -348,7 +349,7 @@ void RoceSrc::doNextEvent() {
 
 /* Only use this constructor when there is only one for to this receiver */
 RoceSink::RoceSink()
-    : DataReceiver("roce_sink"),_cumulative_ack(0) , _total_received(0) 
+    : DataReceiver("roce_sink"),_cumulative_ack(0) , _total_received(0), _epsn_rx_bitmap(0)
 {
     _src = 0;
     
@@ -359,6 +360,7 @@ RoceSink::RoceSink()
     //    _log_me = true;
     _total_received = 0;
     _nack_sent = false;
+    _out_of_order_count = 0;
 }
 
 void RoceSink::log_me() {
@@ -410,6 +412,18 @@ void RoceSink::receivePacket(Packet& pkt) {
     //bool last_packet = ((RocePacket*)&pkt)->last_packet();
 
     if (seqno > _cumulative_ack+1){
+        if (ooo_enabled && seqno - _cumulative_ack <= roceMaxReorder){
+            //store packet in OOO buffer.
+            _epsn_rx_bitmap[seqno] = 1;
+            _out_of_order_count++;
+
+            cout << this << " ooo count+ " << _out_of_order_count << endl;
+
+            pkt.flow().logTraffic(pkt,*this,TrafficLogger::PKT_RCVDESTROY);
+            p->free();
+            return;
+        }
+
         if (!_nack_sent){
             send_nack(ts,_cumulative_ack);  
             _nack_sent = true;
@@ -421,26 +435,27 @@ void RoceSink::receivePacket(Packet& pkt) {
         return;
     }
 
-    int size = p->size()-RocePacket::ACKSIZE; 
-
     if (seqno == _cumulative_ack+1) { // it's the next expected seq no
+        _cumulative_ack = seqno;
+
         if (ooo_enabled){
-            /*while (_epsn_rx_bitmap[++_expected_epsn]) {
+            assert(_epsn_rx_bitmap[seqno] == 0);
+
+            while (_epsn_rx_bitmap[_cumulative_ack + 1]) {
                 // clean OOO state, this will wrap at some point.
-                _epsn_rx_bitmap[_expected_epsn] = 0;
+                _cumulative_ack ++;
+                _epsn_rx_bitmap[_cumulative_ack] = 0;
                 _out_of_order_count--;
-            }*/
-        }
-        else {
-            _cumulative_ack = seqno + size - 1;
+                cout << this << " ooo count- " << _out_of_order_count << endl;
+            }
         }
         if (_nack_sent) 
             _nack_sent = false;
 
+        send_ack(ts);
     } else if (seqno < _cumulative_ack+1) {
         //must have been a bad retransmit
     }
-    send_ack(ts);
     // have we seen everything yet?
     pkt.flow().logTraffic(pkt,*this,TrafficLogger::PKT_RCVDESTROY);
     pkt.free();
