@@ -88,11 +88,12 @@ public:
 
     BaseQueue* alloc_src_queue(QueueLogger* q);
     BaseQueue* alloc_queue(QueueLogger* q, mem_b queuesize, link_direction dir, int switch_tier, bool tor);
-    BaseQueue* alloc_queue(QueueLogger* q, uint64_t speed, mem_b queuesize,
-                           link_direction dir,  int switch_tier, bool tor);
+    BaseQueue* alloc_queue(QueueLogger* q, uint64_t speed, mem_b queuesize, link_direction dir,  int switch_tier, bool tor, bool reduced_speed);
     static void set_tiers(uint32_t tiers) {_tiers = tiers;}
     static uint32_t get_tiers() {return _tiers;}
     simtime_picosec get_diameter_latency() {return _diameter_latency;}
+    simtime_picosec get_two_point_diameter_latency(int src, int dst);
+
     uint16_t get_diameter() {return _diameter;}
     static void set_latencies(simtime_picosec src_lp, simtime_picosec lp_up, simtime_picosec up_cs,
                               simtime_picosec lp_switch, simtime_picosec up_switch, simtime_picosec core_switch) {
@@ -106,6 +107,7 @@ public:
     static void set_podsize(int hosts_per_pod) {
         _hosts_per_pod = hosts_per_pod;
     }
+    void set_queue_sizes(mem_b queuesize);
 
     void count_queue(Queue*);
     void print_path(std::ofstream& paths,uint32_t src,const Route* route);
@@ -187,7 +189,6 @@ private:
     static FatTreeTopology* load(istream& file, QueueLoggerFactory* logger_factory, EventList& eventlist,
                                  mem_b queuesize, queue_type q_type, queue_type sender_q_type);
     void set_linkspeeds(linkspeed_bps linkspeed);
-    void set_queue_sizes(mem_b queuesize);
     int64_t find_lp_switch(Queue* queue);
     int64_t find_up_switch(Queue* queue);
     int64_t find_core_switch(Queue* queue);
@@ -239,7 +240,8 @@ private:
     static mem_b _ecn_high;
 
     //failed links hack
-    static int _num_failed_links;
+    static uint32_t _num_failed_links;
+    static double _failed_link_ratio;
     
     uint32_t _no_of_nodes;
     simtime_picosec _hop_latency,_switch_latency;

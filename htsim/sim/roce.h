@@ -19,8 +19,10 @@
 #include "eventlist.h"
 #include "eth_pause_packet.h"
 #include "trigger.h"
+#include "modular_vector.h"
 
 #define timeInf 0
+#define roceMaxReorder 256
 
 //min RTO bound in us
 // *** don't change this default - override it by calling RoceSrc::setMinRTO()
@@ -169,6 +171,8 @@ public:
     bool _log_me;
 
     uint32_t _srcaddr;
+
+    static bool ooo_enabled;
     
 protected:
  
@@ -190,6 +194,9 @@ protected:
     uint64_t _total_received;
     RocePacket::seq_t _highest_seqno;
  
+    uint32_t _out_of_order_count;
+
+
     // Mechanism
     void send_ack(simtime_picosec ts);
     void send_nack(simtime_picosec ts, RocePacket::seq_t ackno);

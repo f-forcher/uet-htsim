@@ -38,8 +38,8 @@ bool FatTreeTopology::_enable_ecn = false;
 bool FatTreeTopology::_enable_ecn_on_tor_downlink = false;
 mem_b FatTreeTopology::_ecn_low = 0;
 mem_b FatTreeTopology::_ecn_high = 0;
-int FatTreeTopology::_num_failed_links = 0;
-
+uint32_t FatTreeTopology::_num_failed_links = 0;
+double FatTreeTopology::_failed_link_ratio = 0.25;
 
 void
 FatTreeTopology::set_tier_parameters(int tier, int radix_up, int radix_down, mem_b queue_up, mem_b queue_down, int bundlesize, linkspeed_bps linkspeed, int oversub) {
@@ -708,12 +708,18 @@ BaseQueue* FatTreeTopology::alloc_queue(QueueLogger* queueLogger, mem_b queuesiz
     if (dir == UPLINK) {
         switch_tier++; // _downlink_speeds is set for the downlinks, so uplinks need to use the tier above's linkspeed
     }
-    return alloc_queue(queueLogger, _downlink_speeds[switch_tier], queuesize, dir, switch_tier, tor);
+    return alloc_queue(queueLogger, _downlink_speeds[switch_tier], queuesize, dir, switch_tier, tor, false);
 }
 
 BaseQueue*
 FatTreeTopology::alloc_queue(QueueLogger* queueLogger, linkspeed_bps speed, mem_b queuesize,
-                             link_direction dir, int switch_tier, bool tor){
+                             link_direction dir, int switch_tier, bool tor, bool reduced_speed){
+
+    if (reduced_speed){
+        speed = speed * _failed_link_ratio;
+        queuesize = queuesize * _failed_link_ratio;
+    }
+
     switch (_qt) {
     case RANDOM:
         return new RandomQueue(speed, queuesize, *_eventlist, queueLogger, memFromPkt(RANDOM_BUFFER));
@@ -725,7 +731,7 @@ FatTreeTopology::alloc_queue(QueueLogger* queueLogger, linkspeed_bps speed, mem_
             if (_enable_ecn){
                 if (!tor || dir == UPLINK || _enable_ecn_on_tor_downlink) {
                         // don't use ECN on ToR downlinks unless configured so.
-                        q->set_ecn_thresholds(_ecn_low, _ecn_high);
+                        q->set_ecn_thresholds(_ecn_low * _failed_link_ratio, _ecn_high * _failed_link_ratio);
                 }
             }
             return q;
@@ -905,7 +911,14 @@ void FatTreeTopology::init_network(){
                 } else {
                     queueLogger = NULL;
                 }
-                queues_nup_nlp[agg][tor][b] = alloc_queue(queueLogger, _queue_down[AGG_TIER], DOWNLINK, AGG_TIER);
+
+                if (_tiers == 2 && (agg - agg_min) < _num_failed_links){
+                    queues_nup_nlp[agg][tor][b] = alloc_queue(queueLogger, _downlink_speeds[AGG_TIER],_queue_down[AGG_TIER], DOWNLINK, AGG_TIER,false,true);
+                    cout << "Failure: US" + ntoa(agg) + "->LS_" + ntoa(tor) + "(" + ntoa(b) + ") linkspeed set to " << speedAsGbps(_downlink_speeds[AGG_TIER] * _failed_link_ratio) << endl;
+                }
+                else
+                    queues_nup_nlp[agg][tor][b] = alloc_queue(queueLogger, _queue_down[AGG_TIER], DOWNLINK, AGG_TIER);
+
                 queues_nup_nlp[agg][tor][b]->setName("US" + ntoa(agg) + "->LS_" + ntoa(tor) + "(" + ntoa(b) + ")");
                 //if (logfile) logfile->writeName(*(queues_nup_nlp[agg][tor]));
             
@@ -920,7 +933,13 @@ void FatTreeTopology::init_network(){
                 } else {
                     queueLogger = NULL;
                 }
-                queues_nlp_nup[tor][agg][b] = alloc_queue(queueLogger, _queue_up[TOR_TIER], UPLINK, TOR_TIER, true);
+
+                if (_tiers == 2 && (agg - agg_min) < _num_failed_links){
+                    queues_nlp_nup[tor][agg][b] = alloc_queue(queueLogger, _downlink_speeds[AGG_TIER], _queue_up[TOR_TIER], UPLINK, TOR_TIER, true, true);
+                    cout << "Failure: LS" + ntoa(tor) + "->US" + ntoa(agg) + "(" + ntoa(b) + ") linkspeed set to " << speedAsGbps(_downlink_speeds[AGG_TIER] * _failed_link_ratio) << endl;
+                }
+                else queues_nlp_nup[tor][agg][b] = alloc_queue(queueLogger, _queue_up[TOR_TIER], UPLINK, TOR_TIER, true);
+
                 queues_nlp_nup[tor][agg][b]->setName("LS" + ntoa(tor) + "->US" + ntoa(agg) + "(" + ntoa(b) + ")");
                 //cout << queues_nlp_nup[tor][agg][b]->str() << endl;
                 //if (logfile) logfile->writeName(*(queues_nlp_nup[tor][agg]));
@@ -992,8 +1011,7 @@ void FatTreeTopology::init_network(){
                     }
         
                     if ((l+agg*_agg_switches_per_pod)<failed_links){
-                        queues_nc_nup[core][agg][b] = alloc_queue(queueLogger, _downlink_speeds[CORE_TIER]/10, _queue_down[CORE_TIER],
-                                                               DOWNLINK, CORE_TIER, false);
+                        queues_nc_nup[core][agg][b] = alloc_queue(queueLogger, _downlink_speeds[CORE_TIER], _queue_down[CORE_TIER], DOWNLINK, CORE_TIER, false,true);
                         cout << "Adding link failure for agg_sw " << ntoa(agg) << " l " << ntoa(l) << " b " << ntoa(b) << endl;
                     } else {
                         queues_nc_nup[core][agg][b] = alloc_queue(queueLogger, _queue_down[CORE_TIER], DOWNLINK, CORE_TIER);
@@ -1424,4 +1442,43 @@ void FatTreeTopology::add_switch_loggers(Logfile& log, simtime_picosec sample_pe
              ; i++) {
         switches_c[i]->add_logger(log, sample_period);
     }
+}
+
+simtime_picosec FatTreeTopology::get_two_point_diameter_latency(int src, int dst) {
+    simtime_picosec diameter_latency_end_point = 0;
+    simtime_picosec one_hop_delay = 0;
+    if(_link_latencies[TOR_TIER] == 0){
+        one_hop_delay = 2* (_hop_latency + _switch_latency);
+    }
+    if (_tiers == 2) {
+        if (HOST_POD_SWITCH(src) != HOST_POD_SWITCH(dst)) {
+            diameter_latency_end_point = _diameter_latency;
+        } else {
+            if(_link_latencies[TOR_TIER] == 0){
+                diameter_latency_end_point = one_hop_delay;
+            }else{
+                diameter_latency_end_point = 2 * _link_latencies[TOR_TIER] + _switch_latencies[TOR_TIER];
+            }
+        }
+    }else if (_tiers == 3) {
+        if (HOST_POD_SWITCH(src) == HOST_POD_SWITCH(dst)) {
+            if(_link_latencies[TOR_TIER] == 0){
+                diameter_latency_end_point = one_hop_delay;
+            }else{
+                diameter_latency_end_point = 2 * _link_latencies[TOR_TIER] + _switch_latencies[TOR_TIER];
+            }
+        } else if (HOST_POD(src) == HOST_POD(dst)) {
+            if (_link_latencies[TOR_TIER] == 0){
+                diameter_latency_end_point = 2*one_hop_delay;
+            }else{
+                diameter_latency_end_point = 2 * _link_latencies[TOR_TIER] + 2 * _switch_latencies[TOR_TIER] +
+                                             2 * _link_latencies[AGG_TIER] + _switch_latencies[AGG_TIER];
+            }
+        } else {
+            diameter_latency_end_point = _diameter_latency;
+        }
+    }
+    // cout << " _tiers " << _tiers <<  " HOST_POD_SWITCH src " << HOST_POD_SWITCH(src) << " dst " << HOST_POD_SWITCH(dst) << " diameter_latency_end_point " << diameter_latency_end_point<< endl;
+
+    return diameter_latency_end_point;
 }

@@ -108,7 +108,19 @@ public:
     UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, uint32_t no_of_ports, bool rts = false);
     void delFromSendTimes(simtime_picosec time, UecDataPacket::seq_t seq_no);
     static void disableFairDecrease();
-    static void parameterScaleToTargetQ();
+    /**
+     * Initialize global NSCC parameters.
+     */
+    static void initNsccParams(simtime_picosec network_rtt, linkspeed_bps linkspeed);
+    /**
+     * Initialize per-connection NSCC parameters.
+     */
+    void initNscc(mem_b cwnd, simtime_picosec peer_rtt=UecSrc::_network_rtt);
+    /**
+     * Initialize per-connection RCCC parameters.
+     */
+    void initRccc(mem_b cwnd,simtime_picosec peer_rtt=UecSrc::_network_rtt);
+
     void logFlowEvents(FlowEventLogger& flow_logger) { _flow_logger = &flow_logger; }
     virtual void connectPort(uint32_t portnum, Route& routeout, Route& routeback, UecSink& sink, simtime_picosec start);
     const Route* getPortRoute(uint32_t port_num) const {return _ports[port_num]->route();}
@@ -133,7 +145,11 @@ public:
         _base_rtt = network_rtt;
         _bdp = timeAsUs(_base_rtt) * _nic.linkspeed() / 8000000;
         _maxwnd =  1.5*_bdp;
-        cout << "_bdp " << _bdp << " _maxwnd " << _maxwnd << " _base_rtt " << timeAsUs(_base_rtt) << endl;
+
+        if (!_shown){
+            cout << "Bound base RTT: _bdp " << _bdp << " _maxwnd " << _maxwnd << " _base_rtt " << timeAsUs(_base_rtt) << endl;
+            _shown = true;
+        }
     }
     mem_b maxWnd() const { return _maxwnd; }
 
@@ -180,6 +196,7 @@ public:
     uint32_t _acks_received;
 
     static bool _debug;
+    static bool _shown;
     bool _debug_src;
     bool debug() const { return _debug_src; }
 
@@ -300,22 +317,29 @@ public:
     bool _speculating;
 
 public:
+    static linkspeed_bps _reference_network_linkspeed; 
+    static simtime_picosec _reference_network_rtt; 
+    static mem_b _reference_network_bdp; 
+    static linkspeed_bps _network_linkspeed; 
+    static simtime_picosec _network_rtt; 
+    static mem_b _network_bdp; 
     // Smarttrack parameters
     static uint32_t _qa_scaling; 
     static simtime_picosec _target_Qdelay;
     static double _gamma;
     static uint32_t _pi;
     static double _alpha;
-    static double _scaling_c;
-    static double _fd;
+    // static double _scaling_c;
+    // static double _fd;
     static double _fi;
     static double _fi_scale;
     static double _scaling_factor_a;
+    static double _scaling_factor_b;
     static double _eta;
     static double _qa_threshold; 
     static double _ecn_alpha;
     static double _delay_alpha;
-    static double _ecn_thresh;
+    // static double _ecn_thresh;
     static uint32_t _adjust_bytes_threshold;
     static simtime_picosec _adjust_period_threshold;
     //debug
@@ -325,8 +349,8 @@ private:
     void fair_increase(uint32_t newly_acked_bytes);
     void proportional_increase(uint32_t newly_acked_bytes,simtime_picosec delay);
     void fast_increase(uint32_t newly_acked_bytes,simtime_picosec delay);
-    void fair_decrease(bool can_decrease, uint32_t newly_acked_bytes);
-    void multiplicative_decrease(bool can_decrease, uint32_t newly_acked_bytes);
+    // void fair_decrease(bool can_decrease, uint32_t newly_acked_bytes);
+    void multiplicative_decrease(uint32_t newly_acked_bytes);
     void fulfill_adjustment();
     void mark_packet_for_retransmission(UecBasePacket::seq_t psn, uint16_t pktsize);
     void update_delay(simtime_picosec delay, bool update_avg, bool skip);
@@ -361,6 +385,7 @@ private:
 
     // Smarttrack sender based CC variables.
     simtime_picosec _base_rtt;
+    mem_b _base_bdp;
     mem_b _achieved_bytes = 0;
     //used to trigger SmartTrack fulfill
     mem_b _received_bytes = 0;

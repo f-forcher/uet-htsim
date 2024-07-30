@@ -263,7 +263,7 @@ int main(int argc, char **argv) {
             low_pfc = atoi(argv[i+1]);
             high_pfc = atoi(argv[i+2]);
             cout << "PFC thresholds high " << high_pfc << " low " << low_pfc << endl;
-            i++;
+            i+=2;
         } else if (!strcmp(argv[i],"-ar_granularity")){
             if (!strcmp(argv[i+1],"packet"))
                 ar_sticky = FatTreeSwitch::PER_PACKET;

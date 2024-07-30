@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
     Clock c(timeFromSec(5 / 100.), eventlist);
     mem_b queuesize = DEFAULT_QUEUE_SIZE;
     linkspeed_bps linkspeed = speedFromMbps((double)HOST_NIC);
-    int packet_size = 9000;
+    int packet_size = 4000;
     uint32_t path_entropy_size = 10000000;
     uint32_t no_of_conns = 0, no_of_nodes = DEFAULT_NODES;
     uint32_t tiers = 3; // we support 2 and 3 tier fattrees     
@@ -110,6 +110,11 @@ int main(int argc, char **argv) {
             dcqcn = true;
             ecn_threshold = atoi (argv[i+1]);
             cout << "dcqcn ecn threshold "<< ecn_threshold << endl;
+            i++;
+        } else if (!strcmp(argv[i],"-failed")){
+            // number of failed links (failed to 10% linkspeed)
+            int num_failed = atoi(argv[i+1]);
+            FatTreeTopology::set_failed_links(num_failed);
             i++;
         } else if (!strcmp(argv[i],"-tiers")) {
             tiers = atoi(argv[i+1]);
@@ -301,6 +306,7 @@ int main(int argc, char **argv) {
             }
             i++;
         } else {
+            cout << "Unknown parameter " << argv[i] << endl;
             exit_error(argv[0]);
         }
                 

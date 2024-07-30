@@ -4,285 +4,309 @@ connection_matrices/perm_8192n_8192c_1MB.cm
 !Param -end 1000
 !Param -paths 32
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 278
+!tailFCT 34
 connection_matrices/perm_8192n_8192c_1MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 1MB messages, NSCC
 !Binary ./htsim_uec
 !Param -end 1000
 !Param -paths 64
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 278
+!tailFCT 34
 connection_matrices/perm_8192n_8192c_1MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 1MB messages, NSCC
 !Binary ./htsim_uec
 !Param -end 1000
 !Param -paths 128
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 278
+!tailFCT 34
 connection_matrices/perm_8192n_8192c_2MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 2MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 1568
+!Param -end 1000
 !Param -paths 32
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 470
+!tailFCT 58
 connection_matrices/perm_8192n_8192c_2MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 2MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 1568
+!Param -end 1000
 !Param -paths 64
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 470
+!tailFCT 58
 connection_matrices/perm_8192n_8192c_2MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 2MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 1568
+!Param -end 1000
 !Param -paths 128
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 470
+!tailFCT 58
 connection_matrices/perm_8192n_8192c_4MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 4MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 2848
+!Param -end 1000
 !Param -paths 32
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 854
+!tailFCT 108
 connection_matrices/perm_8192n_8192c_4MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 4MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 2848
+!Param -end 1000
 !Param -paths 64
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 854
+!tailFCT 108
 connection_matrices/perm_8192n_8192c_4MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 4MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 2848
+!Param -end 1000
 !Param -paths 128
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 854
+!tailFCT 108
 connection_matrices/perm_8192n_8192c_8MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 8MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 5408
+!Param -end 1000
 !Param -paths 32
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 1622
+!tailFCT 205
 connection_matrices/perm_8192n_8192c_8MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 8MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 5408
+!Param -end 1000
 !Param -paths 64
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 1622
+!tailFCT 205
 connection_matrices/perm_8192n_8192c_8MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 8MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 5408
+!Param -end 1000
 !Param -paths 128
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 1622
+!tailFCT 205
 connection_matrices/perm_8192n_8192c_16MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 16MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 10528
+!Param -end 1328
 !Param -paths 32
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 3158
+!tailFCT 398
 connection_matrices/perm_8192n_8192c_16MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 16MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 10528
+!Param -end 1328
 !Param -paths 64
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 3158
+!tailFCT 398
 connection_matrices/perm_8192n_8192c_16MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 16MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 10528
+!Param -end 1328
 !Param -paths 128
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 3158
+!tailFCT 398
 connection_matrices/perm_8192n_8192c_32MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 32MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 20768
+!Param -end 2624
 !Param -paths 32
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 6230
+!tailFCT 787
 connection_matrices/perm_8192n_8192c_32MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 32MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 20768
+!Param -end 2624
 !Param -paths 64
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 6230
+!tailFCT 787
 connection_matrices/perm_8192n_8192c_32MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 32MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 20768
+!Param -end 2624
 !Param -paths 128
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 6230
+!tailFCT 787
 connection_matrices/perm_8192n_8192c_64MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 64MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 41248
+!Param -end 5216
 !Param -paths 32
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 12374
+!tailFCT 1564
 connection_matrices/perm_8192n_8192c_64MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 64MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 41248
+!Param -end 5216
 !Param -paths 64
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 12374
+!tailFCT 1564
 connection_matrices/perm_8192n_8192c_64MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 64MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 41248
+!Param -end 5216
 !Param -paths 128
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 12374
+!tailFCT 1564
 connection_matrices/perm_8192n_8192c_100MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 32 paths, 100MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 64288
+!Param -end 8128
 !Param -paths 32
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 19286
+!tailFCT 2438
 connection_matrices/perm_8192n_8192c_100MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 64 paths, 100MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 64288
+!Param -end 8128
 !Param -paths 64
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 19286
+!tailFCT 2438
 connection_matrices/perm_8192n_8192c_100MB.cm
 !Experiment 8K permutation, 8K leaf-spine, 400Gbps, 128 paths, 100MB messages, NSCC
 !Binary ./htsim_uec
-!Param -end 64288
+!Param -end 8128
 !Param -paths 128
 !Param -linkspeed 400000
-!Param -topo topologies/leaf_spine_8192_400g_8_to_1.topo
+!Param -topo topologies/leaf_spine_8192_400g.topo
 !Param -q 100
 !Param -ecn 25 75
 !Param -cwnd 150
+!Param -failed 1
 !Param -sender_cc_only
-!tailFCT 19286
+!tailFCT 2438
