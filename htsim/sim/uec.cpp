@@ -695,8 +695,10 @@ mem_b UecSrc::handleAckno(UecDataPacket::seq_t ackno) {
         return pkt_size;
     }
 
-    abort();
+
+    abort(); // dead code below
     /*
+    
     // mem_b pkt_size = i->second.pkt_size;
     simtime_picosec send_time = i->second.send_time;
 
