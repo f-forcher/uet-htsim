@@ -450,7 +450,7 @@ int main(int argc, char **argv) {
 
     if (!param_queuesize_set || !param_ecn_set){
         cout << "queuesizes and ecn threshold should be input from the parameters, otherwise, queuesize = BDP of 100Gbps and 12us RTT and ecn_low is 20\% of queuesize and 80\% of queuesize."<< endl;
-        abort();
+        //abort(); We should restore to default values here, not abort
     }
     assert(trimsize >= 64 && trimsize <= (uint32_t)packet_size);
 
