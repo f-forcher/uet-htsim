@@ -99,7 +99,8 @@ int main(int argc, char **argv) {
 
     char* tm_file = NULL;
     char* topo_file = NULL;
-    bool disable_fair_decrease = true, enable_qa_gate = true;
+    //bool disable_fair_decrease = true;
+    bool enable_qa_gate = true;
 
     while (i<argc) {
         if (!strcmp(argv[i],"-o")) {
@@ -136,9 +137,9 @@ int main(int argc, char **argv) {
             UecSink::_oversubscribed_cc = false;
             receiver_driven = false;
             cout << "sender based CC enabled ONLY" << endl;
-        } else if (!strcmp(argv[i],"-disable_fd")) {
-            disable_fair_decrease = true;
-            cout << "fair_decrease disabled" << endl;
+//        } else if (!strcmp(argv[i],"-disable_fd")) {
+//            disable_fair_decrease = true;
+//            cout << "fair_decrease disabled" << endl;
         } else if (!strcmp(argv[i],"-enable_qa_gate")) {
             enable_qa_gate = true;
         } else if (!strcmp(argv[i],"-enable_avg_ecn_over_path")) {
