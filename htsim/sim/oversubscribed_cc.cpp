@@ -11,12 +11,15 @@ OversubscribedCC::OversubscribedCC(EventList& eventList,UecPullPacer* pacer)
     : EventSource(eventList, "OversubscribedCC"),
 	_pullPacer(pacer){
 	_rate = 1;
+	_g = 0;
+	_received_bytes = 0;
+	_ecn_bytes = 0;
 	_received = 0;
 	_old_received = 0;
 	_ecn = 0;
-    _old_ecn = 0;
+	_old_ecn = 0;
 	_trimmed = 0;
-    _old_trimmed = 0;
+	_old_trimmed = 0;
 
 	eventList.sourceIsPendingRel(*this,(simtime_picosec)((0.75+drand()/2)*_update_interval));
 }
@@ -55,7 +58,7 @@ OversubscribedCC::doCongestionControl(){
     if (_rate > 1)
         _rate = 1;
 
-	if (UecSrc::_debug)
+    if (UecSrc::_debug)
         cout << "At "<< timeAsUs(eventlist().now()) << " oversubscribed cc " << _g << " rate " << _rate << " flow " << _pullPacer->get_id() << endl;
 
     _pullPacer->updatePullRate(UecPullPacer::OVERSUBSCRIBED_CC, _rate);
