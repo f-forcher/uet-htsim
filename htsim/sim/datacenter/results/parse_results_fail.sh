@@ -19,8 +19,10 @@ for speed in 400 ; do
 	paste a b | grep "64 EVs" > 64.out
 	paste a b | grep "128 EVs" > 128.out		
 
-	echo "set term pdfcairo" > tt.plot
-	echo "set output \""$filename".pdf\"" >> tt.plot
+
+	outfile=$speed$topo"_fail1".png
+	echo "set term png" > tt.plot
+	echo "set output \""$outfile"\"" >> tt.plot
 
 
 	oversub=`echo $topo | tr "_" " " | awk '{if ($1>1) print $1; else print 1;}'`
@@ -34,7 +36,7 @@ for speed in 400 ; do
 
 	#cat tt.plot
 	gnuplot tt.plot
-	echo "Generating plot in file:" $filename".pdf"
+	echo "Generating plot in file:" $outfile""
     done
 done
 
