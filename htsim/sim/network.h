@@ -113,7 +113,10 @@ class Packet {
     inline uint32_t flow_id() const {return _flow->flow_id();}
     inline uint32_t dst() const {return _dst;}
     inline void set_dst(uint32_t dst) { _dst = dst;}
-    inline uint32_t pathid() {return _pathid;}
+    inline uint32_t pathid() {
+        assert(_pathid != UINT32_MAX);
+        return _pathid;
+    }
 
     inline void set_pathid(uint32_t p) { _pathid = p;}
     const Route* route() const {return _route;}

@@ -79,7 +79,7 @@ Packet::sendOn() {
     else {
         assert(0);
     }
-    //cout << "sendOn nextsink is: " << nextsink->nodename() << endl;
+    //cout << "sendOn nextsink is: " << nextsink->nodename() << " pathid " << _pathid << endl;
     nextsink->receivePacket(*this);
     return nextsink;
 }

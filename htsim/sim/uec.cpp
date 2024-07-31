@@ -199,7 +199,9 @@ alpha = 4.0* scaling_factor_a*scaling_factor_b/base_rtt gamma_g = 0.8
 UecNIC::UecNIC(id_t src_num, EventList& eventList, linkspeed_bps linkspeed, uint32_t ports)
     : EventSource(eventList, "uecNIC"), NIC(src_num)  {
     _nodename = "uecNIC" + to_string(_src_num);
+    _control_size = 0;
     _linkspeed = linkspeed;
+    _num_queued_srcs = 0;
     _no_of_ports = ports;
     _ports.resize(_no_of_ports);
     for (uint32_t p = 0; p < _no_of_ports; p++) {
@@ -209,7 +211,6 @@ UecNIC::UecNIC(id_t src_num, EventList& eventList, linkspeed_bps linkspeed, uint
     }
     _busy_ports = 0;
     _rr_port = rand()%_no_of_ports; // start on a random port
-    _num_queued_srcs = 0;
     _ratio_data = 1;
     _ratio_control = 10;
     _crt = 0;
@@ -1389,7 +1390,7 @@ void UecSrc::processPull(const UecPullPacket& pkt) {
 
     auto pullno = pkt.pullno();
     if (_debug_src)
-        cout << _flow.str() << " " << _nodename << " processPull " << pullno << " flow " << _flow.str() << " SP " << pkt.is_slow_pull() << endl;
+        cout << timeAsUs(eventlist().now()) << " flow " << _flow.str() << " " << _nodename << " processPull " << pullno << " flow " << _flow.str() << " SP " << pkt.is_slow_pull() << endl;
     if (_flow.flow_id() == _debug_flowid){
         cout << timeAsUs(eventlist().now())<< " flowid " << _flow.flow_id() << " processPull " << pullno  << " SP " << pkt.is_slow_pull() << endl;
     }
@@ -1844,7 +1845,7 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
     if (_debug_src)
         cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " sending pkt " << _highest_sent
              << " size " << full_pkt_size << " pull target " << _pull_target << " ack request " << p->ar()
-             << " cwnd " << _cwnd << " in_flight " << _in_flight << endl;
+             << " cwnd " << _cwnd << " ev " << ev << " in_flight " << _in_flight << endl;
     if (_flow.flow_id() == _debug_flowid)
     {
         std::uint8_t skip_weight = _ev_skip_bitmap[ev];
@@ -2191,7 +2192,8 @@ UecSink::UecSink(TrafficLogger* trafficLogger, UecPullPacer* pullPacer, UecNIC& 
       _end_trigger(NULL),
       _epsn_rx_bitmap(0),
       _out_of_order_count(0),
-      _ack_request(false) {
+      _ack_request(false),
+      _entropy(0)  {
     
     _nodename = "uecSink";  // TBD: would be nice at add nodenum to nodename
     _no_of_ports = no_of_ports;
@@ -2230,7 +2232,8 @@ UecSink::UecSink(TrafficLogger* trafficLogger,
       _end_trigger(NULL),
       _epsn_rx_bitmap(0),
       _out_of_order_count(0),
-      _ack_request(false) {
+      _ack_request(false),
+      _entropy(0) {
     
     if (UecSrc::_receiver_based_cc)
         _pullPacer = new UecPullPacer(linkSpeed, rate_modifier, mtu, eventList, no_of_ports);

@@ -91,7 +91,7 @@ public:
     };
 
 
-    void free() {_packetdb.freePacket(this);}
+    void free() {set_pathid(UINT32_MAX),  _packetdb.freePacket(this);}
     virtual ~UecDataPacket(){}
 
     inline seq_t epsn() const {return _epsn;}
@@ -166,7 +166,7 @@ public:
         return p;
     }    
 
-    void free() {_packetdb.freePacket(this);}
+    void free() {set_pathid(UINT32_MAX), _packetdb.freePacket(this);}
     inline mem_b pullno() const {return _pullno;}
     inline bool is_rnr() const {return _rnr;}
     inline bool is_slow_pull() const {return _slow_pull;}
@@ -209,6 +209,7 @@ public:
         p->_cumulative_ack = cumulative_ack;
         //p->_pullno = pullno;
         p->_ev = path_id;
+        p->set_pathid(path_id);
         p->_direction = NONE;
         p->_sack_bitmap = 0;
         p->_ecn_echo = ecn_marked;
@@ -219,7 +220,7 @@ public:
         return p;
     }
   
-    void free() {_packetdb.freePacket(this);}
+    void free() {set_pathid(UINT32_MAX), _packetdb.freePacket(this);}
     inline seq_t ref_ack() const {return _ref_ack;}
     inline seq_t acked_psn() const {return _acked_psn;}
     inline seq_t cumulative_ack() const {return _cumulative_ack;}
@@ -280,6 +281,7 @@ public:
         p->_ref_epsn = ref_epsn;
         //p->_pullno = pullno;
         p->_ev = path_id; // used to indicate which path the data packet was trimmed on
+        p->set_pathid(path_id);
         p->_ecn_echo = false;
         p->_rnr = false;
 
@@ -293,7 +295,7 @@ public:
         return p;
     }
   
-    void free() {_packetdb.freePacket(this);}
+    void free() {set_pathid(UINT32_MAX), _packetdb.freePacket(this);}
     inline seq_t ref_ack() const {return _ref_epsn;}
     //inline pull_quanta pullno() const {return _pullno;}
     uint16_t ev() const {return _ev;}
@@ -341,7 +343,7 @@ public:
         return p;
     }
     
-    void free() {_packetdb.freePacket(this);}
+    void free() {set_pathid(UINT32_MAX), _packetdb.freePacket(this);}
     
     inline bool ar() const {return _ar;}
 
