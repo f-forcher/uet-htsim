@@ -579,7 +579,6 @@ void UecSrc::delFromSendTimes(simtime_picosec time, UecDataPacket::seq_t seq_no)
     auto snd_it = snd_seq_range.first;
     while (snd_it != snd_seq_range.second) {
         if (snd_it->second == seq_no) {
-            cout << "erasing from _send_times\n";
             _send_times.erase(snd_it);
             break;
         } else {
