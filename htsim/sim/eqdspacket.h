@@ -142,7 +142,7 @@ protected:
 class EqdsPullPacket : public EqdsBasePacket {
     using Packet::set_route;
 public:
-    inline static EqdsPullPacket* newpkt(PacketFlow& flow, const route_t* route, pull_quanta pullno, bool rnr,uint32_t destination = UINT32_MAX) {
+    inline static EqdsPullPacket* newpkt(PacketFlow& flow, const route_t* route, pull_quanta pullno, uint16_t path_id, uint32_t destination = UINT32_MAX) {
         EqdsPullPacket* p = _packetdb.allocPacket();
         p->set_attrs(flow, ACKSIZE, 0);
         if (route) {
@@ -156,12 +156,13 @@ public:
         p->_bounced = false;
         p->_pullno = pullno;
         p->_path_len = 0;
+        p->set_pathid(path_id);
         p->set_dst(destination);
         p->_direction = NONE;
 
         p->_eqsrcid = 0;
         p->_eqtgtid = 0;
-        p->_rnr = rnr;
+        p->_rnr = false;
         p->_slow_pull = false;
         return p;
     }    
@@ -207,6 +208,7 @@ public:
         p->_cumulative_ack = cumulative_ack;
         //p->_pullno = pullno;
         p->_ev = path_id;
+        p->set_pathid(path_id);
         p->_direction = NONE;
         p->_sack_bitmap = 0;
         p->_ecn_echo = ecn_marked;
@@ -263,6 +265,7 @@ public:
         p->_ref_epsn = ref_epsn;
         //p->_pullno = pullno;
         p->_ev = path_id; // used to indicate which path the data packet was trimmed on
+        p->set_pathid(path_id);
         p->_ecn_echo = false;
         p->_rnr = false;
 
