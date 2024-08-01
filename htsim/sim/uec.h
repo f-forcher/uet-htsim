@@ -395,7 +395,6 @@ private:
     uint32_t _bytes_to_ignore = 0;
     uint32_t _bytes_ignored = 0;
     uint32_t _inc_bytes = 0;
-    uint32_t _dec_bytes = 0;
     double _exp_avg_ecn = 0;
     simtime_picosec _avg_delay = 0;
 

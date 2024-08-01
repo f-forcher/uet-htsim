@@ -1021,7 +1021,6 @@ void UecSrc::proportional_increase(uint32_t newly_acked_bytes,simtime_picosec de
     //make sure targetQdelay > delay;
     assert(_target_Qdelay > delay);
 
-    // _inc_bytes += min(newly_acked_bytes,   
     _inc_bytes += (uint32_t)round(_alpha * (_target_Qdelay - delay) * (double)newly_acked_bytes);
 
     fair_increase(newly_acked_bytes);
@@ -1046,12 +1045,6 @@ void UecSrc::fast_increase(uint32_t newly_acked_bytes,simtime_picosec delay){
     _increase = false;
 }
 
-// void UecSrc::fair_decrease(bool can_decrease, uint32_t newly_acked_bytes){
-//     _increase = false;
-//     _fi_count = 0;
-//     if (can_decrease)
-//         _dec_bytes += _fd * newly_acked_bytes;
-// }
 
 void UecSrc::multiplicative_decrease(uint32_t newly_acked_bytes){
     _increase = false;
@@ -1069,12 +1062,11 @@ void UecSrc::multiplicative_decrease(uint32_t newly_acked_bytes){
 void UecSrc::fulfill_adjustment(){
     assert(_bdp > 0);
     if (_debug_src) {
-        cout << "Running fulfill adjustment cwnd " << _cwnd << " inc " << _inc_bytes << " dec " << _dec_bytes << " bdp " << _bdp << endl;
+        cout << "Running fulfill adjustment cwnd " << _cwnd << " inc " << _inc_bytes << " bdp " << _bdp << endl;
     }
-    _cwnd += min((mem_b)_adjust_bytes_threshold, (_inc_bytes)/_cwnd); //- (_dec_bytes * _cwnd / _bdp);
+    _cwnd += min((mem_b)_adjust_bytes_threshold, _inc_bytes / _cwnd); 
 
     _inc_bytes = 0;
-    _dec_bytes = 0;
 
     //unclear what received_bytes this is referring to. 
     _received_bytes = 0;
@@ -1136,7 +1128,6 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
         if (_flow.flow_id() == _debug_flowid || UecSrc::_debug) {
             cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<<  " " << _flow.str() << " fulfill_adjustmentx _nscc_cwnd " << _cwnd
                 << " inc_bytes " << _inc_bytes
-                << " dec_bytes " << _dec_bytes
                 << endl;
         }
         fulfill_adjustment();
