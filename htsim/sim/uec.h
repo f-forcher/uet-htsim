@@ -78,7 +78,6 @@ private:
 
     int _ratio_data, _ratio_control, _crt;
 
-    uint32_t _src_num;
     string _nodename;
 };
 

@@ -198,7 +198,7 @@ alpha = 4.0* scaling_factor_a*scaling_factor_b/base_rtt gamma_g = 0.8
 
 UecNIC::UecNIC(id_t src_num, EventList& eventList, linkspeed_bps linkspeed, uint32_t ports)
     : EventSource(eventList, "uecNIC"), NIC(src_num)  {
-    _nodename = "uecNIC" + to_string(_src_num);
+    _nodename = "uecNIC" + to_string(src_num);
     _control_size = 0;
     _linkspeed = linkspeed;
     _num_queued_srcs = 0;
