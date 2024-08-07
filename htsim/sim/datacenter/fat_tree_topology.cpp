@@ -731,7 +731,10 @@ FatTreeTopology::alloc_queue(QueueLogger* queueLogger, linkspeed_bps speed, mem_
             if (_enable_ecn){
                 if (!tor || dir == UPLINK || _enable_ecn_on_tor_downlink) {
                         // don't use ECN on ToR downlinks unless configured so.
-                        q->set_ecn_thresholds(_ecn_low * _failed_link_ratio, _ecn_high * _failed_link_ratio);
+                        if (reduced_speed)
+                            q->set_ecn_thresholds(_ecn_low * _failed_link_ratio, _ecn_high * _failed_link_ratio);
+                        else
+                            q->set_ecn_thresholds(_ecn_low, _ecn_high);
                 }
             }
             return q;
