@@ -25,30 +25,30 @@ Using binary: ./htsim_uec
 Experiment: Small 16 node incast 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/incast.cm -sender_cc_only -end 3000 
-[PASS] Tail FCT 2469.11 us below the target of 2550 us
+[PASS] Tail FCT 2462.98 us below the target of 2550 us
 [PASS] Connection count 15
-FCT Spread 1920.17 -> 2469.11 ratio 1.2858809376253144
-Summary: New: 7350 Rtx: 927 RTS: 0 Bounced: 0 ACKs: 7139
+FCT Spread 1797.48 -> 2462.98 ratio 1.370240559004829
+Summary: New: 7350 Rtx: 976 RTS: 0 Bounced: 0 ACKs: 7173
 Using binary: ./htsim_uec
 
 
 Experiment: 128 node incast 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/incast_128.cm -sender_cc_only -end 30000 
-[PASS] Tail FCT 21142.8 us below the target of 23000 us
+[PASS] Tail FCT 21112.1 us below the target of 23000 us
 [PASS] Connection count 127
-FCT Spread 9849.09 -> 21142.8 ratio 2.146675479663603
-Summary: New: 62230 Rtx: 87603 RTS: 0 Bounced: 0 ACKs: 62158
+FCT Spread 9849.09 -> 21112.1 ratio 2.143558440424445
+Summary: New: 62230 Rtx: 87547 RTS: 0 Bounced: 0 ACKs: 62153
 Using binary: ./htsim_uec
 
 
 Experiment: 1024 node incast 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/incast_1024_100K.cm -sender_cc_only -end 15000 -cwnd 50 
-[FAIL] Tail FCT 10891.4 us above the target of 8950 us
+[FAIL] Tail FCT 10899.3 us above the target of 8950 us
 [PASS] Connection count 1023
-FCT Spread 647.232 -> 10891.4 ratio 16.827659942648076
-Summary: New: 25575 Rtx: 515359 RTS: 0 Bounced: 0 ACKs: 25573
+FCT Spread 860.249 -> 10899.3 ratio 12.669936262640235
+Summary: New: 25575 Rtx: 515747 RTS: 0 Bounced: 0 ACKs: 25573
 Using binary: ./htsim_uec
 
 
@@ -96,10 +96,10 @@ Using binary: ./htsim_uec
 Experiment: Small permutation, single path. 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_16n_16c_2MB.cm -sender_cc_only -end 2000 -paths 1 
-[PASS] Tail FCT 514.36 us below the target of 1300 us
+[PASS] Tail FCT 522.869 us below the target of 1300 us
 [PASS] Connection count 16
-FCT Spread 180.339 -> 514.36 ratio 2.8521839424639155
-Summary: New: 7840 Rtx: 352 RTS: 0 Bounced: 0 ACKs: 5711
+FCT Spread 180.339 -> 522.869 ratio 2.899367302691043
+Summary: New: 7840 Rtx: 352 RTS: 0 Bounced: 0 ACKs: 5631
 Using binary: ./htsim_uec
 
 
@@ -126,27 +126,27 @@ Using binary: ./htsim_uec
 Experiment: Large permutation (1024 nodes), single path. 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -sender_cc_only -end 3000 -paths 1 
-[PASS] Tail FCT 1004.35 us below the target of 1300 us
+[PASS] Tail FCT 997.655 us below the target of 1300 us
 [PASS] Connection count 1024
-FCT Spread 167.896 -> 1004.35 ratio 5.981976938104541
-Summary: New: 501760 Rtx: 30086 RTS: 0 Bounced: 0 ACKs: 381940
+FCT Spread 168.028 -> 997.655 ratio 5.93743304687314
+Summary: New: 501760 Rtx: 30104 RTS: 0 Bounced: 0 ACKs: 383209
 Using binary: ./htsim_uec
 
 
 Experiment: Oversubscribed permutation with multipath 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 2000 -paths 128 -sender_cc_only -topo topologies/leaf_spine_1024_oversub.topo 
-[PASS] Tail FCT 729.106 us below the target of 880 us
+[PASS] Tail FCT 722.617 us below the target of 880 us
 [PASS] Connection count 1024
-FCT Spread 167.583 -> 729.106 ratio 4.350715764725539
-Summary: New: 501760 Rtx: 28523 RTS: 0 Bounced: 0 ACKs: 410933
+FCT Spread 167.578 -> 722.617 ratio 4.312123309742328
+Summary: New: 501760 Rtx: 28486 RTS: 0 Bounced: 0 ACKs: 409903
 Using binary: ./htsim_uec
 
 
 Experiment: 8:1 oversubscribed permutation with multipath 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 2000 -sender_cc_only -paths 128 -topo topologies/leaf_spine_1024_oversub_8-1.topo 
-[PASS] Tail FCT 1380.18 us below the target of 1760 us
+[PASS] Tail FCT 1373.34 us below the target of 1760 us
 [PASS] Connection count 1024
-FCT Spread 167.337 -> 1380.18 ratio 8.2479069183743
-Summary: New: 501760 Rtx: 37192 RTS: 0 Bounced: 0 ACKs: 436085
+FCT Spread 167.353 -> 1373.34 ratio 8.20624667618746
+Summary: New: 501760 Rtx: 37349 RTS: 0 Bounced: 0 ACKs: 435430
