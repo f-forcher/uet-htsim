@@ -1000,6 +1000,8 @@ bool UecSrc::quick_adapt(bool is_loss, simtime_picosec delay) {
                 _bytes_to_ignore = _in_flight;
                 _bytes_ignored = 0;
                 _trigger_qa = false;
+                _achieved_bytes = 0;
+                _qa_endtime = eventlist().now() + _base_rtt + _target_Qdelay;
                 return true;
             }
         }
