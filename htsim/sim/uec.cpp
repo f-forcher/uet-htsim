@@ -1939,20 +1939,22 @@ void UecSrc::timeToSend(const Route& route) {
         cout << "timeToSend"
              << " flow " << _flow.str() << " at " << timeAsUs(eventlist().now()) << endl;
 
-    if (_backlog == 0 && _rtx_queue.empty()) {
-        _nic.cantSend(*this);
-        return;
-    }
-
     // time_to_send is called back from the UecNIC when it's time for
     // this src to send.  To get called back, the src must have
     // previously told the NIC it is ready to send by calling
     // UecNIC::requestSending()
-    //
+
     // before returning, UecSrc needs to call either
     // UecNIC::startSending or UecNIC::cantSend from this function
     // to update the NIC as to what happened, so they stay in sync.
+    // This also true when the flow is complete, let's make sure
+    // we are in sync either way.
     _send_blocked_on_nic = false;
+
+    if (_backlog == 0 && _rtx_queue.empty()) {
+        _nic.cantSend(*this);
+        return;
+    }
 
     mem_b full_pkt_size = _mtu;
     // how much do we want to send?
