@@ -110,7 +110,7 @@ public:
     /**
      * Initialize global NSCC parameters.
      */
-    static void initNsccParams(simtime_picosec network_rtt, linkspeed_bps linkspeed);
+    static void initNsccParams(simtime_picosec network_rtt, linkspeed_bps linkspeed, simtime_picosec target_Qdelay);
     /**
      * Initialize per-connection NSCC parameters.
      */

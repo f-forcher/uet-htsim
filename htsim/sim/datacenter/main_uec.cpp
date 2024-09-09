@@ -72,6 +72,7 @@ int main(int argc, char **argv) {
     bool log_switches = false;
     bool log_queue_usage = false;
     double ecn_thresh = 0.5; // default marking threshold for ECN load balancing
+    simtime_picosec target_Qdelay = 0;
 
     bool param_ecn_set = false;
     bool ecn = true;
@@ -146,7 +147,7 @@ int main(int argc, char **argv) {
             UecSrc::_enable_avg_ecn_over_path = true;
             cout << "enable avg_ecn_over_path algorithm." << endl;            
         } else if (!strcmp(argv[i],"-target_q_delay")) {
-            UecSrc::_target_Qdelay = timeFromUs(atof(argv[i+1]));
+            target_Qdelay = timeFromUs(atof(argv[i+1]));
             cout << "target_q_delay" << atof(argv[i+1]) << " us"<< endl;
             i++;
         } else if (!strcmp(argv[i],"-sender_cc_algo")) {
@@ -651,7 +652,7 @@ int main(int argc, char **argv) {
         // TBD
     } else {
         // UecSrc::parameterScaleToTargetQ();
-        UecSrc::initNsccParams(network_max_unloaded_rtt, linkspeed);
+        UecSrc::initNsccParams(network_max_unloaded_rtt, linkspeed, target_Qdelay);
     }
 
     vector<UecPullPacer*> pacers;

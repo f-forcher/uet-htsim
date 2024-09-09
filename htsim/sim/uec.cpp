@@ -72,7 +72,8 @@ bool UecSrc::_enable_fast_loss_recovery = false;
 
 
 void UecSrc::initNsccParams(simtime_picosec network_rtt,
-                            linkspeed_bps linkspeed){
+                            linkspeed_bps linkspeed,
+                            simtime_picosec target_Qdelay){
     _reference_network_linkspeed = speedFromGbps(100);
     _reference_network_rtt = timeFromUs(12u); 
     _reference_network_bdp = timeAsSec(_reference_network_rtt)*(_reference_network_linkspeed/8);
@@ -81,7 +82,11 @@ void UecSrc::initNsccParams(simtime_picosec network_rtt,
     _network_rtt = network_rtt; 
     _network_bdp = timeAsSec(_network_rtt)*(_network_linkspeed/8);
 
-    _target_Qdelay = timeFromUs(6u);
+    if (target_Qdelay > 0) {
+        _target_Qdelay = target_Qdelay;
+    } else {
+        _target_Qdelay = timeFromUs(6u);
+    }
 
     _qa_threshold = 4 * _target_Qdelay; 
 
