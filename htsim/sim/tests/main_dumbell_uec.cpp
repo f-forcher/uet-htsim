@@ -1,4 +1,4 @@
-// -*- c-basic-offset: 4; indent-tabs-mode: nil -*-        
+// -*- c-basic-offset: 4; indent-tabs-mode: nil -*-
 #include "config.h"
 #include <sstream>
 #include <string.h>
@@ -31,6 +31,7 @@ int main(int argc, char **argv) {
     simtime_picosec end_time = timeFromUs(10000u);
 
     int cable_length[1000];
+    bool dumbbell = false;
     bzero(cable_length,1000*sizeof(int));
 
     Clock c(timeFromSec(50/100.), eventlist);
@@ -41,9 +42,11 @@ int main(int argc, char **argv) {
 
     double pcie_rate = 1;
 
-    mem_b queuesize = 35; 
-    mem_b ecn_threshold_min = 70; 
-    mem_b ecn_threshold_max = 70; 
+    mem_b queuesize = 35;
+    mem_b ecn_threshold_min = 70;
+    mem_b ecn_threshold_max = 70;
+
+    UecSink::_oversubscribed_cc = false;
 
     stringstream filename(ios_base::out);
     filename << "logout.dat";
@@ -76,9 +79,11 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i],"-end")) {
             end_time = timeFromUs((uint32_t)atoi(argv[i+1]));
             cout << "endtime(us) "<< end_time << endl;
-            i++;            
+            i++;
         } else if (!strcmp(argv[i],"-debug")) {
             UecSrc::_debug = true;
+        } else if (!strcmp(argv[i],"-dumbbell")) {
+            dumbbell = true;
         } else if (!strcmp(argv[i],"-rts")) {
             rts = true;
             cout << "rts enabled "<< endl;
@@ -94,12 +99,12 @@ int main(int argc, char **argv) {
             i++;
         } else if (!strcmp(argv[i],"-ecn_threshold")){
             // fraction of queuesize, between 0 and 1
-            ecn_threshold_min = ecn_threshold_max = atoi(argv[i+1]); 
+            ecn_threshold_min = ecn_threshold_max = atoi(argv[i+1]);
             i++;
-        } else if (!strcmp(argv[i],"-ecn_thresholds")){
+        } else if (!strcmp(argv[i],"-ecn")){
             // fraction of queuesize, between 0 and 1
-            ecn_threshold_min = atoi(argv[i+1]); 
-            ecn_threshold_max = atoi(argv[i+2]); 
+            ecn_threshold_min = atoi(argv[i+1]);
+            ecn_threshold_max = atoi(argv[i+2]);
             i+=2;
         } else if (!strcmp(argv[i],"-cable_lengths")){
             for (int j=0;j<flow_count;j++) {
@@ -126,6 +131,21 @@ int main(int argc, char **argv) {
             UecSink::_model_pcie = true;
             pcie_rate = atof(argv[i+1]);
             i++;
+        } else if (!strcmp(argv[i],"-Ai")){
+            OversubscribedCC::_Ai = atof(argv[i+1]);
+            cout << "Setting oversubscribed additive increase to  " << OversubscribedCC::_Ai << endl;
+
+            i++;
+        } else if (!strcmp(argv[i],"-Md")){
+            OversubscribedCC::_Md = atof(argv[i+1]);
+            cout << "Setting oversubscribed multiplicative decrease to  " << OversubscribedCC::_Md << endl;
+
+            i++;
+        } else if (!strcmp(argv[i],"-alpha")){
+            OversubscribedCC::_alpha = atof(argv[i+1]);
+            cout << "Setting oversubscribed alpha to  " << OversubscribedCC::_alpha << endl;
+
+            i++;
         } else if (!strcmp(argv[i],"-sender_cc")) {
             UecSrc::_sender_based_cc = true;
             cout << "sender based CC enabled "<<  endl;
@@ -145,16 +165,19 @@ int main(int argc, char **argv) {
         } else {
             cout << "Unknown parameter " << argv[i] << endl;
             exit_error(argv[0]);
-        }   
+        }
         i++;
     }
     srand(seed);
     srandom(seed);
     eventlist.setEndtime(end_time);
 
+    OversubscribedCC::setOversubscriptionRatio(flow_count);
+    OversubscribedCC::_Ai = 0.1 / flow_count;
+
     cout << "Outputting to " << filename.str() << endl;
     Logfile logfile(filename.str(),eventlist);
-  
+
     logfile.setStartTime(timeFromSec(0.0));
 
     Packet::set_packet_size(mtu);
@@ -173,12 +196,12 @@ int main(int argc, char **argv) {
     Pipe pipe2(RTT1, eventlist); pipe2.setName("pipe2"); logfile.writeName(pipe2);
 
     CompositeQueue queue(linkspeed, queuesize, eventlist, &qs1, UecBasePacket::ACKSIZE);
-    queue.setName("Queue1"); 
+    queue.setName("Queue1");
     logfile.writeName(queue);
-    //queue.set_ecn_thresholds(ecn_threshold_min,ecn_threshold_max);
-    
+    queue.set_ecn_thresholds(ecn_threshold_min,ecn_threshold_max);
+
     CompositeQueue queue2(linkspeed, queuesize, eventlist, NULL, UecBasePacket::ACKSIZE); queue2.setName("Queue2"); logfile.writeName(queue2);
-    //queue.set_ecn_thresholds(ecn_threshold_min,ecn_threshold_max);
+    queue.set_ecn_thresholds(ecn_threshold_min,ecn_threshold_max);
 
     //figure out max cable length
     int max_cl = 0;
@@ -187,6 +210,9 @@ int main(int argc, char **argv) {
             max_cl = cable_length[i];
 
     UecSrc::_min_rto = 10*timeFromUs(2.0 + queuesize * 8 * 1000000 / linkspeed)+2 * compute_latency(max_cl);
+
+    OversubscribedCC::_base_rtt = compute_latency(max_cl)+timeFromUs(2.0);
+
     cout << "Setting min RTO to " << timeAsUs(UecSrc::_min_rto) << endl;
     cout << "Max wire latency is " << timeAsUs(compute_latency(max_cl)+timeFromUs(2.0)) << endl;
     cout << "Speed is " << speedAsGbps(linkspeed) << "Gbps" << endl;
@@ -205,13 +231,10 @@ int main(int argc, char **argv) {
     cout << "Queuesize: " << queuesize << " bytes (" << queuesize/Packet::data_packet_size() << "packets)\n";
     cout << "Cwnd: " << cwnd << " packets\n";
     cout << "Linkspeed: " << linkspeed/1000000000 << "Gb/s\n";
- 
+
     vector<UecSrc*> Uec_srcs;
 
-    OversubscribedCC::setOversubscriptionRatio(flow_count);
-    UecSink::_oversubscribed_cc = false;
-
-    UecPullPacer* pacer = new UecPullPacer(linkspeed, 0.97, UecBasePacket::unquantize(UecSink::_credit_per_pull), eventlist, 1);
+    UecPullPacer* pacer = new UecPullPacer(linkspeed, 0.99, UecBasePacket::unquantize(UecSink::_credit_per_pull), eventlist, 1);
 
     for (int i=0;i<flow_count;i++){
         uecNic = new UecNIC(i, eventlist, linkspeed, 1);
@@ -220,15 +243,17 @@ int main(int argc, char **argv) {
         uecSrc->setCwnd(cwnd*Packet::data_packet_size());
         uecSrc->setMaxWnd(cwnd*Packet::data_packet_size());
         uecSrc->setFlowsize(flow_size);
-        
-        uecSrc->setName("Uec"+ntoa(i)); 
+
+        uecSrc->setName("Uec"+ntoa(i));
         logfile.writeName(*uecSrc);
 
         Uec_srcs.push_back(uecSrc);
 
         uecNic = new UecNIC(i, eventlist, linkspeed, 1);
-        //uecSnk = new UecSink(NULL, linkspeed, 1, Packet::data_packet_size(), eventlist,*uecNic, 1); 
-        uecSnk = new UecSink(NULL, pacer, *uecNic, 1); 
+        //uecSnk = new UecSink(NULL, linkspeed, 1, Packet::data_packet_size(), eventlist,*uecNic, 1);
+
+        UecPullPacer * p = dumbbell?(new UecPullPacer(linkspeed, 0.99, UecBasePacket::unquantize(UecSink::_credit_per_pull), eventlist, 1)):pacer;
+        uecSnk = new UecSink(NULL, p, *uecNic, 1);
 
         if (UecSink::_model_pcie){
             uecSnk->setPCIeModel(new PCIeModel(linkspeed * pcie_rate,Packet::data_packet_size(),eventlist,uecSnk->pullPacer()));
@@ -237,26 +262,26 @@ int main(int argc, char **argv) {
         if (UecSink::_oversubscribed_cc){
             uecSnk->setOversubscribedCC(new OversubscribedCC(eventlist,uecSnk->pullPacer()));
         }
-            
+
         ((DataReceiver*)uecSnk)->setName("UecSink");
         logfile.writeName(*(DataReceiver*)uecSnk);
-        
+
         // tell it the route
         routeout = new route_t();
         // Uec expects each src host to have a FairPriorityQueue
         //routeout->push_back(new FairPriorityQueue(linkspeed, memFromPkt(1000),eventlist, NULL));
         routeout->push_back(new Pipe(compute_latency(cable_length[i]),eventlist));
-        routeout->push_back(&queue); 
+        routeout->push_back(&queue);
         routeout->push_back(new Pipe(RTT1, eventlist));
         routeout->push_back(uecSnk->getPort(0));
-        
+
         routein  = new route_t();
         routein->push_back(&pipe1);
-        routein->push_back(&queue2); 
+        routein->push_back(&queue2);
         routein->push_back(new Pipe(compute_latency(cable_length[i]),eventlist));
-        routein->push_back(uecSrc->getPort(0)); 
+        routein->push_back(uecSrc->getPort(0));
 
-        uecSrc->connectPort(0, *routeout, *routein, *uecSnk, i * 500.0);
+        uecSrc->connectPort(0, *routeout, *routein, *uecSnk, 0.0);
         sinkLogger.monitorSink(uecSnk);
     }
 

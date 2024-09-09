@@ -636,6 +636,10 @@ int main(int argc, char **argv) {
         }
     }
     cout << "network_max_unloaded_rtt " << timeAsUs(network_max_unloaded_rtt) << endl;
+
+    if (UecSink::_oversubscribed_cc)
+        OversubscribedCC::_base_rtt = network_max_unloaded_rtt;
+
     
     //handle link failures specified in the connection matrix.
     for (size_t c = 0; c < conns->failures.size(); c++){

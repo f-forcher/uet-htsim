@@ -2422,8 +2422,12 @@ void UecSink::processTrimmed(const UecDataPacket& pkt) {
     _nic.logReceivedTrim(pkt.size());
 
     _stats.trimmed++;
-    if (_oversubscribed_cc)
-        _receiver_cc->trimmed_received();
+    if (_oversubscribed_cc){
+        bool is_last_hop = (pkt.nexthop() - pkt.trim_hop() - 2) == 0;
+
+        //cout << "Trim received " << pkt.nexthop() - pkt.trim_hop() - 2 << " last hop " << is_last_hop << endl;
+        _receiver_cc->trimmed_received(is_last_hop);
+    }
 
     if (pkt.epsn() < _expected_epsn || _epsn_rx_bitmap[pkt.epsn()]) {
         if (_src->debug())
