@@ -971,19 +971,20 @@ void UecSrc::updateCwndOnNack_DCTCP(bool skip, mem_b nacked_bytes) {
     _cwnd = max(_cwnd, (mem_b)_mtu);
 }
 
-bool UecSrc::quick_adapt(bool is_loss, simtime_picosec avgqdelay) {
+bool UecSrc::quick_adapt(bool is_loss, simtime_picosec delay) {
     if (_receiver_based_cc)
         return false;
 
     if (_debug_src){
-        cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " quickadapt called is loss "<< is_loss << " delay " << avgqdelay << " qa_endtime " << timeAsUs(_qa_endtime) << " trigger qa " << _trigger_qa << endl;
+        cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " quickadapt called is loss "<< is_loss << " delay " << delay 
+             << " qa_endtime " << timeAsUs(_qa_endtime) << " trigger qa " << _trigger_qa << endl;
     }
     if (eventlist().now()>_qa_endtime){
         bool qa_gate = true;
         if (_enable_qa_gate ){
             qa_gate = (_achieved_bytes < _maxwnd/8);
         }
-        if (_qa_endtime != 0 && (_trigger_qa || is_loss || (avgqdelay > _qa_threshold)) && qa_gate ){
+        if (_qa_endtime != 0 && (_trigger_qa || is_loss || (delay > _qa_threshold)) && qa_gate) {
             if (_debug_src) {
                 cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " running quickadapt, CWND is " << _cwnd << " setting it to " << _achieved_bytes <<  endl;
             }
@@ -992,14 +993,15 @@ bool UecSrc::quick_adapt(bool is_loss, simtime_picosec avgqdelay) {
                 if (_debug_src) {
                     cout << "This shouldn't happen: QUICK ADAPT MIGHT INCREASE THE CWND" << endl;
                 }
-            }
-            else {
+            } else {
                 _cwnd = max(_achieved_bytes, (mem_b)_mtu); //* _qa_scaling;
                 if(_flow.flow_id() == _debug_flowid)
                     cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " quick_adapt  _cwnd " << _cwnd << " is_loss " << is_loss << endl;
                 _bytes_to_ignore = _in_flight;
                 _bytes_ignored = 0;
                 _trigger_qa = false;
+                _achieved_bytes = 0;
+                _qa_endtime = eventlist().now() + _base_rtt + _target_Qdelay;
                 return true;
             }
         }
@@ -1064,7 +1066,7 @@ void UecSrc::fulfill_adjustment(){
     if (_debug_src) {
         cout << "Running fulfill adjustment cwnd " << _cwnd << " inc " << _inc_bytes << " bdp " << _bdp << endl;
     }
-    _cwnd += min((mem_b)_adjust_bytes_threshold, _inc_bytes / _cwnd); 
+    _cwnd += min((mem_b)_received_bytes, (mem_b)_inc_bytes / _cwnd); 
 
     _inc_bytes = 0;
 
@@ -1082,7 +1084,6 @@ void UecSrc::mark_packet_for_retransmission(UecBasePacket::seq_t psn, uint16_t p
 }
 
 void UecSrc::dontUpdateCwndOnAck(bool skip, simtime_picosec delay, mem_b newly_acked_bytes) {
-        sendIfPermitted();
 }
 
 
@@ -1094,7 +1095,7 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
 
     simtime_picosec avg_delay = get_avg_delay();
 
-    if (quick_adapt(false,avg_delay))
+    if (quick_adapt(false, delay))
         return;
 
     if (!skip && delay >= _target_Qdelay) {
@@ -1151,7 +1152,6 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
         _cwnd = _maxwnd;
     if (_flow.flow_id() == _debug_flowid)
         cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " final _nscc_cwnd " << _cwnd << " _basertt " << timeAsUs(_base_rtt)<< endl;
-    sendIfPermitted();
 }
 
 void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes) {
@@ -1161,11 +1161,10 @@ void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes) {
 
     _trigger_qa = true;
     if (_bytes_ignored >= _bytes_to_ignore)
-        quick_adapt(true, get_avg_delay());    
+        quick_adapt(true, _avg_delay);    
 }
 
 void UecSrc::dontUpdateCwndOnNack(bool skip, mem_b nacked_bytes) {
-    sendIfPermitted();
 }
 
 void UecSrc::update_base_rtt(simtime_picosec raw_rtt, uint16_t packet_size){
@@ -1336,8 +1335,9 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
     simtime_picosec send_time = i->second.send_time;
 
     _raw_rtt = eventlist().now() - send_time;
-    if(_raw_rtt > _base_rtt)
+    if(_raw_rtt > _base_rtt) {
         update_delay(_raw_rtt, false, true);
+    }
 
     if(_enable_avg_ecn_over_path){
         _exp_avg_ecn = _ecn_alpha * 1.0  + (1 - _ecn_alpha) * _exp_avg_ecn;
@@ -1580,6 +1580,7 @@ void UecSrc::sendIfPermitted() {
         mem_b sent_bytes = sendPacket(*route);
         if (sent_bytes > 0) {
             _nic.startSending(*this, sent_bytes, route);
+            sendIfPermitted();
         } else {
             _nic.cantSend(*this);
         }
@@ -1938,20 +1939,22 @@ void UecSrc::timeToSend(const Route& route) {
         cout << "timeToSend"
              << " flow " << _flow.str() << " at " << timeAsUs(eventlist().now()) << endl;
 
-    if (_backlog == 0 && _rtx_queue.empty()) {
-        _nic.cantSend(*this);
-        return;
-    }
-
     // time_to_send is called back from the UecNIC when it's time for
     // this src to send.  To get called back, the src must have
     // previously told the NIC it is ready to send by calling
     // UecNIC::requestSending()
-    //
+
     // before returning, UecSrc needs to call either
     // UecNIC::startSending or UecNIC::cantSend from this function
     // to update the NIC as to what happened, so they stay in sync.
+    // This also true when the flow is complete, let's make sure
+    // we are in sync either way.
     _send_blocked_on_nic = false;
+
+    if (_backlog == 0 && _rtx_queue.empty()) {
+        _nic.cantSend(*this);
+        return;
+    }
 
     mem_b full_pkt_size = _mtu;
     // how much do we want to send?
