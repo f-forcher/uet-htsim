@@ -23,6 +23,7 @@ OversubscribedCC::OversubscribedCC(EventList& eventList,UecPullPacer* pacer)
 	_old_trimmed_last_hop = 0;
 	_trimmed_other = 0;
 	_old_trimmed_other = 0;
+    _epoch = 0;
 
 	eventList.sourceIsPendingRel(*this,(simtime_picosec)((0.75+drand()/2)*1.5*_base_rtt));
 }
@@ -60,13 +61,18 @@ OversubscribedCC::doCongestionControl(){
 
     _g = _g * (1-_alpha) + _alpha * fraction; 
 
-    if (_g>_target_congestion){
+    /*if (_g>_target_congestion){
         _rate = _rate * (1 - (_g-_target_congestion)* _Md);
         decrease = true;
-    }
+    }*/
    
-    if (!decrease)
-        _rate += _Ai;
+    if (!decrease){
+        _rate += _Ai * pow(1.1,_epoch);
+        _epoch++;
+    }
+    else {
+        _epoch = 0;
+    }
 
     if (_rate < _min_rate)
         _rate = _min_rate;

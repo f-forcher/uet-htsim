@@ -32,12 +32,12 @@ public:
 
     inline static void setOversubscriptionRatio(int ratio) { 
         _min_rate = 0.8/ratio; if (_min_rate < 0.01) _min_rate = 0.01; cout << "Setting min_rate to " << _min_rate * 100 << "% of linerate" << endl;
-        _Ai = 0.1 / ratio;
     }
 
 private:
     double _rate;//total credit rate as dictated by observed congestion, computed dynamically.
     double _g;//marked packets average.
+    uint32_t _epoch;
 
     UecPullPacer* _pullPacer = NULL;
 

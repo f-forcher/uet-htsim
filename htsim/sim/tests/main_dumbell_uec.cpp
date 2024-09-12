@@ -173,7 +173,7 @@ int main(int argc, char **argv) {
     eventlist.setEndtime(end_time);
 
     OversubscribedCC::setOversubscriptionRatio(flow_count);
-    OversubscribedCC::_Ai = 0.1 / flow_count;
+    //OversubscribedCC::_Ai = 0.1 / flow_count;
 
     cout << "Outputting to " << filename.str() << endl;
     Logfile logfile(filename.str(),eventlist);
@@ -211,7 +211,7 @@ int main(int argc, char **argv) {
 
     UecSrc::_min_rto = 10*timeFromUs(2.0 + queuesize * 8 * 1000000 / linkspeed)+2 * compute_latency(max_cl);
 
-    OversubscribedCC::_base_rtt = compute_latency(max_cl)+timeFromUs(2.0);
+    OversubscribedCC::_base_rtt = 2 * compute_latency(max_cl)+timeFromUs(2.0);
 
     cout << "Setting min RTO to " << timeAsUs(UecSrc::_min_rto) << endl;
     cout << "Max wire latency is " << timeAsUs(compute_latency(max_cl)+timeFromUs(2.0)) << endl;
@@ -273,15 +273,18 @@ int main(int argc, char **argv) {
         routeout->push_back(new Pipe(compute_latency(cable_length[i]),eventlist));
         routeout->push_back(&queue);
         routeout->push_back(new Pipe(RTT1, eventlist));
+        routeout->push_back(new CompositeQueue(linkspeed*1.1, queuesize, eventlist, NULL, UecBasePacket::ACKSIZE));
+        routeout->push_back(new Pipe(0,eventlist));
         routeout->push_back(uecSnk->getPort(0));
 
         routein  = new route_t();
         routein->push_back(&pipe1);
         routein->push_back(&queue2);
         routein->push_back(new Pipe(compute_latency(cable_length[i]),eventlist));
+        routein->push_back(&queue2);
         routein->push_back(uecSrc->getPort(0));
 
-        uecSrc->connectPort(0, *routeout, *routein, *uecSnk, 0.0);
+        uecSrc->connectPort(0, *routeout, *routein, *uecSnk, 500*i);
         sinkLogger.monitorSink(uecSnk);
     }
 
