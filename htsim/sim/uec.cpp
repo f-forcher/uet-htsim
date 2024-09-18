@@ -24,18 +24,20 @@ int UecSink::TGT_EV_SIZE = 7;
 
 bool UecSink::_model_pcie = false;
 
-/* if you change _credit_per_pull, fix pktTime in the Pacer too - this assumes one pull per MTU */
-UecBasePacket::pull_quanta UecSink::_credit_per_pull = 8;  // uints of typically 512 bytes
-
 /* this default will be overridden from packet size*/
 uint16_t UecSrc::_hdr_size = 64;
 uint16_t UecSrc::_mss = 4096;
 uint16_t UecSrc::_mtu = _mss + _hdr_size;
 
+// send 4 packets of credit per pull, as per default in UEC spec
+uint16_t UecSink::_mtus_per_pull = 4;
+
+// units of UEC_PULL_QUANTA bytes (typically 256) - note round down to mss rather than mtu
+UecBasePacket::pull_quanta UecSink::_credit_per_pull = (UecSrc::_mss * UecSink::_mtus_per_pull) >> UEC_PULL_SHIFT;
+
 bool UecSrc::_debug = false;
 
 bool UecSrc::_sender_based_cc = false;
-
 bool UecSrc::_receiver_based_cc = true;
 bool UecSink::_oversubscribed_cc = false; // can only be enabled when receiver_based_cc is set to true
 
@@ -2701,14 +2703,14 @@ uint32_t UecSink::reorder_buffer_size() {
 // pull rate modifier should generally be something like 0.99 so we pull at just less than line rate
 UecPullPacer::UecPullPacer(linkspeed_bps linkSpeed,
                              double pull_rate_modifier,
-                             uint16_t mtu,
+                             uint16_t bytes_credit_per_pull,
                              EventList& eventList,
                              uint32_t no_of_ports)
     : EventSource(eventList, "uecPull"),
-      _pktTime((8 * mtu * 1e12 / (linkSpeed * no_of_ports))/pull_rate_modifier) {
+      _pktTime((8 * bytes_credit_per_pull * 1e12 / (linkSpeed * no_of_ports))/pull_rate_modifier) {
     _active = false;
     _actualPktTime = _pktTime;
-    _mtu = mtu;
+    _bytes_credit_per_pull = bytes_credit_per_pull;
     _linkspeed = linkSpeed;
     _rates[PCIE] = 1;
     _rates[OVERSUBSCRIBED_CC] = 1;

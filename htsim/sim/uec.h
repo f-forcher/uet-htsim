@@ -527,6 +527,7 @@ class UecSink : public DataReceiver {
     PCIeModel* pcieModel() const{ return _pcie;}
 
     static mem_b _bytes_unacked_threshold;
+    static uint16_t _mtus_per_pull;
     static UecBasePacket::pull_quanta _credit_per_pull;
     static int TGT_EV_SIZE;
 
@@ -595,7 +596,7 @@ class UecPullPacer : public EventSource {
 
     UecPullPacer(linkspeed_bps linkSpeed,
                   double pull_rate_modifier,
-                  uint16_t mtu,
+                  uint16_t bytes_credit_per_pull,
                   EventList& eventList,
                   uint32_t no_of_ports);
     void doNextEvent();
@@ -604,7 +605,6 @@ class UecPullPacer : public EventSource {
     bool isActive(UecSink* sink);
     bool isIdle(UecSink* sink);
 
-    inline uint16_t mtu() const {return _mtu;}
     inline linkspeed_bps linkspeed() const {return _linkspeed;}
 
     void updatePullRate(reason r,double relative_rate);
@@ -622,7 +622,7 @@ class UecPullPacer : public EventSource {
     double _rates[2];
 
     linkspeed_bps _linkspeed;
-    uint16_t _mtu;
+    uint16_t _bytes_credit_per_pull;
 };
 
 #endif  // UEC_H
