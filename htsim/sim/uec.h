@@ -98,11 +98,17 @@ private:
 class UecSrc : public EventSource, public TriggerTarget {
 public:
     struct Stats {
-        uint64_t sent;
-        uint64_t timeouts;
-        uint64_t nacks;
-        uint64_t pulls;
-        uint64_t rts_nacks;
+        /* all must be non-negative, but we'll make them signed so we
+           can do maths with them without concern about underflow */
+        int32_t new_pkts_sent;
+        int32_t rtx_pkts_sent;
+        int32_t rts_pkts_sent;
+        int32_t rto_events;
+        int32_t acks_received;
+        int32_t nacks_received;
+        int32_t pulls_received;
+        int32_t bounces_received;
+        int32_t rts_nacks;
     };
     UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, uint32_t no_of_ports, bool rts = false);
     void delFromSendTimes(simtime_picosec time, UecDataPacket::seq_t seq_no);
@@ -186,13 +192,6 @@ public:
     inline PacketFlow* flow() { return &_flow; }
 
     inline flowid_t flowId() const { return _flow.flow_id(); }
-
-    // status for debugging
-    uint32_t _new_packets_sent;
-    uint32_t _rtx_packets_sent;
-    uint32_t _rts_packets_sent;
-    uint32_t _bounces_received;
-    uint32_t _acks_received;
 
     static bool _debug;
     static bool _shown;

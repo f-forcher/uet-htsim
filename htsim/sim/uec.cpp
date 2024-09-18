@@ -500,11 +500,7 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
     _last_rts = 0;
 
     // stats for debugging
-    _new_packets_sent = 0;
-    _rtx_packets_sent = 0;
-    _rts_packets_sent = 0;
-    _bounces_received = 0;
-    _acks_received = 0;
+    memset(&_stats, 0, sizeof(_stats));
 
     if (_load_balancing_algo == BITMAP){
         nextEntropy = &UecSrc::nextEntropy_bitmap;
@@ -617,7 +613,7 @@ void UecSrc::connectPort(uint32_t port_num,
 void UecSrc::receivePacket(Packet& pkt, uint32_t portnum) {
     switch (pkt.type()) {
         case UECDATA: {
-            _bounces_received++;
+            _stats.bounces_received++;
             // TBD - this is likely a Back-to-sender packet
             cout << "UecSrc::receivePacket receive UECDATA packets\n";
 
@@ -795,14 +791,14 @@ bool UecSrc::checkFinished(UecDataPacket::seq_t cum_ack) {
     }
     if (_debug_src)
         cout << _flow.str() << " " << _nodename << " checkFinished "
-             << " cum_acc " << cum_ack << " mss " << _mss << " RTS sent " << _rts_packets_sent
-             << " total bytes " << ((int64_t)cum_ack - _rts_packets_sent) * _mss << " flow_size "
+             << " cum_acc " << cum_ack << " mss " << _mss << " RTS sent " << _stats.rts_pkts_sent
+             << " total bytes " << ((int64_t)cum_ack - _stats.rts_pkts_sent) * _mss << " flow_size "
              << _flow_size << " done_sending " << _done_sending << endl;
 
-    if ((((mem_b)cum_ack - _rts_packets_sent) * _mss) >= _flow_size) {
+    if ((((int64_t)cum_ack - _stats.rts_pkts_sent) * _mss) >= (int64_t)_flow_size) {
         cout << "Flow " << _name << " flowId " << flowId() << " " << _nodename << " finished at "
              << timeAsUs(eventlist().now()) << " total packets " << cum_ack << " RTS "
-             << _rts_packets_sent << " total bytes " << ((mem_b)cum_ack - _rts_packets_sent) * _mss
+             << _stats.rts_pkts_sent << " total bytes " << ((mem_b)cum_ack - _stats.rts_pkts_sent) * _mss
              << " in_flight now " << _in_flight << endl;
         _speculating = false;
         if (_end_trigger) {
@@ -837,7 +833,7 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
     if (_debug_src) {
         cout << "processAck " << cum_ack << " ref_epsn " << pkt.acked_psn() << " recvd_bytes " << _recvd_bytes << " newly_recvd_bytes " << newly_recvd_bytes << endl;
     }
-    _acks_received++;
+    _stats.acks_received++;
 
     //decrease flightsize.
     _in_flight -= newly_recvd_bytes;
@@ -1299,6 +1295,7 @@ void UecSrc::fastLossRecovery(uint32_t ooo, UecBasePacket::seq_t cum_ack) {
 }
 void UecSrc::processNack(const UecNackPacket& pkt) {
     _nic.logReceivedCtrl(pkt.size());
+    _stats.nacks_received++;
 
     // auto pullno = pkt.pullno();
     // handlePull(pullno);
@@ -1382,6 +1379,7 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
 
 void UecSrc::processPull(const UecPullPacket& pkt) {
     _nic.logReceivedCtrl(pkt.size());
+    _stats.pulls_received++;
 
     auto pullno = pkt.pullno();
     if (_debug_src)
@@ -1807,7 +1805,7 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
              << _highest_sent * _mss << " backlog " << _backlog << " flow "
              << _flow.str() << endl;
     assert(_backlog > 0);
-    assert(((mem_b)_highest_sent - _rts_packets_sent) * _mss < _flow_size);
+    assert(((mem_b)_highest_sent - _stats.rts_pkts_sent) * _mss < _flow_size);
     mem_b full_pkt_size = _mtu;
     if (_backlog < _mtu) {
         full_pkt_size = _backlog;
@@ -1851,7 +1849,7 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
     }
     p->sendOn();
     _highest_sent++;
-    _new_packets_sent++;
+    _stats.new_pkts_sent++;
     startRTO(eventlist().now());
     return full_pkt_size;
 }
@@ -1889,7 +1887,7 @@ mem_b UecSrc::sendRtxPacket(const Route& route) {
     }
     p->set_ar(true);
     p->sendOn();
-    _rtx_packets_sent++;
+    _stats.rtx_pkts_sent++;
     startRTO(eventlist().now());
     return full_pkt_size;
 }
@@ -1916,7 +1914,7 @@ void UecSrc::sendRTS() {
     _nic.sendControlPacket(p, this, NULL);
 
     _highest_sent++;
-    _rts_packets_sent++;
+    _stats.rts_pkts_sent++;
     _last_rts = eventlist().now();
     startRTO(eventlist().now());
 }
