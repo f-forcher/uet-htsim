@@ -1834,7 +1834,7 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
     p->set_pathid(ev);
     p->flow().logTraffic(*p, *this, TrafficLogger::PKT_CREATESEND);
 
-    if (_backlog == 0 || (_receiver_based_cc && _credit < 0) || ( _sender_based_cc &&  _in_flight >= _cwnd )) 
+    if (_backlog == 0 || (_receiver_based_cc && _credit <= 0) || ( _sender_based_cc &&  _in_flight >= _cwnd )) 
         p->set_ar(true);
     
     createSendRecord(_highest_sent, full_pkt_size);
