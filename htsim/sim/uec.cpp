@@ -2584,7 +2584,7 @@ uint16_t UecSink::nextEntropy() {
     return ev;
 }
 
-UecPullPacket* UecSink::pull() {
+UecPullPacket* UecSink::pull(UecBasePacket::pull_quanta& extra_credit) {
     // called when pull pacer is ready to give another credit to this connection.
     // TODO: need to credit in multiple of MTU here.
 
@@ -2600,7 +2600,19 @@ UecPullPacket* UecSink::pull() {
                  << _src->flow()->str() << endl;
     }
 
-    _latest_pull += UecSink::_credit_per_pull;
+    if (extra_credit == 0) {
+        // only send as much credit as the sender asked for
+        auto prev_pull = _latest_pull;
+	_latest_pull += UecSink::_credit_per_pull;
+        if (_latest_pull > _highest_pull_target) {
+            // don't go above pull_target, but also don't go backwards
+            _latest_pull = max(_highest_pull_target, prev_pull);
+	}
+        extra_credit = _latest_pull - prev_pull;
+    } else {
+        // it's a slow pull, ignore pull target and just grant what we're told
+        _latest_pull += extra_credit;
+    }
 
     UecPullPacket* pkt = NULL;
     pkt = UecPullPacket::newpkt(_flow, NULL, _latest_pull, false, _srcaddr);
@@ -2707,9 +2719,10 @@ UecPullPacer::UecPullPacer(linkspeed_bps linkSpeed,
                              EventList& eventList,
                              uint32_t no_of_ports)
     : EventSource(eventList, "uecPull"),
-      _pktTime((8 * bytes_credit_per_pull * 1e12 / (linkSpeed * no_of_ports))/pull_rate_modifier) {
+      _time_per_quanta((8 * UEC_PULL_QUANTUM * 1e12 / (linkSpeed * no_of_ports))/pull_rate_modifier)
+{
     _active = false;
-    _actualPktTime = _pktTime;
+    _actual_time_per_quanta = _time_per_quanta;
     _bytes_credit_per_pull = bytes_credit_per_pull;
     _linkspeed = linkSpeed;
     _rates[PCIE] = 1;
@@ -2724,6 +2737,7 @@ void UecPullPacer::doNextEvent() {
 
     UecSink* sink = NULL;
     UecPullPacket* pullPkt;
+    UecBasePacket::pull_quanta extra_credit = 0;
 
     if (!_active_senders.empty()) {
         sink = _active_senders.front();
@@ -2731,7 +2745,7 @@ void UecPullPacer::doNextEvent() {
         assert(sink->inPullQueue());
 
         _active_senders.pop_front();
-        pullPkt = sink->pull();
+        pullPkt = sink->pull(extra_credit);
 
         // TODO if more pulls are needed, enqueue again
         if (UecSrc::_debug)
@@ -2756,7 +2770,8 @@ void UecPullPacer::doNextEvent() {
                  << timeAsUs(eventlist().now()) << " backlog " << sink->backlog() << " "
                  << sink->slowCredit() << " max "
                  << UecBasePacket::quantize_floor(sink->getMaxCwnd()) << endl;
-        pullPkt = sink->pull();
+        extra_credit = UecSink::_credit_per_pull;
+        pullPkt = sink->pull(extra_credit);
         pullPkt->set_slow_pull(true);
 
         if (sink->backlog() == 0 &&
@@ -2764,9 +2779,11 @@ void UecPullPacer::doNextEvent() {
             // only send upto 1BDP worth of speculative credit.
             // backlog will be negative once this source starts receiving speculative credit.
             _idle_senders.push_back(sink);
-        } else
+        } else {
             sink->removeFromSlowPullQueue();
+        }
     }
+    
 
     pullPkt->flow().logTraffic(*pullPkt, *this, TrafficLogger::PKT_SEND);
 
@@ -2774,16 +2791,22 @@ void UecPullPacer::doNextEvent() {
     sink->getNIC()->sendControlPacket(pullPkt, NULL, sink);
     _active = true;
 
-    eventlist().sourceIsPendingRel(*this, _actualPktTime);
+    if (extra_credit == 0) {
+        // we need some time between pulls, even if we're not sending more credit;
+        extra_credit = 1024 >> UEC_PULL_SHIFT;
+    }
+    simtime_picosec pkt_time = _actual_time_per_quanta * extra_credit;
+    assert(pkt_time > 0);
+    eventlist().sourceIsPendingRel(*this, pkt_time);
 }
 
 void UecPullPacer::updatePullRate(reason r, double relative_rate){
     _rates[r] = relative_rate;
 
-    _actualPktTime = _pktTime / min(_rates[PCIE],_rates[OVERSUBSCRIBED_CC]);
+    _actual_time_per_quanta = _time_per_quanta / min(_rates[PCIE],_rates[OVERSUBSCRIBED_CC]);
 
     if (UecSrc::_debug)
-        cout << "Interpacket delay " << timeAsUs(_actualPktTime) << endl;
+        cout << "Interpacket delay " << timeAsUs(_actual_time_per_quanta * UecSink::_credit_per_pull) << endl;
 }
 
 bool UecPullPacer::isActive(UecSink* sink) {

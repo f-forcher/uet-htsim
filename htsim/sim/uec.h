@@ -467,7 +467,7 @@ class UecSink : public DataReceiver {
 
     inline flowid_t flowId() const { return _flow.flow_id(); }
 
-    UecPullPacket* pull();
+    UecPullPacket* pull(UecBasePacket::pull_quanta& extra_credit);
 
     bool shouldSack();
     uint16_t unackedPackets();
@@ -609,14 +609,13 @@ class UecPullPacer : public EventSource {
 
     void updatePullRate(reason r,double relative_rate);
 
-    simtime_picosec packettime() const {return _actualPktTime;}
-
    private:
     list<UecSink*> _active_senders;  // TODO priorities?
     list<UecSink*> _idle_senders;    // TODO priorities?
 
-    const simtime_picosec _pktTime;
-    simtime_picosec _actualPktTime;
+    const simtime_picosec _time_per_quanta;
+    simtime_picosec _actual_time_per_quanta;
+
     bool _active;
     
     double _rates[2];
