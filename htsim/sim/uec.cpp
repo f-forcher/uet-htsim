@@ -502,7 +502,7 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
     _last_rts = 0;
 
     // stats for debugging
-    memset(&_stats, 0, sizeof(_stats));
+    _stats = {};
 
     if (_load_balancing_algo == BITMAP){
         nextEntropy = &UecSrc::nextEntropy_bitmap;
