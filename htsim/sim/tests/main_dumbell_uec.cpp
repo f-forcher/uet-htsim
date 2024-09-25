@@ -45,6 +45,7 @@ int main(int argc, char **argv) {
     mem_b queuesize = 35;
     mem_b ecn_threshold_min = 70;
     mem_b ecn_threshold_max = 70;
+    uint32_t start_delta = 0;
 
     UecSink::_oversubscribed_cc = false;
 
@@ -144,6 +145,11 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i],"-alpha")){
             OversubscribedCC::_alpha = atof(argv[i+1]);
             cout << "Setting oversubscribed alpha to  " << OversubscribedCC::_alpha << endl;
+
+            i++;
+        } else if (!strcmp(argv[i],"-start_delta")){
+            start_delta = atoi(argv[i+1]);
+            cout << "Setting start_delta to  " << start_delta << "us" << endl;
 
             i++;
         } else if (!strcmp(argv[i],"-sender_cc")) {
@@ -284,7 +290,8 @@ int main(int argc, char **argv) {
         routein->push_back(&queue2);
         routein->push_back(uecSrc->getPort(0));
 
-        uecSrc->connectPort(0, *routeout, *routein, *uecSnk, 500*i);
+        //start time of the connections is delayed by start_delta to allow us to observe
+        uecSrc->connectPort(0, *routeout, *routein, *uecSnk, start_delta*i);
         sinkLogger.monitorSink(uecSnk);
     }
 
