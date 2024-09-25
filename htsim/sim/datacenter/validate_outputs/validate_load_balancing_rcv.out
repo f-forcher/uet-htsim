@@ -5,97 +5,97 @@ Using binary: ./htsim_uec
 Experiment: Large permutation, oblivious (1024 nodes) 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 1000 -load_balancing_algo oblivious -paths 128 
-[PASS] Tail FCT 207.484 us below the target of 220 us
+[PASS] Tail FCT 207.528 us below the target of 220 us
 [PASS] Connection count 1024
-FCT Spread 170.271 -> 207.484 ratio 1.2185516030328125
-Summary: New: 501760 Rtx: 8860 RTS: 0 Bounced: 0 ACKs: 242371
+FCT Spread 168.851 -> 207.528 ratio 1.2290599404208444
+Summary: New: 501760 Rtx: 8192 RTS: 0 Bounced: 0 ACKs: 245447 NACKs: 8192 Pulls: 208325
 Using binary: ./htsim_uec
 
 
 Experiment: Large permutation, bitmap (1024 nodes) 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 1000 -load_balancing_algo bitmap -paths 128 
-[PASS] Tail FCT 205.352 us below the target of 220 us
+[PASS] Tail FCT 202.98 us below the target of 220 us
 [PASS] Connection count 1024
-FCT Spread 170.307 -> 205.352 ratio 1.2057754525650737
-Summary: New: 501760 Rtx: 2674 RTS: 0 Bounced: 0 ACKs: 233480
+FCT Spread 168.917 -> 202.98 ratio 1.201655250803649
+Summary: New: 501760 Rtx: 1794 RTS: 0 Bounced: 0 ACKs: 235844 NACKs: 1794 Pulls: 222020
 Using binary: ./htsim_uec
 
 
 Experiment: Large permutation, REPS, 1SACK/packet (1024 nodes) 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 1000 -load_balancing_algo reps -sack_threshold 4000 -paths 128 
-[PASS] Tail FCT 201.503 us below the target of 220 us
+[PASS] Tail FCT 198.429 us below the target of 220 us
 [PASS] Connection count 1024
-FCT Spread 171.705 -> 201.503 ratio 1.1735418304650416
-Summary: New: 501760 Rtx: 458 RTS: 0 Bounced: 0 ACKs: 501760
+FCT Spread 170.125 -> 198.429 ratio 1.1663717854518736
+Summary: New: 501760 Rtx: 308 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 308 Pulls: 235883
 Using binary: ./htsim_uec
 
 
 Experiment: Large permutation, REPS, 4SACK/packet (1024 nodes) 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 1000 -load_balancing_algo reps -paths 128 
-[PASS] Tail FCT 212.068 us below the target of 220 us
+[PASS] Tail FCT 208.78 us below the target of 220 us
 [PASS] Connection count 1024
-FCT Spread 170.424 -> 212.068 ratio 1.2443552551283856
-Summary: New: 501760 Rtx: 8814 RTS: 0 Bounced: 0 ACKs: 259754
+FCT Spread 168.938 -> 208.78 ratio 1.2358379997395494
+Summary: New: 501760 Rtx: 6503 RTS: 0 Bounced: 0 ACKs: 259764 NACKs: 6503 Pulls: 212725
 Using binary: ./htsim_uec
 
 
 Experiment: Large permutation, mixed (bitmap+REPS), 1SACK/packet (1024 nodes) 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 1000 -load_balancing_algo mixed -sack_threshold 4000 -paths 128 
-[PASS] Tail FCT 202.306 us below the target of 220 us
+[PASS] Tail FCT 198.11 us below the target of 220 us
 [PASS] Connection count 1024
-FCT Spread 171.733 -> 202.306 ratio 1.1780263548648193
-Summary: New: 501760 Rtx: 1390 RTS: 0 Bounced: 0 ACKs: 501760
+FCT Spread 169.941 -> 198.11 ratio 1.1657575276125245
+Summary: New: 501760 Rtx: 653 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 653 Pulls: 237010
 Using binary: ./htsim_uec
 
 
 Experiment: Large permutation, mixed, 4SACK/packet (1024 nodes) 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 1000 -load_balancing_algo mixed -paths 128 
-[PASS] Tail FCT 206.126 us below the target of 220 us
+[PASS] Tail FCT 204.269 us below the target of 220 us
 [PASS] Connection count 1024
-FCT Spread 170.311 -> 206.126 ratio 1.2102917603677976
-Summary: New: 501760 Rtx: 3259 RTS: 0 Bounced: 0 ACKs: 234335
+FCT Spread 168.892 -> 204.269 ratio 1.2094652203775194
+Summary: New: 501760 Rtx: 2067 RTS: 0 Bounced: 0 ACKs: 233440 NACKs: 2067 Pulls: 220695
 Using binary: ./htsim_uec
 
 
 Experiment: Large permutation, oblivious, large queues (1024 nodes) 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 1000 -q 500 -load_balancing_algo oblivious -paths 128 
-[FAIL] Tail FCT 225.776 us above the target of 220 us
+[FAIL] Tail FCT 222.927 us above the target of 220 us
 [PASS] Connection count 1024
-FCT Spread 170.203 -> 225.776 ratio 1.3265101085174762
-Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 243263
+FCT Spread 168.77 -> 222.927 ratio 1.3208923386857854
+Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 246227 NACKs: 0 Pulls: 207491
 Using binary: ./htsim_uec
 
 
 Experiment: Large permutation, bitmap, large queues (1024 nodes) 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 1000 -q 500 -load_balancing_algo bitmap -paths 128 
-[PASS] Tail FCT 208.27 us below the target of 220 us
+[PASS] Tail FCT 204.762 us below the target of 220 us
 [PASS] Connection count 1024
-FCT Spread 170.215 -> 208.27 ratio 1.223570190641248
-Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 234523
+FCT Spread 168.758 -> 204.762 ratio 1.213346922812548
+Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 236755 NACKs: 0 Pulls: 220412
 Using binary: ./htsim_uec
 
 
 Experiment: Large permutation, REPS 1 packet per SACK, large queues (1024 nodes) 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 1000 -q 500 -load_balancing_algo reps -sack_threshold 4000 -paths 128 
-[PASS] Tail FCT 203.292 us below the target of 220 us
+[PASS] Tail FCT 198.784 us below the target of 220 us
 [PASS] Connection count 1024
-FCT Spread 171.776 -> 203.292 ratio 1.1834714977645304
-Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 501760
+FCT Spread 169.957 -> 198.784 ratio 1.169613490471119
+Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 0 Pulls: 235483
 Using binary: ./htsim_uec
 
 
 Experiment: Large permutation, mixed 1 packet per SACK, large queues (1024 nodes) 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 1000 -q 500 -load_balancing_algo mixed -sack_threshold 4000 -paths 128 
-[PASS] Tail FCT 204.34 us below the target of 220 us
+[PASS] Tail FCT 200.498 us below the target of 220 us
 [PASS] Connection count 1024
-FCT Spread 171.648 -> 204.34 ratio 1.1904595451155855
-Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 501760
+FCT Spread 169.942 -> 200.498 ratio 1.179802520860058
+Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 0 Pulls: 235560
