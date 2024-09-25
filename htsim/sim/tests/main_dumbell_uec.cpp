@@ -31,6 +31,8 @@ int main(int argc, char **argv) {
     simtime_picosec end_time = timeFromUs(10000u);
 
     int cable_length[1000];
+
+    //this controls whether RCCC uses a single PullPacer or multiple PullPacers for the connections in the dumbbell. Default is single PullPacer (flag set to false)
     bool dumbbell = false;
     bzero(cable_length,1000*sizeof(int));
 
