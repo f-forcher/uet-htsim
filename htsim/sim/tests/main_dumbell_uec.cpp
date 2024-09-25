@@ -274,9 +274,9 @@ int main(int argc, char **argv) {
 
     int new_pkts = 0, rtx_pkts = 0, bounce_pkts = 0;
     for (size_t ix = 0; ix < Uec_srcs.size(); ix++) {
-        new_pkts += Uec_srcs[ix]->_new_packets_sent;
-        rtx_pkts += Uec_srcs[ix]->_rtx_packets_sent;
-        bounce_pkts += Uec_srcs[ix]->_bounces_received;
+        new_pkts += Uec_srcs[ix]->stats().new_pkts_sent;
+        rtx_pkts += Uec_srcs[ix]->stats().rtx_pkts_sent;
+        bounce_pkts += Uec_srcs[ix]->stats().bounces_received;
     }
     cout << "New: " << new_pkts << " Rtx: " << rtx_pkts << " Bounced: " << bounce_pkts << endl;
 
