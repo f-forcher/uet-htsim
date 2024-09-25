@@ -281,6 +281,21 @@ int main(int argc, char **argv) {
             UecSink::_oversubscribed_cc = true;
             cout << "Using receiver oversubscribed CC " << endl;
         }
+        else if (!strcmp(argv[i],"-Ai")){
+            OversubscribedCC::_Ai = atof(argv[i+1]);
+            cout << "Using Ai "  << OversubscribedCC::_Ai << endl;
+            i+=1;
+        }
+        else if (!strcmp(argv[i],"-Md")){
+            OversubscribedCC::_Md = atof(argv[i+1]);
+            cout << "Using Md "  << OversubscribedCC::_Md << endl;
+            i+=1;
+        }
+        else if (!strcmp(argv[i],"-alpha")){
+            OversubscribedCC::_alpha = atof(argv[i+1]);
+            cout << "Using Alpha "  << OversubscribedCC::_alpha << endl;
+            i+=1;
+        }
         else if (!strcmp(argv[i],"-force_disable_oversubscribed_cc")){
             UecSink::_oversubscribed_cc = false;
             force_disable_oversubscribed_cc = true;
@@ -620,7 +635,7 @@ int main(int argc, char **argv) {
 
         if (topo[p]->get_oversubscription_ratio() >= 1 && !UecSrc::_sender_based_cc && !force_disable_oversubscribed_cc) {
             UecSink::_oversubscribed_cc = true;
-            OversubscribedCC::setOversubscriptionRatio(topo[p]->get_oversubscription_ratio()*2);
+            OversubscribedCC::setOversubscriptionRatio(topo[p]->get_oversubscription_ratio());
             cout << "Using simple receiver oversubscribed CC. Oversubscription ratio is " << topo[p]->get_oversubscription_ratio() << endl;
         } 
 
