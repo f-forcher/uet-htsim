@@ -24,18 +24,20 @@ int UecSink::TGT_EV_SIZE = 7;
 
 bool UecSink::_model_pcie = false;
 
-/* if you change _credit_per_pull, fix pktTime in the Pacer too - this assumes one pull per MTU */
-UecBasePacket::pull_quanta UecSink::_credit_per_pull = 8;  // uints of typically 512 bytes
-
 /* this default will be overridden from packet size*/
 uint16_t UecSrc::_hdr_size = 64;
 uint16_t UecSrc::_mss = 4096;
 uint16_t UecSrc::_mtu = _mss + _hdr_size;
 
+// send 4 packets of credit per pull, as per default in UEC spec
+uint16_t UecSink::_mtus_per_pull = 4;
+
+// units of UEC_PULL_QUANTA bytes (typically 256) - note round down to mss rather than mtu
+UecBasePacket::pull_quanta UecSink::_credit_per_pull = (UecSrc::_mss * UecSink::_mtus_per_pull) >> UEC_PULL_SHIFT;
+
 bool UecSrc::_debug = false;
 
 bool UecSrc::_sender_based_cc = false;
-
 bool UecSrc::_receiver_based_cc = true;
 bool UecSink::_oversubscribed_cc = false; // can only be enabled when receiver_based_cc is set to true
 
@@ -72,7 +74,8 @@ bool UecSrc::_enable_fast_loss_recovery = false;
 
 
 void UecSrc::initNsccParams(simtime_picosec network_rtt,
-                            linkspeed_bps linkspeed){
+                            linkspeed_bps linkspeed,
+                            simtime_picosec target_Qdelay){
     _reference_network_linkspeed = speedFromGbps(100);
     _reference_network_rtt = timeFromUs(12u); 
     _reference_network_bdp = timeAsSec(_reference_network_rtt)*(_reference_network_linkspeed/8);
@@ -81,7 +84,11 @@ void UecSrc::initNsccParams(simtime_picosec network_rtt,
     _network_rtt = network_rtt; 
     _network_bdp = timeAsSec(_network_rtt)*(_network_linkspeed/8);
 
-    _target_Qdelay = timeFromUs(6u);
+    if (target_Qdelay > 0) {
+        _target_Qdelay = target_Qdelay;
+    } else {
+        _target_Qdelay = timeFromUs(6u);
+    }
 
     _qa_threshold = 4 * _target_Qdelay; 
 
@@ -495,11 +502,7 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
     _last_rts = 0;
 
     // stats for debugging
-    _new_packets_sent = 0;
-    _rtx_packets_sent = 0;
-    _rts_packets_sent = 0;
-    _bounces_received = 0;
-    _acks_received = 0;
+    _stats = {};
 
     if (_load_balancing_algo == BITMAP){
         nextEntropy = &UecSrc::nextEntropy_bitmap;
@@ -612,7 +615,7 @@ void UecSrc::connectPort(uint32_t port_num,
 void UecSrc::receivePacket(Packet& pkt, uint32_t portnum) {
     switch (pkt.type()) {
         case UECDATA: {
-            _bounces_received++;
+            _stats.bounces_received++;
             // TBD - this is likely a Back-to-sender packet
             cout << "UecSrc::receivePacket receive UECDATA packets\n";
 
@@ -790,14 +793,14 @@ bool UecSrc::checkFinished(UecDataPacket::seq_t cum_ack) {
     }
     if (_debug_src)
         cout << _flow.str() << " " << _nodename << " checkFinished "
-             << " cum_acc " << cum_ack << " mss " << _mss << " RTS sent " << _rts_packets_sent
-             << " total bytes " << ((int64_t)cum_ack - _rts_packets_sent) * _mss << " flow_size "
+             << " cum_acc " << cum_ack << " mss " << _mss << " RTS sent " << _stats.rts_pkts_sent
+             << " total bytes " << ((int64_t)cum_ack - _stats.rts_pkts_sent) * _mss << " flow_size "
              << _flow_size << " done_sending " << _done_sending << endl;
 
-    if ((((mem_b)cum_ack - _rts_packets_sent) * _mss) >= _flow_size) {
+    if ((((int64_t)cum_ack - _stats.rts_pkts_sent) * _mss) >= (int64_t)_flow_size) {
         cout << "Flow " << _name << " flowId " << flowId() << " " << _nodename << " finished at "
              << timeAsUs(eventlist().now()) << " total packets " << cum_ack << " RTS "
-             << _rts_packets_sent << " total bytes " << ((mem_b)cum_ack - _rts_packets_sent) * _mss
+             << _stats.rts_pkts_sent << " total bytes " << ((mem_b)cum_ack - _stats.rts_pkts_sent) * _mss
              << " in_flight now " << _in_flight << endl;
         _speculating = false;
         if (_end_trigger) {
@@ -832,7 +835,7 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
     if (_debug_src) {
         cout << "processAck " << cum_ack << " ref_epsn " << pkt.acked_psn() << " recvd_bytes " << _recvd_bytes << " newly_recvd_bytes " << newly_recvd_bytes << endl;
     }
-    _acks_received++;
+    _stats.acks_received++;
 
     //decrease flightsize.
     _in_flight -= newly_recvd_bytes;
@@ -1294,6 +1297,7 @@ void UecSrc::fastLossRecovery(uint32_t ooo, UecBasePacket::seq_t cum_ack) {
 }
 void UecSrc::processNack(const UecNackPacket& pkt) {
     _nic.logReceivedCtrl(pkt.size());
+    _stats.nacks_received++;
 
     // auto pullno = pkt.pullno();
     // handlePull(pullno);
@@ -1377,6 +1381,7 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
 
 void UecSrc::processPull(const UecPullPacket& pkt) {
     _nic.logReceivedCtrl(pkt.size());
+    _stats.pulls_received++;
 
     auto pullno = pkt.pullno();
     if (_debug_src)
@@ -1802,7 +1807,7 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
              << _highest_sent * _mss << " backlog " << _backlog << " flow "
              << _flow.str() << endl;
     assert(_backlog > 0);
-    assert(((mem_b)_highest_sent - _rts_packets_sent) * _mss < _flow_size);
+    assert(((mem_b)_highest_sent - _stats.rts_pkts_sent) * _mss < _flow_size);
     mem_b full_pkt_size = _mtu;
     if (_backlog < _mtu) {
         full_pkt_size = _backlog;
@@ -1829,7 +1834,7 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
     p->set_pathid(ev);
     p->flow().logTraffic(*p, *this, TrafficLogger::PKT_CREATESEND);
 
-    if (_backlog == 0 || (_receiver_based_cc && _credit < 0) || ( _sender_based_cc &&  _in_flight >= _cwnd )) 
+    if (_backlog == 0 || (_receiver_based_cc && _credit <= 0) || ( _sender_based_cc &&  _in_flight >= _cwnd )) 
         p->set_ar(true);
     
     createSendRecord(_highest_sent, full_pkt_size);
@@ -1846,7 +1851,7 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
     }
     p->sendOn();
     _highest_sent++;
-    _new_packets_sent++;
+    _stats.new_pkts_sent++;
     startRTO(eventlist().now());
     return full_pkt_size;
 }
@@ -1884,7 +1889,7 @@ mem_b UecSrc::sendRtxPacket(const Route& route) {
     }
     p->set_ar(true);
     p->sendOn();
-    _rtx_packets_sent++;
+    _stats.rtx_pkts_sent++;
     startRTO(eventlist().now());
     return full_pkt_size;
 }
@@ -1911,7 +1916,7 @@ void UecSrc::sendRTS() {
     _nic.sendControlPacket(p, this, NULL);
 
     _highest_sent++;
-    _rts_packets_sent++;
+    _stats.rts_pkts_sent++;
     _last_rts = eventlist().now();
     startRTO(eventlist().now());
 }
@@ -2582,7 +2587,7 @@ uint16_t UecSink::nextEntropy() {
     return ev;
 }
 
-UecPullPacket* UecSink::pull() {
+UecPullPacket* UecSink::pull(UecBasePacket::pull_quanta& extra_credit) {
     // called when pull pacer is ready to give another credit to this connection.
     // TODO: need to credit in multiple of MTU here.
 
@@ -2598,7 +2603,19 @@ UecPullPacket* UecSink::pull() {
                  << _src->flow()->str() << endl;
     }
 
-    _latest_pull += UecSink::_credit_per_pull;
+    if (extra_credit == 0) {
+        // only send as much credit as the sender asked for
+        auto prev_pull = _latest_pull;
+	_latest_pull += UecSink::_credit_per_pull;
+        if (_latest_pull > _highest_pull_target) {
+            // don't go above pull_target, but also don't go backwards
+            _latest_pull = max(_highest_pull_target, prev_pull);
+	}
+        extra_credit = _latest_pull - prev_pull;
+    } else {
+        // it's a slow pull, ignore pull target and just grant what we're told
+        _latest_pull += extra_credit;
+    }
 
     UecPullPacket* pkt = NULL;
     pkt = UecPullPacket::newpkt(_flow, NULL, _latest_pull, false, _srcaddr);
@@ -2701,14 +2718,15 @@ uint32_t UecSink::reorder_buffer_size() {
 // pull rate modifier should generally be something like 0.99 so we pull at just less than line rate
 UecPullPacer::UecPullPacer(linkspeed_bps linkSpeed,
                              double pull_rate_modifier,
-                             uint16_t mtu,
+                             uint16_t bytes_credit_per_pull,
                              EventList& eventList,
                              uint32_t no_of_ports)
     : EventSource(eventList, "uecPull"),
-      _pktTime((8 * mtu * 1e12 / (linkSpeed * no_of_ports))/pull_rate_modifier) {
+      _time_per_quanta((8 * UEC_PULL_QUANTUM * 1e12 / (linkSpeed * no_of_ports))/pull_rate_modifier)
+{
     _active = false;
-    _actualPktTime = _pktTime;
-    _mtu = mtu;
+    _actual_time_per_quanta = _time_per_quanta;
+    _bytes_credit_per_pull = bytes_credit_per_pull;
     _linkspeed = linkSpeed;
     _rates[PCIE] = 1;
     _rates[OVERSUBSCRIBED_CC] = 1;
@@ -2722,6 +2740,7 @@ void UecPullPacer::doNextEvent() {
 
     UecSink* sink = NULL;
     UecPullPacket* pullPkt;
+    UecBasePacket::pull_quanta extra_credit = 0;
 
     if (!_active_senders.empty()) {
         sink = _active_senders.front();
@@ -2729,7 +2748,7 @@ void UecPullPacer::doNextEvent() {
         assert(sink->inPullQueue());
 
         _active_senders.pop_front();
-        pullPkt = sink->pull();
+        pullPkt = sink->pull(extra_credit);
 
         // TODO if more pulls are needed, enqueue again
         if (UecSrc::_debug)
@@ -2754,7 +2773,8 @@ void UecPullPacer::doNextEvent() {
                  << timeAsUs(eventlist().now()) << " backlog " << sink->backlog() << " "
                  << sink->slowCredit() << " max "
                  << UecBasePacket::quantize_floor(sink->getMaxCwnd()) << endl;
-        pullPkt = sink->pull();
+        extra_credit = UecSink::_credit_per_pull;
+        pullPkt = sink->pull(extra_credit);
         pullPkt->set_slow_pull(true);
 
         if (sink->backlog() == 0 &&
@@ -2762,9 +2782,11 @@ void UecPullPacer::doNextEvent() {
             // only send upto 1BDP worth of speculative credit.
             // backlog will be negative once this source starts receiving speculative credit.
             _idle_senders.push_back(sink);
-        } else
+        } else {
             sink->removeFromSlowPullQueue();
+        }
     }
+    
 
     pullPkt->flow().logTraffic(*pullPkt, *this, TrafficLogger::PKT_SEND);
 
@@ -2772,16 +2794,22 @@ void UecPullPacer::doNextEvent() {
     sink->getNIC()->sendControlPacket(pullPkt, NULL, sink);
     _active = true;
 
-    eventlist().sourceIsPendingRel(*this, _actualPktTime);
+    if (extra_credit == 0) {
+        // we need some time between pulls, even if we're not sending more credit;
+        extra_credit = 1024 >> UEC_PULL_SHIFT;
+    }
+    simtime_picosec pkt_time = _actual_time_per_quanta * extra_credit;
+    assert(pkt_time > 0);
+    eventlist().sourceIsPendingRel(*this, pkt_time);
 }
 
 void UecPullPacer::updatePullRate(reason r, double relative_rate){
     _rates[r] = relative_rate;
 
-    _actualPktTime = _pktTime / min(_rates[PCIE],_rates[OVERSUBSCRIBED_CC]);
+    _actual_time_per_quanta = _time_per_quanta / min(_rates[PCIE],_rates[OVERSUBSCRIBED_CC]);
 
     if (UecSrc::_debug)
-        cout << "Interpacket delay " << timeAsUs(_actualPktTime) << endl;
+        cout << "Interpacket delay " << timeAsUs(_actual_time_per_quanta * UecSink::_credit_per_pull) << endl;
 }
 
 bool UecPullPacer::isActive(UecSink* sink) {

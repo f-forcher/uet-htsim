@@ -72,6 +72,7 @@ int main(int argc, char **argv) {
     bool log_switches = false;
     bool log_queue_usage = false;
     double ecn_thresh = 0.5; // default marking threshold for ECN load balancing
+    simtime_picosec target_Qdelay = 0;
 
     bool param_ecn_set = false;
     bool ecn = true;
@@ -146,7 +147,7 @@ int main(int argc, char **argv) {
             UecSrc::_enable_avg_ecn_over_path = true;
             cout << "enable avg_ecn_over_path algorithm." << endl;            
         } else if (!strcmp(argv[i],"-target_q_delay")) {
-            UecSrc::_target_Qdelay = timeFromUs(atof(argv[i+1]));
+            target_Qdelay = timeFromUs(atof(argv[i+1]));
             cout << "target_q_delay" << atof(argv[i+1]) << " us"<< endl;
             i++;
         } else if (!strcmp(argv[i],"-sender_cc_algo")) {
@@ -670,7 +671,7 @@ int main(int argc, char **argv) {
         // TBD
     } else {
         // UecSrc::parameterScaleToTargetQ();
-        UecSrc::initNsccParams(network_max_unloaded_rtt, linkspeed);
+        UecSrc::initNsccParams(network_max_unloaded_rtt, linkspeed, target_Qdelay);
     }
 
     vector<UecPullPacer*> pacers;
@@ -848,15 +849,18 @@ int main(int argc, char **argv) {
     }
 
     cout << "Done" << endl;
-    int new_pkts = 0, rtx_pkts = 0, bounce_pkts = 0, rts_pkts = 0, ack_pkts = 0;
+    int new_pkts = 0, rtx_pkts = 0, bounce_pkts = 0, rts_pkts = 0, ack_pkts = 0, nack_pkts = 0, pull_pkts = 0;
     for (size_t ix = 0; ix < uec_srcs.size(); ix++) {
-        new_pkts += uec_srcs[ix]->_new_packets_sent;
-        rtx_pkts += uec_srcs[ix]->_rtx_packets_sent;
-        rts_pkts += uec_srcs[ix]->_rts_packets_sent;
-        bounce_pkts += uec_srcs[ix]->_bounces_received;
-        ack_pkts += uec_srcs[ix]->_acks_received;
+        const struct UecSrc::Stats& s = uec_srcs[ix]->stats();
+        new_pkts += s.new_pkts_sent;
+        rtx_pkts += s.rtx_pkts_sent;
+        rts_pkts += s.rts_pkts_sent;
+        bounce_pkts += s.bounces_received;
+        ack_pkts += s.acks_received;
+        nack_pkts += s.nacks_received;
+        pull_pkts += s.pulls_received;
     }
-    cout << "New: " << new_pkts << " Rtx: " << rtx_pkts << " RTS: " << rts_pkts << " Bounced: " << bounce_pkts << " ACKs: " << ack_pkts << endl;
+    cout << "New: " << new_pkts << " Rtx: " << rtx_pkts << " RTS: " << rts_pkts << " Bounced: " << bounce_pkts << " ACKs: " << ack_pkts << " NACKs: " << nack_pkts << " Pulls: " << pull_pkts << endl;
     /*
     list <const Route*>::iterator rt_i;
     int counts[10]; int hop;

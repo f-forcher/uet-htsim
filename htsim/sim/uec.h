@@ -98,11 +98,17 @@ private:
 class UecSrc : public EventSource, public TriggerTarget {
 public:
     struct Stats {
-        uint64_t sent;
-        uint64_t timeouts;
-        uint64_t nacks;
-        uint64_t pulls;
-        uint64_t rts_nacks;
+        /* all must be non-negative, but we'll make them signed so we
+           can do maths with them without concern about underflow */
+        int32_t new_pkts_sent;
+        int32_t rtx_pkts_sent;
+        int32_t rts_pkts_sent;
+        int32_t rto_events;
+        int32_t acks_received;
+        int32_t nacks_received;
+        int32_t pulls_received;
+        int32_t bounces_received;
+        int32_t rts_nacks;
     };
     UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, uint32_t no_of_ports, bool rts = false);
     void delFromSendTimes(simtime_picosec time, UecDataPacket::seq_t seq_no);
@@ -110,7 +116,7 @@ public:
     /**
      * Initialize global NSCC parameters.
      */
-    static void initNsccParams(simtime_picosec network_rtt, linkspeed_bps linkspeed);
+    static void initNsccParams(simtime_picosec network_rtt, linkspeed_bps linkspeed, simtime_picosec target_Qdelay);
     /**
      * Initialize per-connection NSCC parameters.
      */
@@ -186,13 +192,6 @@ public:
     inline PacketFlow* flow() { return &_flow; }
 
     inline flowid_t flowId() const { return _flow.flow_id(); }
-
-    // status for debugging
-    uint32_t _new_packets_sent;
-    uint32_t _rtx_packets_sent;
-    uint32_t _rts_packets_sent;
-    uint32_t _bounces_received;
-    uint32_t _acks_received;
 
     static bool _debug;
     static bool _shown;
@@ -468,7 +467,7 @@ class UecSink : public DataReceiver {
 
     inline flowid_t flowId() const { return _flow.flow_id(); }
 
-    UecPullPacket* pull();
+    UecPullPacket* pull(UecBasePacket::pull_quanta& extra_credit);
 
     bool shouldSack();
     uint16_t unackedPackets();
@@ -528,6 +527,7 @@ class UecSink : public DataReceiver {
     PCIeModel* pcieModel() const{ return _pcie;}
 
     static mem_b _bytes_unacked_threshold;
+    static uint16_t _mtus_per_pull;
     static UecBasePacket::pull_quanta _credit_per_pull;
     static int TGT_EV_SIZE;
 
@@ -596,7 +596,7 @@ class UecPullPacer : public EventSource {
 
     UecPullPacer(linkspeed_bps linkSpeed,
                   double pull_rate_modifier,
-                  uint16_t mtu,
+                  uint16_t bytes_credit_per_pull,
                   EventList& eventList,
                   uint32_t no_of_ports);
     void doNextEvent();
@@ -605,25 +605,23 @@ class UecPullPacer : public EventSource {
     bool isActive(UecSink* sink);
     bool isIdle(UecSink* sink);
 
-    inline uint16_t mtu() const {return _mtu;}
     inline linkspeed_bps linkspeed() const {return _linkspeed;}
 
     void updatePullRate(reason r,double relative_rate);
-
-    simtime_picosec packettime() const {return _actualPktTime;}
 
    private:
     list<UecSink*> _active_senders;  // TODO priorities?
     list<UecSink*> _idle_senders;    // TODO priorities?
 
-    const simtime_picosec _pktTime;
-    simtime_picosec _actualPktTime;
+    const simtime_picosec _time_per_quanta;
+    simtime_picosec _actual_time_per_quanta;
+
     bool _active;
     
     double _rates[2];
 
     linkspeed_bps _linkspeed;
-    uint16_t _mtu;
+    uint16_t _bytes_credit_per_pull;
 };
 
 #endif  // UEC_H

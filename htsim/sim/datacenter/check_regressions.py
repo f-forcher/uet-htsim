@@ -2,18 +2,24 @@
 import subprocess
 import sys
 import os
+import argparse
 
-n = len(sys.argv)
+# Set up argument parser
+parser = argparse.ArgumentParser(description='Check regression test results.')
+parser.add_argument('testfile', help='The test file to compare.')
+parser.add_argument('--olddir', default='validate_outputs_old/', help='Directory for old test outputs.')
+parser.add_argument('--newdir', default='validate_outputs/', help='Directory for new test outputs.')
 
-olddir = "validate_outputs/"
-newdir = "test_outputs/"
-if len(sys.argv) != 2:
-    print("Usage: python check_regressions testfile.out\n")
-    sys.exit()
-testname = sys.argv[1]
+# Parse arguments
+args = parser.parse_args()
 
-oldname = olddir + testname
-newname = newdir + testname
+# Assign directories from arguments
+olddir = args.olddir
+newdir = args.newdir
+testname = args.testfile
+
+oldname = os.path.join(olddir, testname)
+newname = os.path.join(newdir, testname)
 
 print("COMPARING RESULTS FOR ", testname)
 

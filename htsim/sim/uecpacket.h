@@ -25,8 +25,8 @@ public:
     uint16_t _eqsrcid;  // source tunnel ID for the source.
     uint16_t _eqtgtid;  // destination tunnel ID. 
     const static int ACKSIZE=64;
-    #define PULL_QUANTUM 512
-    #define PULL_SHIFT 9
+    #define UEC_PULL_QUANTUM 256
+    #define UEC_PULL_SHIFT 8
     static pull_quanta quantize_ceil(mem_b bytes);  // quantize and round up
     static pull_quanta quantize_floor(mem_b bytes); // quantize and round down
     static mem_b unquantize(pull_quanta credit_chunks);  // unquantize
