@@ -282,6 +282,21 @@ int main(int argc, char **argv) {
             UecSink::_oversubscribed_cc = true;
             cout << "Using receiver oversubscribed CC " << endl;
         }
+        else if (!strcmp(argv[i],"-Ai")){
+            OversubscribedCC::_Ai = atof(argv[i+1]);
+            cout << "Using Ai "  << OversubscribedCC::_Ai << endl;
+            i+=1;
+        }
+        else if (!strcmp(argv[i],"-Md")){
+            OversubscribedCC::_Md = atof(argv[i+1]);
+            cout << "Using Md "  << OversubscribedCC::_Md << endl;
+            i+=1;
+        }
+        else if (!strcmp(argv[i],"-alpha")){
+            OversubscribedCC::_alpha = atof(argv[i+1]);
+            cout << "Using Alpha "  << OversubscribedCC::_alpha << endl;
+            i+=1;
+        }
         else if (!strcmp(argv[i],"-force_disable_oversubscribed_cc")){
             UecSink::_oversubscribed_cc = false;
             force_disable_oversubscribed_cc = true;
@@ -637,6 +652,10 @@ int main(int argc, char **argv) {
         }
     }
     cout << "network_max_unloaded_rtt " << timeAsUs(network_max_unloaded_rtt) << endl;
+
+    if (UecSink::_oversubscribed_cc)
+        OversubscribedCC::_base_rtt = network_max_unloaded_rtt;
+
     
     //handle link failures specified in the connection matrix.
     for (size_t c = 0; c < conns->failures.size(); c++){
