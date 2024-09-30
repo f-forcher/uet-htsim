@@ -633,7 +633,7 @@ int main(int argc, char **argv) {
                                           snd_type);
         }
 
-        if (topo[p]->get_oversubscription_ratio() >= 1 && !UecSrc::_sender_based_cc && !force_disable_oversubscribed_cc) {
+        if (topo[p]->get_oversubscription_ratio() > 1 && !UecSrc::_sender_based_cc && !force_disable_oversubscribed_cc) {
             UecSink::_oversubscribed_cc = true;
             OversubscribedCC::setOversubscriptionRatio(topo[p]->get_oversubscription_ratio());
             cout << "Using simple receiver oversubscribed CC. Oversubscription ratio is " << topo[p]->get_oversubscription_ratio() << endl;
