@@ -5,7 +5,6 @@
 # check script to check for regressions compared to the baseline files in the `validate_outputs` directory.
 validate_dir="validate_outputs"
 old_validate_dir="validate_outputs_old"
-branch_to_compare="origin/main"
 
 # List of files to be processed
 files=(
@@ -18,8 +17,30 @@ files=(
     "validate_load_balancing_failed_rcv.txt"
 )
 
+if [ $# -ge 1 ]
+then
+  remote="${1}"
+else
+  remote="origin"
+fi
+echo "Using ${remote} as upstream repository"
+
+if [ $# -ge 2 ]
+then
+  branchname="${2}"
+else
+  branchname="main"
+fi
+branch_to_compare="${remote}/${branchname}"
+echo "Using ${branch_to_compare} as baseline for this comparison."
+
 # Fetch the latest changes from the remote repository
-git fetch origin
+git fetch ${remote}
+if [ $? -ne "0" ]
+then
+  echo "git fetch failed, aborting."
+  exit 1
+fi
 
 # Remove the output directories if they exist and create new ones.
 rm -rf "$validate_dir" "$old_validate_dir"
@@ -40,7 +61,7 @@ for file in "${files[@]}"; do
     python3 validate.py $file >$output_relative_dir
 
     # Get the old output file from branch_to_compare and store it in the old_validate_dir
-    git show $branch_to_compare:htsim/sim/datacenter/$output_relative_dir >$old_validate_dir/$output_filename
+    git show refs/remotes/$branch_to_compare:htsim/sim/datacenter/$output_relative_dir >$old_validate_dir/$output_filename
 
     # Run the regression check script on the output file
     # Example: if output_relative_dir is "validate_outputs/validate_uec_sender.out"
