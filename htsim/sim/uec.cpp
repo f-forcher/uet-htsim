@@ -1103,11 +1103,10 @@ void UecSrc::fulfill_adjustment(){
     if (_debug_src) {
         cout << "Running fulfill adjustment cwnd " << _cwnd << " inc " << _inc_bytes << " bdp " << _bdp << endl;
     }
-    _cwnd += min((mem_b)_received_bytes, (mem_b)_inc_bytes / _cwnd); 
+    _cwnd += _inc_bytes / _cwnd; 
 
     _inc_bytes = 0;
 
-    //unclear what received_bytes this is referring to. 
     _received_bytes = 0;
     _last_adjust_time = eventlist().now();
 }
