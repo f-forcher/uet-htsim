@@ -6,7 +6,7 @@ https://ultraethernet.org/wp-content/uploads/sites/20/2023/10/Ultra_Ethernet_Con
 
 Materials in this repository other than source code are provided as follows:
 
-Copyright (c) 2023 Joint Development Foundation Projects, LLC, Consortium for 
+Copyright (c) 2024 Joint Development Foundation Projects, LLC, Consortium for 
 HPC/AI/ML Ethernet Series and its contributors. 
 All rights reserved. THESE MATERIALS ARE PROVIDED "AS IS." The
 owners and contributors expressly disclaim any warranties (express, implied, or
