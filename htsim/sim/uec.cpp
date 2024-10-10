@@ -494,6 +494,7 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
     _path_random = rand() % 0xffff;  // random upper bits of EV
     _path_xor = rand() % _no_of_paths;
     _current_ev_index = 0;
+    _inc_bytes = 0;
 
     //must be at least two, to allow us to encode assumed_bad state.
     _max_penalty = 15;

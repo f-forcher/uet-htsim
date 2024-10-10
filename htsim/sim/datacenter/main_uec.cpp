@@ -79,6 +79,7 @@ int main(int argc, char **argv) {
     mem_b ecn_low = 0.2 * queuesize, ecn_high = 0.8 * queuesize;
 
     bool receiver_driven = true;
+    bool sender_driven = false;
 
     RouteStrategy route_strategy = NOT_SET;
     
@@ -136,6 +137,7 @@ int main(int argc, char **argv) {
             UecSrc::_sender_based_cc = true;
             UecSrc::_receiver_based_cc = false;
             UecSink::_oversubscribed_cc = false;
+            sender_driven = true;
             receiver_driven = false;
             cout << "sender based CC enabled ONLY" << endl;
 //        } else if (!strcmp(argv[i],"-disable_fd")) {
@@ -152,6 +154,7 @@ int main(int argc, char **argv) {
             i++;
         } else if (!strcmp(argv[i],"-sender_cc_algo")) {
             UecSrc::_sender_based_cc = true;
+            sender_driven = true;
             
             if (!strcmp(argv[i+1],"dctcp")) 
                 UecSrc::_sender_cc_algo = UecSrc::DCTCP;
@@ -168,6 +171,7 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i],"-sender_cc")) {
             UecSrc::_sender_based_cc = true;
             UecSink::_oversubscribed_cc = false;
+            sender_driven = true;
             cout << "sender based CC enabled " << endl;
         }
         else if (!strcmp(argv[i],"-load_balancing_algo")){
@@ -669,7 +673,8 @@ int main(int argc, char **argv) {
     // Initialize congestion control algorithms
     if (receiver_driven) {
         // TBD
-    } else {
+    }
+    if (sender_driven) {
         // UecSrc::parameterScaleToTargetQ();
         UecSrc::initNsccParams(network_max_unloaded_rtt, linkspeed, target_Qdelay);
     }
@@ -732,7 +737,8 @@ int main(int argc, char **argv) {
         	} else {
             	uec_src->initRccc(cwnd_b, network_max_unloaded_rtt);
         	}
-        } else {
+        }
+        if (sender_driven) {
             if (enable_accurate_base_rtt) {
             	uec_src->initNscc(cwnd_b, base_rtt_bw_two_points);
         	} else {
