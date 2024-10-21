@@ -145,9 +145,6 @@ int main(int argc, char **argv) {
 //            cout << "fair_decrease disabled" << endl;
         } else if (!strcmp(argv[i],"-enable_qa_gate")) {
             enable_qa_gate = true;
-        } else if (!strcmp(argv[i],"-enable_avg_ecn_over_path")) {
-            UecSrc::_enable_avg_ecn_over_path = true;
-            cout << "enable avg_ecn_over_path algorithm." << endl;            
         } else if (!strcmp(argv[i],"-target_q_delay")) {
             target_Qdelay = timeFromUs(atof(argv[i+1]));
             cout << "target_q_delay" << atof(argv[i+1]) << " us"<< endl;
@@ -723,7 +720,6 @@ int main(int argc, char **argv) {
         simtime_picosec base_rtt_bw_two_points = 2*topo[0]->get_two_point_diameter_latency(src, dest) + transmission_delay;
 
         //cout << "Connection " << crt->src << "->" <<crt->dst << " starting at " << crt->start << " size " << crt->size << endl;
-        cout << "base_rtt_bw_two_points " << timeAsUs(base_rtt_bw_two_points)  << endl;
 
         uec_src = new UecSrc(traffic_logger, eventlist, *nics.at(src), ports);
 

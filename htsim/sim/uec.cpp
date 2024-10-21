@@ -54,12 +54,10 @@ double UecSrc::_scaling_factor_a = 1; //for 400Gbps. cf. spec must be set to BDP
 double UecSrc::_scaling_factor_b = 0; // Needs to be inialized in initNscc
 uint32_t UecSrc::_qa_scaling = 1; //quick adapt scaling - how much of the achieved bytes should we use as new CWND?
 double UecSrc::_gamma = 0.8; //used for aggressive decrease
-uint32_t UecSrc::_pi = 5000 * _scaling_factor_a;//pi = 5 * mtu_size for 400Gbps; proportional increase constant
 double UecSrc::_alpha = UecSrc::_scaling_factor_a * 1000 * 4000 / timeFromUs(6u);
 double UecSrc::_fi = 1; //fair_increase constant
 double UecSrc::_fi_scale = .25 * UecSrc::_scaling_factor_a;
 
-double UecSrc::_ecn_alpha = 0.125;
 double UecSrc::_delay_alpha = 0.0125;//0.125;
 
 simtime_picosec UecSrc::_adjust_period_threshold = timeFromUs(12u);
@@ -69,7 +67,6 @@ double UecSrc::_qa_threshold = 4 * UecSrc::_target_Qdelay;
 
 double UecSrc::_eta = 0;
 bool UecSrc::_enable_qa_gate = false;
-bool UecSrc::_enable_avg_ecn_over_path = false;
 bool UecSrc::_enable_fast_loss_recovery = false;
 
 
@@ -101,20 +98,12 @@ void UecSrc::initNsccParams(simtime_picosec network_rtt,
 
     _qa_scaling = 1; //quick adapt scaling - how much of the achieved bytes should we use as new CWND?
     _gamma = 0.8; //used for aggressive decrease
-    _pi = 5000*_scaling_factor_a; // proportional increase constant
     _fi_scale = .25*_scaling_factor_a;
 
     _delay_alpha = 0.0125;
 
     _adjust_period_threshold = _reference_network_rtt;
     _adjust_bytes_threshold = (uint32_t)(16000*_scaling_factor_b);
-
-    // Deprecated parameters, will be removed in the future.
-    // constants for when FairDecrease is used
-    // _fd = 0.8; //fair_decrease constant
-    // Only in effect when fair decrease is enabled
-    _ecn_alpha = 0.125;
-    // _ecn_thresh = 0.3;
 
     cout << "Initializing static NSCC parameters:"
         << " _reference_network_linkspeed=" << _reference_network_linkspeed
@@ -132,7 +121,6 @@ void UecSrc::initNsccParams(simtime_picosec network_rtt,
         << " _eta=" << _eta
         << " _qa_scaling=" << _qa_scaling
         << " _gamma=" << _gamma
-        << " _pi=" << _pi
         << " _fi_scale=" << _fi_scale
         << " _delay_alpha=" << _delay_alpha 
         << " _adjust_period_threshold=" << _adjust_period_threshold
@@ -914,12 +902,9 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
 
     (this->*processEv)(pkt.ev(), pkt.ecn_echo() ? PATH_ECN:PATH_GOOD);
 
-    average_ecn_bytes(pkt_size,newly_recvd_bytes, pkt.ecn_echo());
-
     if(_flow.flow_id() == _debug_flowid ){
         cout <<  timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " track_avg_rtt " << timeAsUs(get_avg_delay())
             << " rtt " << timeAsUs(_raw_rtt) << " skip " << pkt.ecn_echo()  << " ev " << pkt.ev()
-            << " _exp_avg_ecn " << _exp_avg_ecn
             << " cum_ack " << cum_ack
             << " bitmap_base " << pkt.ref_ack()
             << " ooo " << ooo
@@ -939,7 +924,7 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
     }
 
     if (_debug_src) {
-        cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " " << _nodename << " processAck: " << cum_ack << " flow " << _flow.str() << " cwnd " << _cwnd << " flightsize " << _in_flight << " delay " << timeAsUs(delay) << " newlyrecvd " << newly_recvd_bytes << " skip " << pkt.ecn_echo() << " raw rtt " << _raw_rtt <<  " ecn avg " << _exp_avg_ecn << endl;
+        cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " " << _nodename << " processAck: " << cum_ack << " flow " << _flow.str() << " cwnd " << _cwnd << " flightsize " << _in_flight << " delay " << timeAsUs(delay) << " newlyrecvd " << newly_recvd_bytes << " skip " << pkt.ecn_echo() << " raw rtt " << _raw_rtt << endl;
     }
 
     if (_sender_based_cc && _enable_fast_loss_recovery) {
@@ -1097,8 +1082,6 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
     if (_bytes_ignored < _bytes_to_ignore && skip)
         return;
 
-    simtime_picosec avg_delay = get_avg_delay();
-
     if (quick_adapt(false, delay))
         return;
 
@@ -1211,20 +1194,6 @@ simtime_picosec UecSrc::get_avg_delay(){
 
 uint16_t UecSrc::get_avg_pktsize(){
     return _mss;  // does not include header
-}
-void UecSrc::average_ecn_bytes(uint32_t pktsize, uint32_t newly_acked_bytes, bool skip) {
-    //double value = (double)skip * pktsize / newly_acked_bytes;
-    //_exp_avg_ecn = _ecn_alpha * value + (1 - _ecn_alpha) * _exp_avg_ecn;
-
-    _exp_avg_ecn = _ecn_alpha * skip + (1 - _ecn_alpha) * _exp_avg_ecn;
-
-    int32_t nab = newly_acked_bytes;
-    nab -= pktsize;
-
-    while (nab > 0) {
-        nab -= _mtu;          
-        _exp_avg_ecn = (1 - _ecn_alpha) * _exp_avg_ecn;
-    }
 }
 
 void UecSrc::fastLossRecovery(uint32_t ooo, UecBasePacket::seq_t cum_ack) {
@@ -1344,9 +1313,6 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
         update_delay(_raw_rtt, false, true);
     }
 
-    if(_enable_avg_ecn_over_path){
-        _exp_avg_ecn = _ecn_alpha * 1.0  + (1 - _ecn_alpha) * _exp_avg_ecn;
-    }
     if(_flow.flow_id() == _debug_flowid){
         cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " ev " << ev 
             << " seqno " << seqno
@@ -1843,13 +1809,7 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
         cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " sending pkt " << _highest_sent
              << " size " << full_pkt_size << " pull target " << _pull_target << " ack request " << p->ar()
              << " cwnd " << _cwnd << " ev " << ev << " in_flight " << _in_flight << endl;
-    if (_flow.flow_id() == _debug_flowid)
-    {
-        std::uint8_t skip_weight = _ev_skip_bitmap[ev];
-        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" sending pkt " << _highest_sent
-             << " size " << full_pkt_size << " cwnd " << _cwnd << " ev " << ev << " skip_weight " << static_cast<int>(skip_weight)
-             << " in_flight " << _in_flight << " pull_target " << _pull_target << " pull " << _pull << endl;
-    }
+
     p->sendOn();
     _highest_sent++;
     _stats.new_pkts_sent++;
@@ -1881,13 +1841,7 @@ mem_b UecSrc::sendRtxPacket(const Route& route) {
         cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " " << _nodename << " sending rtx pkt " << seq_no
              << " size " << full_pkt_size << " cwnd " << _cwnd
              << " in_flight " << _in_flight << " pull_target " << _pull_target << " pull " << _pull << endl;
-    if (_flow.flow_id() == _debug_flowid)
-    {
-        uint8_t skip_weight =  _ev_skip_bitmap[ev];
-        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" sending rtx pkt " << seq_no
-             << " size " << full_pkt_size << " cwnd " << _cwnd <<" ev " << ev << " skip_weight " << static_cast<int>(skip_weight)
-             << " in_flight " << _in_flight << " pull_target " << _pull_target << " pull " << _pull << endl;
-    }
+
     p->set_ar(true);
     p->sendOn();
     _stats.rtx_pkts_sent++;

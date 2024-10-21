@@ -181,7 +181,6 @@ public:
     static LoadBalancing_Algo _load_balancing_algo;
 
     static bool _enable_qa_gate;
-    static bool _enable_avg_ecn_over_path;
 
     static bool _enable_fast_loss_recovery;
 
@@ -325,7 +324,6 @@ public:
     static uint32_t _qa_scaling; 
     static simtime_picosec _target_Qdelay;
     static double _gamma;
-    static uint32_t _pi;
     static double _alpha;
     // static double _scaling_c;
     // static double _fd;
@@ -335,7 +333,6 @@ public:
     static double _scaling_factor_b;
     static double _eta;
     static double _qa_threshold; 
-    static double _ecn_alpha;
     static double _delay_alpha;
     // static double _ecn_thresh;
     static uint32_t _adjust_bytes_threshold;
@@ -355,7 +352,6 @@ private:
     void update_base_rtt(simtime_picosec raw_rtt, uint16_t packet_size);
     simtime_picosec get_avg_delay();
     uint16_t get_avg_pktsize();
-    void average_ecn_bytes(uint32_t pktsize, uint32_t newly_acked_bytes, bool skip);
 
     // entropy value calculation
     uint16_t _no_of_paths;       // must be a power of 2
@@ -393,7 +389,6 @@ private:
     uint32_t _bytes_to_ignore = 0;
     uint32_t _bytes_ignored = 0;
     uint32_t _inc_bytes = 0;
-    double _exp_avg_ecn = 0;
     simtime_picosec _avg_delay = 0;
 
     simtime_picosec _last_eta_time = 0;
