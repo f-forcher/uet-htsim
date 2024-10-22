@@ -38,7 +38,7 @@ UecBasePacket::pull_quanta UecSink::_credit_per_pull = (UecSrc::_mss * UecSink::
 bool UecSrc::_debug = false;
 
 bool UecSrc::_sender_based_cc = false;
-bool UecSrc::_receiver_based_cc = true;
+bool UecSrc::_receiver_based_cc = false;
 bool UecSink::_oversubscribed_cc = false; // can only be enabled when receiver_based_cc is set to true
 
 UecSrc::Sender_CC UecSrc::_sender_cc_algo = UecSrc::NSCC;
@@ -129,6 +129,7 @@ void UecSrc::initNsccParams(simtime_picosec network_rtt,
 }
 
 void UecSrc::initNscc(mem_b cwnd, simtime_picosec peer_rtt) {
+    _sender_based_cc = true;
     _base_rtt = peer_rtt;
     _base_bdp = timeAsSec(_base_rtt)*(_nic.linkspeed()/8);
     _bdp = _base_bdp;
@@ -150,6 +151,7 @@ void UecSrc::initNscc(mem_b cwnd, simtime_picosec peer_rtt) {
 }
 
 void UecSrc::initRccc(mem_b cwnd, simtime_picosec peer_rtt) {
+    _receiver_based_cc = true;
     _base_rtt = peer_rtt;
     _base_bdp = timeAsSec(_base_rtt)*(_nic.linkspeed()/8);
     _bdp = _base_bdp;
@@ -1308,6 +1310,7 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
     auto seqno = i->first;
     simtime_picosec send_time = i->second.send_time;
 
+    // The average queue delay is not updated, since the packet was trimmed.
     _raw_rtt = eventlist().now() - send_time;
     if(_raw_rtt > _base_rtt) {
         update_delay(_raw_rtt, false, true);
@@ -1634,7 +1637,7 @@ void UecSrc::processEv_bitmap(uint16_t path_id, PathFeedback reason){
     uint16_t mask = _no_of_paths - 1;
     path_id &= mask;  // only take the relevant bits for an index
 
-    if (!_ev_skip_bitmap[path_id])
+    if (reason != PathFeedback::PATH_GOOD && !_ev_skip_bitmap[path_id])
         _ev_skip_count++;
 
     uint8_t penalty = 0;
