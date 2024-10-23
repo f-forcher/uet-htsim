@@ -107,8 +107,8 @@ void UecSrc::initNsccParams(simtime_picosec network_rtt,
     _scaling_factor_a = (double)_network_bdp/(double)_reference_network_bdp;
     _scaling_factor_b = (double)_target_Qdelay/(double)_reference_network_rtt; // no unit
 
-    _alpha = 4.0*_scaling_factor_a*_scaling_factor_b*_mss/_target_Qdelay; // bytes/picosec
-    _fi = 5*_scaling_factor_a;
+    _alpha = 4.0*_mss*_scaling_factor_a*_scaling_factor_b/_target_Qdelay; // bytes/picosec
+    _fi = 5*_mss*_scaling_factor_a;
     _eta = 0.15*_mss*_scaling_factor_a;
 
     _qa_scaling = 1; //quick adapt scaling - how much of the achieved bytes should we use as new CWND?
@@ -584,6 +584,8 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
     _highest_recv_seqno = 0;
     _highest_rtx_sent = 0;
 
+    _nscc_stats = {};
+    _nscc_fulfill_stats = {};
 }
 
 void UecSrc::delFromSendTimes(simtime_picosec time, UecDataPacket::seq_t seq_no) {
@@ -815,7 +817,15 @@ bool UecSrc::checkFinished(UecDataPacket::seq_t cum_ack) {
         cout << "Flow " << _name << " flowId " << flowId() << " " << _nodename << " finished at "
              << timeAsUs(eventlist().now()) << " total packets " << cum_ack << " RTS "
              << _stats.rts_pkts_sent << " total bytes " << ((mem_b)cum_ack - _stats.rts_pkts_sent) * _mss
-             << " in_flight now " << _in_flight << endl;
+             << " in_flight now " << _in_flight 
+             << " fair_inc " << _nscc_stats.inc_fair_bytes
+             << " prop_inc " << _nscc_stats.inc_prop_bytes
+             << " fast_inc " << _nscc_stats.inc_fast_bytes 
+             << " eta_inc " << _nscc_stats.inc_eta_bytes 
+             << " multi_dec -" << _nscc_stats.dec_multi_bytes 
+             << " quick_dec -" << _nscc_stats.dec_quick_bytes 
+             << " nack_dec -" << _nscc_stats.dec_nack_bytes 
+             << endl;
         _speculating = false;
         if (_end_trigger) {
             _end_trigger->activate();
@@ -1035,7 +1045,11 @@ bool UecSrc::quick_adapt(bool is_loss, simtime_picosec delay) {
                     cout << "This shouldn't happen: QUICK ADAPT MIGHT INCREASE THE CWND" << endl;
                 }
             } else {
+                mem_b before = _cwnd;
                 _cwnd = max(_achieved_bytes, (mem_b)_min_cwnd); //* _qa_scaling;
+                _nscc_stats.dec_quick_bytes += before - _cwnd;
+                _nscc_fulfill_stats.dec_quick_bytes += before - _cwnd;
+
                 if(_flow.flow_id() == _debug_flowid)
                     cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " quick_adapt  _nscc_cwnd " << _cwnd << " is_loss " << is_loss << endl;
                 _bytes_to_ignore = _in_flight;
@@ -1053,7 +1067,9 @@ bool UecSrc::quick_adapt(bool is_loss, simtime_picosec delay) {
 }
 
 void UecSrc::fair_increase(uint32_t newly_acked_bytes){
-    _inc_bytes += _fi * _mtu * newly_acked_bytes; //increase by 16Million!
+    mem_b before = _inc_bytes;
+    _inc_bytes += _fi * newly_acked_bytes; //increase by 16Million!
+    _nscc_fulfill_stats.inc_fair_bytes += _inc_bytes - before;
 }
 
 void UecSrc::proportional_increase(uint32_t newly_acked_bytes,simtime_picosec delay){
@@ -1064,7 +1080,9 @@ void UecSrc::proportional_increase(uint32_t newly_acked_bytes,simtime_picosec de
     //make sure targetQdelay > delay;
     assert(_target_Qdelay > delay);
 
-    _inc_bytes += (uint32_t)round(_alpha * (_target_Qdelay - delay) * (double)newly_acked_bytes);
+    mem_b before = _inc_bytes;
+    _inc_bytes += _alpha * newly_acked_bytes * (_target_Qdelay - delay);
+    _nscc_fulfill_stats.inc_prop_bytes += _inc_bytes - before;
 
     fair_increase(newly_acked_bytes);
 }
@@ -1073,7 +1091,10 @@ void UecSrc::fast_increase(uint32_t newly_acked_bytes,simtime_picosec delay){
     if (delay < timeFromUs(1u)){
         _fi_count += newly_acked_bytes;
         if (_fi_count > _cwnd || _increase){
+            mem_b before = _cwnd;
             _cwnd += newly_acked_bytes * _fi_scale;
+            _nscc_stats.inc_fast_bytes += _cwnd - before;
+            _nscc_fulfill_stats.inc_fast_bytes += _cwnd - before;
 
             _increase = true;
             return;
@@ -1092,7 +1113,11 @@ void UecSrc::multiplicative_decrease(uint32_t newly_acked_bytes){
     simtime_picosec avg_delay = get_avg_delay();
     if (avg_delay > _target_Qdelay){
         if (eventlist().now() - _last_dec_time > _base_rtt){
+            mem_b before = _cwnd;
             _cwnd *= max(1-_gamma*(avg_delay-_target_Qdelay)/avg_delay, 0.5);/*_max_md_jump instead of 1*/
+            _nscc_stats.dec_multi_bytes += before - _cwnd;
+            _nscc_fulfill_stats.dec_multi_bytes += before - _cwnd;
+
             _last_dec_time = eventlist().now();
         }
     }
@@ -1100,15 +1125,36 @@ void UecSrc::multiplicative_decrease(uint32_t newly_acked_bytes){
 
 void UecSrc::fulfill_adjustment(){
     assert(_bdp > 0);
+
+    _cwnd += _inc_bytes / _cwnd;
+
+    _nscc_fulfill_stats.inc_fair_bytes /= _cwnd;
+    _nscc_fulfill_stats.inc_prop_bytes /= _cwnd;
+
+    _nscc_stats.inc_fair_bytes += _nscc_fulfill_stats.inc_fair_bytes;
+    _nscc_stats.inc_prop_bytes += _nscc_fulfill_stats.inc_prop_bytes;
+
     if (_debug_src) {
-        cout << "Running fulfill adjustment cwnd " << _cwnd << " inc " << _inc_bytes << " bdp " << _bdp << endl;
+        cout << timeAsUs(eventlist().now())
+             << " flowid " << _flow.flow_id()
+             << " Running fulfill adjustment cwnd " << _cwnd 
+             << " inc " << _nscc_fulfill_stats.inc_fair_bytes + _nscc_fulfill_stats.inc_prop_bytes 
+             << " fair_inc " << _nscc_fulfill_stats.inc_fair_bytes
+             << " prop_inc " << _nscc_fulfill_stats.inc_prop_bytes
+             << " fast_inc " << _nscc_fulfill_stats.inc_fast_bytes 
+             << " eta_inc " << _nscc_fulfill_stats.inc_eta_bytes 
+             << " multi_dec -" << _nscc_fulfill_stats.dec_multi_bytes 
+             << " quick_dec -" << _nscc_fulfill_stats.dec_quick_bytes 
+             << " nack_dec -" << _nscc_fulfill_stats.dec_nack_bytes 
+             << " avg-delay " << _avg_delay 
+             << endl;
     }
-    _cwnd += _inc_bytes / _cwnd; 
 
     _inc_bytes = 0;
-
     _received_bytes = 0;
     _last_adjust_time = eventlist().now();
+
+    _nscc_fulfill_stats = {};
 }
 
 void UecSrc::mark_packet_for_retransmission(UecBasePacket::seq_t psn, uint16_t pktsize){
@@ -1171,6 +1217,9 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
 
     if (eventlist().now() - _last_eta_time > _adjust_period_threshold ) {
         _cwnd += _eta;
+        _nscc_stats.inc_eta_bytes += _eta;
+        _nscc_fulfill_stats.inc_eta_bytes += _eta;
+
         _last_eta_time = eventlist().now();
         if (_flow.flow_id() == _debug_flowid) {
             cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " eta _nscc_cwnd " << _cwnd << " target_q_delay " <<timeAsUs(_target_Qdelay) << endl;
@@ -1187,6 +1236,9 @@ void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes) {
     _cwnd -= nacked_bytes;
 
     set_cwnd_bounds();
+    _bytes_ignored += nacked_bytes;
+    _nscc_stats.dec_nack_bytes += nacked_bytes;
+    _nscc_fulfill_stats.dec_nack_bytes += nacked_bytes;
 
     if (_flow.flow_id() == _debug_flowid)
         cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id()

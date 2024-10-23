@@ -110,6 +110,15 @@ public:
         int32_t bounces_received;
         int32_t rts_nacks;
     };
+    struct NsccStats {
+        mem_b inc_fair_bytes;
+        mem_b inc_prop_bytes;
+        mem_b inc_fast_bytes;
+        mem_b inc_eta_bytes;
+        mem_b dec_multi_bytes;
+        mem_b dec_quick_bytes;
+        mem_b dec_nack_bytes;
+    };
     UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, uint32_t no_of_ports, bool rts = false);
     void delFromSendTimes(simtime_picosec time, UecDataPacket::seq_t seq_no);
     static void disableFairDecrease();
@@ -302,6 +311,8 @@ public:
     bool checkFinished(UecDataPacket::seq_t cum_ack);
 
     Stats _stats;
+    NsccStats _nscc_stats;
+    NsccStats _nscc_fulfill_stats;
     UecSink* _sink;
 
     // unlike in the NDP simulator, we maintain all the main quantities in bytes
@@ -422,8 +433,6 @@ private:
     string _nodename;
     int _node_num;
     uint32_t _dstaddr;
-
-
 };
 
 // Packets are received on ports, but then passed to the Sink for handling
