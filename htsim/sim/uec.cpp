@@ -1083,8 +1083,6 @@ void UecSrc::proportional_increase(uint32_t newly_acked_bytes,simtime_picosec de
     mem_b before = _inc_bytes;
     _inc_bytes += _alpha * newly_acked_bytes * (_target_Qdelay - delay);
     _nscc_fulfill_stats.inc_prop_bytes += _inc_bytes - before;
-
-    fair_increase(newly_acked_bytes);
 }
 
 void UecSrc::fast_increase(uint32_t newly_acked_bytes,simtime_picosec delay){
