@@ -57,6 +57,7 @@ double UecSrc::_gamma = 0.8; //used for aggressive decrease
 double UecSrc::_alpha = UecSrc::_scaling_factor_a * 1000 * 4000 / timeFromUs(6u);
 double UecSrc::_fi = 1; //fair_increase constant
 double UecSrc::_fi_scale = .25 * UecSrc::_scaling_factor_a;
+mem_b UecSrc::_min_cwnd = 0;
 
 double UecSrc::_delay_alpha = 0.0125;//0.125;
 
@@ -80,6 +81,8 @@ void UecSrc::initNsccParams(simtime_picosec network_rtt,
     _network_linkspeed = linkspeed;
     _network_rtt = network_rtt; 
     _network_bdp = timeAsSec(_network_rtt)*(_network_linkspeed/8);
+
+    _min_cwnd = _mtu;
 
     if (target_Qdelay > 0) {
         _target_Qdelay = target_Qdelay;
@@ -145,6 +148,7 @@ void UecSrc::initNscc(mem_b cwnd, simtime_picosec peer_rtt) {
         << " _base_rtt=" << _base_rtt
         << " _base_bdp=" << _base_bdp
         << " _bdp=" << _bdp
+        << " _min_cwnd=" << _min_cwnd
         << " _maxwnd=" << _maxwnd
         << " _cwnd=" << _cwnd
         << endl;
@@ -962,6 +966,19 @@ void UecSrc::updateCwndOnNack_DCTCP(bool skip, mem_b nacked_bytes) {
     _cwnd = max(_cwnd, (mem_b)_mtu);
 }
 
+bool UecSrc::can_send_NSCC(mem_b pkt_size) {
+    return (pkt_size > 0) && (((!_loss_recovery_mode && _cwnd >= _in_flight + pkt_size) 
+          || (_loss_recovery_mode && !_rtx_queue.empty())));
+}
+
+void UecSrc::set_cwnd_bounds() {
+    if (_cwnd < _min_cwnd)
+        _cwnd = _min_cwnd;
+
+    if (_cwnd > _maxwnd)
+        _cwnd = _maxwnd;
+}
+
 bool UecSrc::quick_adapt(bool is_loss, simtime_picosec delay) {
     if (_receiver_based_cc)
         return false;
@@ -985,9 +1002,9 @@ bool UecSrc::quick_adapt(bool is_loss, simtime_picosec delay) {
                     cout << "This shouldn't happen: QUICK ADAPT MIGHT INCREASE THE CWND" << endl;
                 }
             } else {
-                _cwnd = max(_achieved_bytes, (mem_b)_mtu); //* _qa_scaling;
+                _cwnd = max(_achieved_bytes, (mem_b)_min_cwnd); //* _qa_scaling;
                 if(_flow.flow_id() == _debug_flowid)
-                    cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " quick_adapt  _cwnd " << _cwnd << " is_loss " << is_loss << endl;
+                    cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " quick_adapt  _nscc_cwnd " << _cwnd << " is_loss " << is_loss << endl;
                 _bytes_to_ignore = _in_flight;
                 _bytes_ignored = 0;
                 _trigger_qa = false;
@@ -1025,9 +1042,6 @@ void UecSrc::fast_increase(uint32_t newly_acked_bytes,simtime_picosec delay){
         if (_fi_count > _cwnd || _increase){
             _cwnd += newly_acked_bytes * _fi_scale;
 
-            if (_cwnd > _maxwnd)
-                _cwnd = _maxwnd;
-
             _increase = true;
             return;
         }
@@ -1048,7 +1062,6 @@ void UecSrc::multiplicative_decrease(uint32_t newly_acked_bytes){
             _cwnd *= max(1-_gamma*(avg_delay-_target_Qdelay)/avg_delay, 0.5);/*_max_md_jump instead of 1*/
             _last_dec_time = eventlist().now();
         }
-        // fair_decrease(can_decrease, newly_acked_bytes);
     }
 }
 
@@ -1090,7 +1103,9 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
     if (!skip && delay >= _target_Qdelay) {
         fair_increase(newly_acked_bytes);
         if (_flow.flow_id() == _debug_flowid || UecSrc::_debug) {
-            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " fair_increase  _nscc_cwnd " << _cwnd << endl;
+            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " fair_increase _nscc_cwnd " << _cwnd 
+                << " newly_acked_bytes " << newly_acked_bytes 
+                << " fi " << _fi << endl;
         }
     } else if (!skip && delay < _target_Qdelay) {
         proportional_increase(newly_acked_bytes,delay);
@@ -1103,15 +1118,11 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
             cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " multiplicative_decrease _nscc_cwnd " << _cwnd << endl;
         }
     } else if (skip && delay < _target_Qdelay) {
-        // fair_decrease(can_decrease,newly_acked_bytes);
-        // if (_flow.flow_id() == _debug_flowid || UecSrc::_debug) {
-        //     cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " fair_decrease _nscc_cwnd " << _cwnd
-        //         <<" mtu " << _mtu
-        //         << "_maxwnd " << _maxwnd << endl;
-        // }
-        // FD is out.
         // NOOP, just switch path
     }
+
+    // Check here, fulfill_adjustment requires valid cwnd.
+    set_cwnd_bounds();
 
     // if ( _received_bytes > _adjust_bytes_threshold || eventlist().now() - _last_adjust_time > _adjust_period_threshold ) {
     if ( _received_bytes > _adjust_bytes_threshold || eventlist().now() - _last_adjust_time > _adjust_period_threshold ) {
@@ -1134,20 +1145,20 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
         }
     }
 
-    if (_cwnd < _mtu)
-        _cwnd = _mtu;
+    set_cwnd_bounds();
 
-    if (_cwnd > _maxwnd)
-        _cwnd = _maxwnd;
     if (_flow.flow_id() == _debug_flowid)
         cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " final _nscc_cwnd " << _cwnd << " _basertt " << timeAsUs(_base_rtt)<< endl;
 }
 
 void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes) {
     _cwnd -= nacked_bytes;
-    if (_cwnd < _mtu)
-        _cwnd = _mtu;
 
+    set_cwnd_bounds();
+
+    if (_flow.flow_id() == _debug_flowid)
+        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id()
+             << " onnack  _nscc_cwnd " << _cwnd << endl;
     _trigger_qa = true;
     if (_bytes_ignored >= _bytes_to_ignore)
         quick_adapt(true, _avg_delay);    
@@ -1506,6 +1517,24 @@ UecBasePacket::pull_quanta UecSrc::computePullTarget() {
     return quant_pull_target;
 }
 
+mem_b UecSrc::getNextPacketSize(){
+    if (_rtx_queue.empty()) {
+        if(_backlog == 0){
+            return 0;
+        }
+        assert(((mem_b)_highest_sent - _stats.rts_pkts_sent) * _mss < _flow_size);
+        mem_b full_pkt_size = _mtu;
+        if (_backlog < _mtu) {
+            full_pkt_size = _backlog;
+        }        
+        return full_pkt_size;
+    } else {
+        assert(!_rtx_queue.empty());
+        mem_b full_pkt_size = _rtx_queue.begin()->second;
+        return full_pkt_size;
+    }
+}
+
 void UecSrc::sendIfPermitted() {
     // send if the NIC, credit and window allow.           
 
@@ -1515,9 +1544,9 @@ void UecSrc::sendIfPermitted() {
     }
 
     //cout << timeAsUs(eventlist().now()) << " " << nodename() << " FOO " << _cwnd << " " << _in_flight << endl;                                                  
-
+    mem_b next_packet_size = getNextPacketSize();        
     if (_sender_based_cc) {
-        if ((_cwnd <= _in_flight && !_loss_recovery_mode) || (_loss_recovery_mode && _rtx_queue.empty())) {
+        if (!can_send_NSCC(next_packet_size)) {
             return;
         }
     }
@@ -1804,7 +1833,7 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
     p->set_pathid(ev);
     p->flow().logTraffic(*p, *this, TrafficLogger::PKT_CREATESEND);
 
-    if (_backlog == 0 || (_receiver_based_cc && _credit <= 0) || ( _sender_based_cc &&  _in_flight >= _cwnd )) 
+    if (_backlog == 0 || (_receiver_based_cc && _credit <= 0) || ( _sender_based_cc &&  (_in_flight + full_pkt_size) >= _cwnd )) 
         p->set_ar(true);
     
     createSendRecord(_highest_sent, full_pkt_size);
@@ -1812,7 +1841,14 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
         cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " sending pkt " << _highest_sent
              << " size " << full_pkt_size << " pull target " << _pull_target << " ack request " << p->ar()
              << " cwnd " << _cwnd << " ev " << ev << " in_flight " << _in_flight << endl;
-
+    if (_flow.flow_id() == _debug_flowid)
+    {
+        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" sending pkt " << _highest_sent
+             << " size " << full_pkt_size << " cwnd " << _cwnd << " ev " << ev 
+             << " in_flight " << _in_flight << " pull_target " << _pull_target << " pull " << _pull 
+             << " ar " << p->ar()
+             << endl;
+    }
     p->sendOn();
     _highest_sent++;
     _stats.new_pkts_sent++;
@@ -1844,7 +1880,12 @@ mem_b UecSrc::sendRtxPacket(const Route& route) {
         cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " " << _nodename << " sending rtx pkt " << seq_no
              << " size " << full_pkt_size << " cwnd " << _cwnd
              << " in_flight " << _in_flight << " pull_target " << _pull_target << " pull " << _pull << endl;
-
+    if (_flow.flow_id() == _debug_flowid)
+    {
+        cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() <<" sending rtx pkt " << seq_no
+             << " size " << full_pkt_size << " cwnd " << _cwnd <<" ev " << ev 
+             << " in_flight " << _in_flight << " pull_target " << _pull_target << " pull " << _pull << endl;
+    }
     p->set_ar(true);
     p->sendOn();
     _stats.rtx_pkts_sent++;
@@ -1919,21 +1960,9 @@ void UecSrc::timeToSend(const Route& route) {
         return;
     }
 
-    mem_b full_pkt_size = _mtu;
-    // how much do we want to send?
-    if (_rtx_queue.empty()) {
-        assert(_rtx_backlog == 0);
-        // we want to send new data
-        if (_backlog < _mtu) {
-            full_pkt_size = _backlog;
-        }
-    } else {
-        // we want to retransmit
-        full_pkt_size = _rtx_queue.begin()->second;
-    }
-
+    mem_b next_packet_size = getNextPacketSize();
     if (_sender_based_cc) {
-        if ((_cwnd <= _in_flight && !_loss_recovery_mode) || (_loss_recovery_mode && _rtx_queue.empty())) {
+        if (!can_send_NSCC(next_packet_size)) {
             if (_debug_src)
                 cout << _flow.str() << " " << _node_num << "cantSend, limited by sender CWND " << _cwnd << " _in_flight "
                      << _in_flight << "\n";
@@ -1966,14 +1995,15 @@ void UecSrc::timeToSend(const Route& route) {
 
     // let the NIC know we sent, so it can calculate next send time.
     if (bytes_sent > 0) {
-        _nic.startSending(*this, full_pkt_size, NULL);
+        _nic.startSending(*this, bytes_sent, NULL);
     } else {
         _nic.cantSend(*this);
         return;
     }
     
+    next_packet_size = getNextPacketSize();
     if (_sender_based_cc) {
-        if ((_cwnd <= _in_flight && !_loss_recovery_mode) || (_loss_recovery_mode && _rtx_queue.empty())) {
+        if (!can_send_NSCC(next_packet_size)) {
             return;
         }
     }
@@ -2364,7 +2394,12 @@ void UecSink::processData(UecDataPacket& pkt) {
         _out_of_order_count++;
         _stats.out_of_order++;
     }
-
+    if (_src->flow()->flow_id() == UecSrc::_debug_flowid) {
+        cout << timeAsUs(_src->eventlist().now()) << " flowid " << _src->flow()->flow_id()
+             << " checkSack: " << pkt.epsn() << " ooo_count "
+             << _out_of_order_count << " ecn " << ecn << " shouldSack " << shouldSack()
+             << " forceack " << force_ack << endl;
+    }
     if (ecn || shouldSack() || force_ack) {
         UecAckPacket* ack_packet =
             sack(pkt.path_id(), (ecn || pkt.ar()) ? pkt.epsn() : sackBitmapBase(pkt.epsn()), pkt.epsn(), ecn);
@@ -2377,6 +2412,14 @@ void UecSink::processData(UecDataPacket& pkt) {
                  << " ecn " << ecn << " shouldSack " << shouldSack() << " forceack " << force_ack << endl;
         }
 
+        if (_src->flow()->flow_id() == UecSrc::_debug_flowid)
+        {
+            cout << timeAsUs(_src->eventlist().now()) << " flowid " << _src->flow()->flow_id()
+                 << " sendAckNow: " << _expected_epsn << " ref_epsn " << pkt.epsn()
+                 << " ooo_count " << _out_of_order_count
+                 << " recvd_bytes " << _recvd_bytes << " flow " << _src->flow()->str() 
+                 << " ecn " << ecn << " shouldSack " << shouldSack() << " forceack " << force_ack << endl;
+        }
         _accepted_bytes = 0;
 
         // ack_packet->sendOn();

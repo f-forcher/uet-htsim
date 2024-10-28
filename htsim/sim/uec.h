@@ -253,6 +253,9 @@ public:
     void fastLossRecovery(uint32_t ooo, UecBasePacket::seq_t cum_ack);
 
     //added for NSCC
+    bool can_send_NSCC(mem_b pkt_size);
+    void set_cwnd_bounds();
+    mem_b getNextPacketSize();
     void quick_adapt(bool trimmed);
     void updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
     void updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes);
@@ -321,6 +324,7 @@ public:
     static simtime_picosec _network_rtt; 
     static mem_b _network_bdp; 
     // Smarttrack parameters
+    static mem_b _min_cwnd; 
     static uint32_t _qa_scaling; 
     static simtime_picosec _target_Qdelay;
     static double _gamma;
