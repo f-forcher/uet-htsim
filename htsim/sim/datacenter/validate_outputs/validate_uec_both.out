@@ -25,10 +25,10 @@ Using binary: ./htsim_uec
 Experiment: Small 16 node incast 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/incast.cm -end 3000 -sender_cc 
-[PASS] Tail FCT 2466.35 us below the target of 2500 us
+[PASS] Tail FCT 2466.23 us below the target of 2500 us
 [PASS] Connection count 15
-FCT Spread 2392.94 -> 2466.35 ratio 1.030677743696039
-Summary: New: 7350 Rtx: 729 RTS: 0 Bounced: 0 ACKs: 2549 NACKs: 729 Pulls: 2123
+FCT Spread 2392.94 -> 2466.23 ratio 1.0306275961787592
+Summary: New: 7350 Rtx: 729 RTS: 0 Bounced: 0 ACKs: 2556 NACKs: 729 Pulls: 2123
 Using binary: ./htsim_uec
 
 
@@ -86,20 +86,20 @@ Using binary: ./htsim_uec
 Experiment: Small permutation, INC (16 nodes) 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_16n_16c_2MB.cm -failed 1 -sender_cc -end 2000 -paths 128 
-[FAIL] Tail FCT 251.732 us above the target of 210 us
+[FAIL] Tail FCT 243.855 us above the target of 210 us
 [PASS] Connection count 16
-FCT Spread 191.702 -> 251.732 ratio 1.3131422729027344
-Summary: New: 7840 Rtx: 113 RTS: 0 Bounced: 0 ACKs: 3245 NACKs: 113 Pulls: 4257
+FCT Spread 191.672 -> 243.855 ratio 1.2722515547393463
+Summary: New: 7840 Rtx: 103 RTS: 0 Bounced: 0 ACKs: 3341 NACKs: 103 Pulls: 4197
 Using binary: ./htsim_uec
 
 
 Experiment: Small permutation, single path. 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_16n_16c_2MB.cm -end 2000 -sender_cc -paths 1 
-[PASS] Tail FCT 525.294 us below the target of 1300 us
+[PASS] Tail FCT 516.578 us below the target of 1300 us
 [PASS] Connection count 16
-FCT Spread 180.169 -> 525.294 ratio 2.915562610659991
-Summary: New: 7840 Rtx: 341 RTS: 0 Bounced: 0 ACKs: 5557 NACKs: 341 Pulls: 7072
+FCT Spread 179.766 -> 516.578 ratio 2.873613475295662
+Summary: New: 7840 Rtx: 341 RTS: 0 Bounced: 0 ACKs: 5703 NACKs: 341 Pulls: 7142
 Using binary: ./htsim_uec
 
 
@@ -126,27 +126,27 @@ Using binary: ./htsim_uec
 Experiment: Large permutation (1024 nodes), single path. 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 3000 -sender_cc -paths 1 
-[PASS] Tail FCT 1014.31 us below the target of 1300 us
+[PASS] Tail FCT 1002.38 us below the target of 1300 us
 [PASS] Connection count 1024
-FCT Spread 168.751 -> 1014.31 ratio 6.010690307020402
-Summary: New: 501760 Rtx: 28855 RTS: 0 Bounced: 0 ACKs: 379793 NACKs: 28855 Pulls: 485159
+FCT Spread 168.73 -> 1002.38 ratio 5.940733716588633
+Summary: New: 501760 Rtx: 28856 RTS: 0 Bounced: 0 ACKs: 380967 NACKs: 28856 Pulls: 486776
 Using binary: ./htsim_uec
 
 
 Experiment: Oversubscribed permutation with multipath 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 2000 -paths 128 -sender_cc -topo topologies/leaf_spine_1024_oversub.topo 
-[PASS] Tail FCT 747.176 us below the target of 880 us
+[PASS] Tail FCT 734.26 us below the target of 880 us
 [PASS] Connection count 1024
-FCT Spread 168.064 -> 747.176 ratio 4.445782559025134
-Summary: New: 501760 Rtx: 27479 RTS: 0 Bounced: 0 ACKs: 406211 NACKs: 27479 Pulls: 439233
+FCT Spread 168.192 -> 734.26 ratio 4.36560597412481
+Summary: New: 501760 Rtx: 27575 RTS: 0 Bounced: 0 ACKs: 405281 NACKs: 27575 Pulls: 438231
 Using binary: ./htsim_uec
 
 
 Experiment: 8:1 oversubscribed permutation with multipath 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 2000 -sender_cc -paths 128 -topo topologies/leaf_spine_1024_oversub_8-1.topo 
-[PASS] Tail FCT 1398.84 us below the target of 1760 us
+[PASS] Tail FCT 1404.18 us below the target of 1760 us
 [PASS] Connection count 1024
-FCT Spread 167.871 -> 1398.84 ratio 8.33282699215469
-Summary: New: 501760 Rtx: 35862 RTS: 0 Bounced: 0 ACKs: 429929 NACKs: 35862 Pulls: 605274
+FCT Spread 167.794 -> 1404.18 ratio 8.368475630833045
+Summary: New: 501760 Rtx: 36365 RTS: 1 Bounced: 0 ACKs: 429771 NACKs: 36364 Pulls: 602486

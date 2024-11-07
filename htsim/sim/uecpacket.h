@@ -236,6 +236,8 @@ public:
     inline bool ecn_echo() const {return _ecn_echo;}
     uint64_t bitmap() const {return _sack_bitmap;}
     virtual PktPriority priority() const {return Packet::PRIO_HI;}
+    inline void set_rtx_echo(bool rtx_bit){_rtx_echo = rtx_bit;};
+    inline bool rtx_echo() const {return _rtx_echo;}
   
     virtual ~UecAckPacket(){}
 
@@ -254,6 +256,7 @@ protected:
 
     bool _rnr;
     bool _ecn_echo;
+    bool _rtx_echo;
     simtime_picosec _residency_time;
     uint32_t _out_of_order_count;
 

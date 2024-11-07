@@ -762,6 +762,11 @@ mem_b UecSrc::handleCumulativeAck(UecDataPacket::seq_t cum_ack) {
         if (send_time == _rto_send_time) {
             recalculateRTO();
         }
+        //we can safely remove the number of retranmission times if we receive the packets' ACK
+        auto rtx_time = _rtx_times.find(seqno);
+        if (rtx_time != _rtx_times.end()){
+            _rtx_times.erase(rtx_time);
+        }
     }
     return newly_acked;
 }
@@ -810,11 +815,23 @@ bool UecSrc::checkFinished(UecDataPacket::seq_t cum_ack) {
     return false;
 }
 
+bool UecSrc::validateSendTs(UecBasePacket::seq_t acked_psn, bool rtx_echo) {
+    auto rtx_time = _rtx_times.find(acked_psn);
+    if(rtx_time == _rtx_times.end())
+        return false;
+
+    if ((rtx_time->second == 0 && rtx_echo == false) 
+     || (rtx_time->second == 1 && rtx_echo == true)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 void UecSrc::processAck(const UecAckPacket& pkt) {
     _nic.logReceivedCtrl(pkt.size());
     
     auto cum_ack = pkt.cumulative_ack();
-
     //handle flight_size based on recvd_bytes in packet.
     uint64_t newly_recvd_bytes = 0;
 
@@ -847,21 +864,22 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
     //compute RTT sample
     auto acked_psn = pkt.acked_psn();
     auto i = _tx_bitmap.find(acked_psn);
+    auto rtx_time = _rtx_times.find(acked_psn);
     uint32_t ooo = pkt.ooo();
 
     mem_b pkt_size;
     simtime_picosec delay;
     simtime_picosec send_time = 0;
-    if (i != _tx_bitmap.end()) {
+    if (i != _tx_bitmap.end() && validateSendTs(acked_psn, pkt.rtx_echo())) {
         //auto seqno = i->first;
         send_time = i->second.send_time;
         pkt_size = i->second.pkt_size;
         _raw_rtt = eventlist().now() - send_time;
         update_base_rtt(_raw_rtt, pkt_size);
-        if(_raw_rtt >= _base_rtt){
+        if (_raw_rtt >= _base_rtt) {
             update_delay(_raw_rtt, true, pkt.ecn_echo());
             delay = _raw_rtt - _base_rtt; 
-        }else{
+        } else {
             delay = get_avg_delay();
         }
     } else {
@@ -1921,13 +1939,20 @@ void UecSrc::sendRTS() {
 }
 
 void UecSrc::createSendRecord(UecBasePacket::seq_t seqno, mem_b full_pkt_size) {
-    // assert(full_pkt_size > 64);
     if (_debug_src)
         cout << _flow.str() << " " << _nodename << " createSendRecord seqno: " << seqno << " size " << full_pkt_size
              << endl;
+
     assert(_tx_bitmap.find(seqno) == _tx_bitmap.end());
+
     _tx_bitmap.emplace(seqno, sendRecord(full_pkt_size, eventlist().now()));
     _send_times.emplace(eventlist().now(), seqno);
+
+    if (_rtx_times.find(seqno) == _rtx_times.end()) {
+        _rtx_times.emplace(seqno, 0);
+    } else {
+        _rtx_times[seqno] += 1;
+    }
 }
 
 void UecSrc::queueForRtx(UecBasePacket::seq_t seqno, mem_b pkt_size) {
@@ -2337,7 +2362,7 @@ void UecSink::processData(UecDataPacket& pkt) {
         // this code is different from the proposed hardware implementation, as it keeps track of
         // the ACK state of OOO packets.
         UecAckPacket* ack_packet =
-            sack(pkt.path_id(), ecn ? pkt.epsn() : sackBitmapBase(pkt.epsn()), pkt.epsn(), ecn);
+            sack(pkt.path_id(), ecn ? pkt.epsn() : sackBitmapBase(pkt.epsn()), pkt.epsn(), ecn, pkt.retransmitted());
         _nic.sendControlPacket(ack_packet, NULL, this);
 
         _accepted_bytes = 0;  // careful about this one.
@@ -2402,7 +2427,7 @@ void UecSink::processData(UecDataPacket& pkt) {
     }
     if (ecn || shouldSack() || force_ack) {
         UecAckPacket* ack_packet =
-            sack(pkt.path_id(), (ecn || pkt.ar()) ? pkt.epsn() : sackBitmapBase(pkt.epsn()), pkt.epsn(), ecn);
+            sack(pkt.path_id(), (ecn || pkt.ar()) ? pkt.epsn() : sackBitmapBase(pkt.epsn()), pkt.epsn(), ecn, pkt.retransmitted());
 
         if (_src->debug()) {
             cout << " UecSink " << _nodename << " src " << _src->nodename()
@@ -2443,7 +2468,7 @@ void UecSink::processTrimmed(const UecDataPacket& pkt) {
                  << " time " << timeAsNs(getSrc()->eventlist().now()) << " flow"
                  << _src->flow()->str() << endl;
 
-        UecAckPacket* ack_packet = sack(pkt.path_id(), sackBitmapBase(pkt.epsn()), pkt.epsn(), false);
+        UecAckPacket* ack_packet = sack(pkt.path_id(), sackBitmapBase(pkt.epsn()), pkt.epsn(), false, pkt.retransmitted());
         //ack_packet->sendOn();
         _nic.sendControlPacket(ack_packet, NULL, this);
         return;
@@ -2509,7 +2534,7 @@ void UecSink::processRts(const UecRtsPacket& pkt) {
         // sender is confused and sending us duplicates: ACK straight away.
         // this code is different from the proposed hardware implementation, as it keeps track of
         // the ACK state of OOO packets.
-        UecAckPacket* ack_packet = sack(pkt.path_id(), sackBitmapBase(pkt.epsn()), pkt.epsn(), ecn);
+        UecAckPacket* ack_packet = sack(pkt.path_id(), sackBitmapBase(pkt.epsn()), pkt.epsn(), ecn, pkt.retransmitted());
         _nic.sendControlPacket(ack_packet, NULL, this);
 
         _accepted_bytes = 0;  // careful about this one.
@@ -2538,8 +2563,7 @@ void UecSink::processRts(const UecRtsPacket& pkt) {
     }
 
     UecAckPacket* ack_packet =
-        sack(pkt.path_id(), (ecn || pkt.ar()) ? pkt.epsn() : sackBitmapBase(pkt.epsn()), pkt.epsn(), ecn);
-
+        sack(pkt.path_id(), (ecn || pkt.ar()) ? pkt.epsn() : sackBitmapBase(pkt.epsn()), pkt.epsn(), ecn, pkt.retransmitted());
     if (_src->debug())
         cout << " UecSink " << _nodename << " src " << _src->nodename()
              << " send ack now: " << _expected_epsn << " ooo count " << _out_of_order_count
@@ -2677,12 +2701,13 @@ uint64_t UecSink::buildSackBitmap(UecBasePacket::seq_t ref_epsn) {
     return bitmap;
 }
 
-UecAckPacket* UecSink::sack(uint16_t path_id, UecBasePacket::seq_t seqno, UecBasePacket::seq_t acked_psn, bool ce) {
+UecAckPacket* UecSink::sack(uint16_t path_id, UecBasePacket::seq_t seqno, UecBasePacket::seq_t acked_psn, bool ce, bool rtx_echo) {
     uint64_t bitmap = buildSackBitmap(seqno);
     UecAckPacket* pkt =
         UecAckPacket::newpkt(_flow, NULL, _expected_epsn, seqno, acked_psn, path_id, ce, _recvd_bytes,_rcv_cwnd_pen,_srcaddr);
     pkt->set_bitmap(bitmap);
     pkt->set_ooo(_out_of_order_count);
+    pkt->set_rtx_echo(rtx_echo);
     return pkt;
 }
 

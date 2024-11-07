@@ -218,6 +218,7 @@ public:
     // we need to access the in_flight packet list quickly by sequence number, or by send time.
     map<UecDataPacket::seq_t, sendRecord> _tx_bitmap;
     multimap<simtime_picosec, UecDataPacket::seq_t> _send_times;
+    map<UecDataPacket::seq_t, uint16_t> _rtx_times;
 
     map<UecDataPacket::seq_t, mem_b> _rtx_queue;
     void startFlow();
@@ -229,6 +230,7 @@ public:
     void sendRTS();
     void createSendRecord(UecDataPacket::seq_t seqno, mem_b pkt_size);
     void queueForRtx(UecBasePacket::seq_t seqno, mem_b pkt_size);
+    bool validateSendTs(UecBasePacket::seq_t acked_psn, bool rtx_echo);
     void recalculateRTO();
     void startRTO(simtime_picosec send_time);
     void clearRTO();   // timer just expired, clear the state
@@ -475,7 +477,7 @@ class UecSink : public DataReceiver {
     UecBasePacket::seq_t sackBitmapBase(UecBasePacket::seq_t epsn);
     UecBasePacket::seq_t sackBitmapBaseIdeal();
     uint64_t buildSackBitmap(UecBasePacket::seq_t ref_epsn);
-    UecAckPacket* sack(uint16_t path_id, UecBasePacket::seq_t seqno, UecBasePacket::seq_t acked_psn, bool ce);
+    UecAckPacket* sack(uint16_t path_id, UecBasePacket::seq_t seqno, UecBasePacket::seq_t acked_psn, bool ce, bool rtx_echo);
 
     UecNackPacket* nack(uint16_t path_id, UecBasePacket::seq_t seqno);
 
