@@ -73,6 +73,7 @@ uint32_t UecSrc::_adjust_bytes_threshold = (simtime_picosec)32000*_target_Qdelay
 double UecSrc::_qa_threshold = 4 * UecSrc::_target_Qdelay; 
 
 double UecSrc::_eta = 0;
+bool UecSrc::_disable_quick_adapt = false;
 bool UecSrc::_enable_qa_gate = false;
 bool UecSrc::_enable_fast_loss_recovery = false;
 
@@ -1022,20 +1023,25 @@ void UecSrc::set_cwnd_bounds() {
         _cwnd = _maxwnd;
 }
 
-bool UecSrc::quick_adapt(bool is_loss, simtime_picosec delay) {
-    if (_receiver_based_cc)
+bool UecSrc::quick_adapt(bool is_loss, bool skip, simtime_picosec delay) {
+    bool qa_done_or_ignore = false;
+
+    if (_disable_quick_adapt) {
         return false;
+    }
 
     if (_debug_src){
         cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " quickadapt called is loss "<< is_loss << " delay " << delay 
              << " qa_endtime " << timeAsUs(_qa_endtime) << " trigger qa " << _trigger_qa << endl;
     }
-    if (eventlist().now()>_qa_endtime){
-        bool qa_gate = true;
-        if (_enable_qa_gate ){
-            qa_gate = (_achieved_bytes < _maxwnd/8);
-        }
-        if (_qa_endtime != 0 && (_trigger_qa || is_loss || (delay > _qa_threshold)) && qa_gate) {
+
+    if (_bytes_ignored < _bytes_to_ignore && skip) {
+        qa_done_or_ignore = true;
+    } else if (eventlist().now() > _qa_endtime){
+        if (_qa_endtime != 0 
+                && (_trigger_qa || is_loss || (delay > _qa_threshold)) 
+                && _achieved_bytes < _maxwnd/8) {
+
             if (_debug_src) {
                 cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " running quickadapt, CWND is " << _cwnd << " setting it to " << _achieved_bytes <<  endl;
             }
@@ -1044,26 +1050,34 @@ bool UecSrc::quick_adapt(bool is_loss, simtime_picosec delay) {
                 if (_debug_src) {
                     cout << "This shouldn't happen: QUICK ADAPT MIGHT INCREASE THE CWND" << endl;
                 }
-            } else {
-                mem_b before = _cwnd;
-                _cwnd = max(_achieved_bytes, (mem_b)_min_cwnd); //* _qa_scaling;
-                _nscc_overall_stats.dec_quick_bytes += before - _cwnd;
-                _nscc_fulfill_stats.dec_quick_bytes += before - _cwnd;
+            } 
+            
+            mem_b before = _cwnd;
+            _cwnd = max(_achieved_bytes, (mem_b)_min_cwnd); //* _qa_scaling;
+            _nscc_overall_stats.dec_quick_bytes += before - _cwnd;
+            _nscc_fulfill_stats.dec_quick_bytes += before - _cwnd;
 
-                if(_flow.flow_id() == _debug_flowid)
-                    cout <<timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " quick_adapt  _nscc_cwnd " << _cwnd << " is_loss " << is_loss << endl;
-                _bytes_to_ignore = _in_flight;
-                _bytes_ignored = 0;
-                _trigger_qa = false;
-                _achieved_bytes = 0;
-                _qa_endtime = eventlist().now() + _base_rtt + _target_Qdelay;
-                return true;
+            if (_flow.flow_id() == _debug_flowid) {
+                cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id()
+                     << " quick_adapt  _nscc_cwnd " << _cwnd << " is_loss " << is_loss 
+                     << endl;
             }
+
+            _bytes_to_ignore = _in_flight;
+            _bytes_ignored = 0;
+            _trigger_qa = false;
+            qa_done_or_ignore = true;
         }
         _achieved_bytes = 0;
         _qa_endtime = eventlist().now() + _base_rtt + _target_Qdelay;
     }
-    return false;
+
+    if (qa_done_or_ignore) {
+        _inc_bytes = 0;
+        _received_bytes = 0;
+    }
+
+    return qa_done_or_ignore;
 }
 
 void UecSrc::fair_increase(uint32_t newly_acked_bytes){
@@ -1180,7 +1194,7 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
     if (_bytes_ignored < _bytes_to_ignore && skip)
         return;
 
-    if (quick_adapt(false, delay))
+    if (quick_adapt(false, skip, delay))
         return;
 
     if (!skip && delay >= _target_Qdelay) {
@@ -1238,9 +1252,8 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
 }
 
 void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes) {
-    _cwnd -= nacked_bytes;
+    bool adjust_cwnd = true;
 
-    set_cwnd_bounds();
     _bytes_ignored += nacked_bytes;
     _nscc_overall_stats.dec_nack_bytes += nacked_bytes;
     _nscc_fulfill_stats.dec_nack_bytes += nacked_bytes;
@@ -1253,9 +1266,16 @@ void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes) {
     if (_flow.flow_id() == _debug_flowid)
         cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id()
              << " onnack  _nscc_cwnd " << _cwnd << endl;
+
     _trigger_qa = true;
-    if (_bytes_ignored >= _bytes_to_ignore)
-        quick_adapt(true, _avg_delay);    
+    if (quick_adapt(true, true, 0)) {
+        adjust_cwnd = false;
+    }
+
+    if (adjust_cwnd) {
+        _cwnd -= nacked_bytes;
+        set_cwnd_bounds();
+    }
 }
 
 void UecSrc::dontUpdateCwndOnNack(bool skip, mem_b nacked_bytes) {
