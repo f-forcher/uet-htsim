@@ -25,30 +25,30 @@ Using binary: ./htsim_uec
 Experiment: Small 16 node incast 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/incast.cm -end 3000 -sender_cc 
-[PASS] Tail FCT 2466.35 us below the target of 2500 us
+[PASS] Tail FCT 2465.95 us below the target of 2500 us
 [PASS] Connection count 15
-FCT Spread 2392.94 -> 2466.35 ratio 1.030677743696039
-Summary: New: 7350 Rtx: 729 RTS: 0 Bounced: 0 ACKs: 2549 NACKs: 729 Pulls: 2146
+FCT Spread 2374.35 -> 2465.95 ratio 1.0385789795101816
+Summary: New: 7350 Rtx: 729 RTS: 0 Bounced: 0 ACKs: 2566 NACKs: 729 Pulls: 2127
 Using binary: ./htsim_uec
 
 
 Experiment: 128 node incast 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/incast_128.cm -end 30000 -sender_cc 
-[PASS] Tail FCT 20909.2 us below the target of 23000 us
+[PASS] Tail FCT 20907.2 us below the target of 23000 us
 [PASS] Connection count 127
-FCT Spread 20397.7 -> 20909.2 ratio 1.0250763566480534
-Summary: New: 62230 Rtx: 6100 RTS: 50 Bounced: 0 ACKs: 20575 NACKs: 6073 Pulls: 17977
+FCT Spread 20397.7 -> 20907.2 ratio 1.0249783063776798
+Summary: New: 62230 Rtx: 6094 RTS: 50 Bounced: 0 ACKs: 20554 NACKs: 6071 Pulls: 17883
 Using binary: ./htsim_uec
 
 
 Experiment: 1024 node incast 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/incast_1024_100K.cm -end 10000 -sender_cc -cwnd 50 
-[PASS] Tail FCT 8794.18 us below the target of 8950 us
+[PASS] Tail FCT 8794.63 us below the target of 8950 us
 [PASS] Connection count 1023
-FCT Spread 5915.37 -> 8794.18 ratio 1.486666091892815
-Summary: New: 25575 Rtx: 26595 RTS: 1022 Bounced: 0 ACKs: 26546 NACKs: 10463 Pulls: 8846
+FCT Spread 5915.37 -> 8794.63 ratio 1.486742164902618
+Summary: New: 25575 Rtx: 26596 RTS: 1021 Bounced: 0 ACKs: 26546 NACKs: 10464 Pulls: 8851
 Using binary: ./htsim_uec
 
 
@@ -58,95 +58,95 @@ Running ./htsim_uec -tm connection_matrices/incast_3-1_overlapped.tm -end 1000 -
 [PASS] Tail FCT 217.601 us below the target of 220 us
 [PASS] Connection count 3
 FCT Spread 123.419 -> 217.601 ratio 1.7631077872936907
-Summary: New: 614 Rtx: 58 RTS: 0 Bounced: 0 ACKs: 213 NACKs: 58 Pulls: 298
+Summary: New: 614 Rtx: 58 RTS: 0 Bounced: 0 ACKs: 213 NACKs: 58 Pulls: 270
 Using binary: ./htsim_uec
 
 
 Experiment: outcast incast 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/outcast_incast.cm -end 3000 -sender_cc 
-[PASS] FCT 200.108 us for flow  Uec_1_0 which is below the target of 215 us
+[PASS] FCT 198.732 us for flow  Uec_1_0 which is below the target of 215 us
 [PASS] Tail FCT 1634.11 us below the target of 2500 us
 [PASS] Connection count 21
-FCT Spread 200.108 -> 1634.11 ratio 8.166140284246506
-Summary: New: 10290 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 2628 NACKs: 0 Pulls: 42262
+FCT Spread 198.732 -> 1634.11 ratio 8.222681802628665
+Summary: New: 10290 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 2626 NACKs: 0 Pulls: 42108
 Using binary: ./htsim_uec
 
 
 Experiment: Small permutation (16 nodes) 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_16n_16c_2MB.cm -end 1000 -sender_cc -paths 128 
-[PASS] Tail FCT 196.784 us below the target of 210 us
+[PASS] Tail FCT 198.294 us below the target of 210 us
 [PASS] Connection count 16
-FCT Spread 189.164 -> 196.784 ratio 1.0402825061851093
-Summary: New: 7840 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 2934 NACKs: 0 Pulls: 3881
+FCT Spread 190.276 -> 198.294 ratio 1.0421387878660473
+Summary: New: 7840 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 2930 NACKs: 0 Pulls: 3870
 Using binary: ./htsim_uec
 
 
 Experiment: Small permutation, INC (16 nodes) 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_16n_16c_2MB.cm -failed 1 -sender_cc -end 2000 -paths 128 
-[FAIL] Tail FCT 231.332 us above the target of 210 us
+[FAIL] Tail FCT 236.896 us above the target of 210 us
 [PASS] Connection count 16
-FCT Spread 192.163 -> 231.332 ratio 1.2038321633196816
-Summary: New: 7840 Rtx: 112 RTS: 0 Bounced: 0 ACKs: 3449 NACKs: 112 Pulls: 4140
+FCT Spread 187.876 -> 236.896 ratio 1.260916774894079
+Summary: New: 7840 Rtx: 101 RTS: 0 Bounced: 0 ACKs: 3107 NACKs: 101 Pulls: 4272
 Using binary: ./htsim_uec
 
 
 Experiment: Small permutation, single path. 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_16n_16c_2MB.cm -end 2000 -sender_cc -paths 1 
-[PASS] Tail FCT 513.917 us below the target of 1300 us
+[PASS] Tail FCT 541.808 us below the target of 1300 us
 [PASS] Connection count 16
-FCT Spread 180.09 -> 513.917 ratio 2.8536676106391248
-Summary: New: 7840 Rtx: 371 RTS: 0 Bounced: 0 ACKs: 6822 NACKs: 371 Pulls: 7123
+FCT Spread 179.45 -> 541.808 ratio 3.0192699916411256
+Summary: New: 7840 Rtx: 333 RTS: 0 Bounced: 0 ACKs: 4761 NACKs: 333 Pulls: 7170
 Using binary: ./htsim_uec
 
 
 Experiment: Large permutation (1024 nodes) 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 400 -sender_cc -paths 128 
-[PASS] Tail FCT 203.332 us below the target of 220 us
+[PASS] Tail FCT 208.732 us below the target of 220 us
 [PASS] Connection count 1024
-FCT Spread 168.883 -> 203.332 ratio 1.2039814546165095
-Summary: New: 501760 Rtx: 11 RTS: 0 Bounced: 0 ACKs: 192311 NACKs: 11 Pulls: 256963
+FCT Spread 169.012 -> 208.732 ratio 1.2350128984924147
+Summary: New: 501760 Rtx: 23 RTS: 0 Bounced: 0 ACKs: 192323 NACKs: 23 Pulls: 257847
 Using binary: ./htsim_uec
 
 
 Experiment: Large permutation, INC (1024 nodes) 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 1000 -failed 1 -sender_cc -paths 128 
-[PASS] Tail FCT 201.572 us below the target of 220 us
+[PASS] Tail FCT 204.082 us below the target of 220 us
 [PASS] Connection count 1024
-FCT Spread 168.777 -> 201.572 ratio 1.1943096511965494
-Summary: New: 501760 Rtx: 112 RTS: 0 Bounced: 0 ACKs: 191555 NACKs: 112 Pulls: 256402
+FCT Spread 168.861 -> 204.082 ratio 1.2085798378548036
+Summary: New: 501760 Rtx: 80 RTS: 0 Bounced: 0 ACKs: 191825 NACKs: 80 Pulls: 257769
 Using binary: ./htsim_uec
 
 
 Experiment: Large permutation (1024 nodes), single path. 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 3000 -sender_cc -paths 1 
-[PASS] Tail FCT 1007.0 us below the target of 1300 us
+[PASS] Tail FCT 1022.12 us below the target of 1300 us
 [PASS] Connection count 1024
-FCT Spread 168.612 -> 1007.0 ratio 5.972291414608687
-Summary: New: 501760 Rtx: 30592 RTS: 0 Bounced: 0 ACKs: 443290 NACKs: 30592 Pulls: 494683
+FCT Spread 168.604 -> 1022.12 ratio 6.062252378354012
+Summary: New: 501760 Rtx: 28150 RTS: 0 Bounced: 0 ACKs: 343319 NACKs: 28150 Pulls: 501620
 Using binary: ./htsim_uec
 
 
 Experiment: Oversubscribed permutation with multipath 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 2000 -paths 128 -sender_cc -topo topologies/leaf_spine_1024_oversub.topo 
-[PASS] Tail FCT 739.73 us below the target of 880 us
+[PASS] Tail FCT 778.43 us below the target of 880 us
 [PASS] Connection count 1024
-FCT Spread 168.157 -> 739.73 ratio 4.39904375078052
-Summary: New: 501760 Rtx: 28561 RTS: 0 Bounced: 0 ACKs: 424543 NACKs: 28561 Pulls: 433415
+FCT Spread 168.105 -> 778.43 ratio 4.630617768656494
+Summary: New: 501760 Rtx: 26974 RTS: 0 Bounced: 0 ACKs: 412704 NACKs: 26974 Pulls: 450479
 Using binary: ./htsim_uec
 
 
 Experiment: 8:1 oversubscribed permutation with multipath 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 2000 -sender_cc -paths 128 -topo topologies/leaf_spine_1024_oversub_8-1.topo 
-[PASS] Tail FCT 1405.25 us below the target of 1760 us
+[PASS] Tail FCT 1443.61 us below the target of 1760 us
 [PASS] Connection count 1024
-FCT Spread 167.892 -> 1405.25 ratio 8.369964024491935
-Summary: New: 501760 Rtx: 37176 RTS: 2 Bounced: 0 ACKs: 443430 NACKs: 37174 Pulls: 600026
+FCT Spread 167.901 -> 1443.61 ratio 8.597983335417894
+Summary: New: 501760 Rtx: 35267 RTS: 0 Bounced: 0 ACKs: 433864 NACKs: 35267 Pulls: 615968
