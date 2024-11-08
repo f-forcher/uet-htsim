@@ -556,6 +556,11 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
     _bdp = 0;
     _base_rtt = 0;
 
+    _bytes_ignored = 0;
+    _bytes_to_ignore = 0;
+    _trigger_qa = false;
+    _achieved_bytes = 0;
+    _qa_endtime = 0;
     _fi_count = 0;
 
     if (_sender_based_cc) {
