@@ -116,7 +116,8 @@ public:
     /**
      * Initialize global NSCC parameters.
      */
-    static void initNsccParams(simtime_picosec network_rtt, linkspeed_bps linkspeed, simtime_picosec target_Qdelay);
+    static void initNsccParams(simtime_picosec network_rtt, linkspeed_bps linkspeed, 
+                               simtime_picosec target_Qdelay, bool trimming_enabled);
     /**
      * Initialize per-connection NSCC parameters.
      */
@@ -325,6 +326,7 @@ public:
     static linkspeed_bps _network_linkspeed; 
     static simtime_picosec _network_rtt; 
     static mem_b _network_bdp; 
+    static bool _network_trimming_enabled; 
     // Smarttrack parameters
     static mem_b _min_cwnd; 
     static uint32_t _qa_scaling; 

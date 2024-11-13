@@ -44,12 +44,17 @@ bool UecSink::_oversubscribed_cc = false; // can only be enabled when receiver_b
 UecSrc::Sender_CC UecSrc::_sender_cc_algo = UecSrc::NSCC;
 UecSrc::LoadBalancing_Algo UecSrc::_load_balancing_algo = UecSrc::BITMAP;
 
+/* 
+    The following variable values are not default values, there are initializer values. The actual
+    default values are set in initNsccParams/initRcccParams.
+*/
 linkspeed_bps UecSrc::_reference_network_linkspeed = 0; // set by initNsccParams
 simtime_picosec UecSrc::_reference_network_rtt = timeFromUs(12u); 
 mem_b UecSrc::_reference_network_bdp = 0; // set by initNsccParams
 linkspeed_bps UecSrc::_network_linkspeed = 0; // set by initNsccParams
 simtime_picosec UecSrc::_network_rtt = 0; // set by initNsccParams
 mem_b UecSrc::_network_bdp = 0; // set by initNsccParams
+bool UecSrc::_network_trimming_enabled = false; // set by initNsccParams
 double UecSrc::_scaling_factor_a = 1; //for 400Gbps. cf. spec must be set to BDP/(100Gbps*12us)
 double UecSrc::_scaling_factor_b = 0; // Needs to be inialized in initNscc
 uint32_t UecSrc::_qa_scaling = 1; //quick adapt scaling - how much of the achieved bytes should we use as new CWND?
@@ -73,7 +78,8 @@ bool UecSrc::_enable_fast_loss_recovery = false;
 
 void UecSrc::initNsccParams(simtime_picosec network_rtt,
                             linkspeed_bps linkspeed,
-                            simtime_picosec target_Qdelay){
+                            simtime_picosec target_Qdelay,
+                            bool trimming_enabled){
     _reference_network_linkspeed = speedFromGbps(100);
     _reference_network_rtt = timeFromUs(12u); 
     _reference_network_bdp = timeAsSec(_reference_network_rtt)*(_reference_network_linkspeed/8);
@@ -81,13 +87,18 @@ void UecSrc::initNsccParams(simtime_picosec network_rtt,
     _network_linkspeed = linkspeed;
     _network_rtt = network_rtt; 
     _network_bdp = timeAsSec(_network_rtt)*(_network_linkspeed/8);
+    _network_trimming_enabled = trimming_enabled;
 
     _min_cwnd = _mtu;
 
     if (target_Qdelay > 0) {
         _target_Qdelay = target_Qdelay;
     } else {
-        _target_Qdelay = timeFromUs(6u);
+        if (_network_trimming_enabled) {
+            _target_Qdelay = _network_rtt * 0.75;
+        } else {
+            _target_Qdelay = _network_rtt;
+        }
     }
 
     _qa_threshold = 4 * _target_Qdelay; 

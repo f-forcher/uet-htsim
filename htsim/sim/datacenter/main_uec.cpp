@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
     filename << "logout.dat";
     int end_time = 1000;//in microseconds
     bool force_disable_oversubscribed_cc = false;
-    bool enable_accurate_base_rtt = true;
+    bool enable_accurate_base_rtt = false;
 
     //unsure how to set this. 
     queue_type snd_type = FAIR_PRIO;
@@ -303,9 +303,9 @@ int main(int argc, char **argv) {
             force_disable_oversubscribed_cc = true;
             cout << "Disabling receiver oversubscribed CC even with OS topology" << endl;
         }
-        else if (!strcmp(argv[i],"-disable_accurate_base_rtt")){
-            enable_accurate_base_rtt = false;
-            cout << "Disabling accurate base rtt configuration, each flow takes network wide rtt as the base rtt upper bound." << endl;
+        else if (!strcmp(argv[i],"-enable_accurate_base_rtt")){
+            enable_accurate_base_rtt = true;
+            cout << "Enable accurate base rtt configuration, each flow uses the accurate end-to-end delay for the current sender/receiver pair as rtt upper bound." << endl;
         }
         else if (!strcmp(argv[i],"-fastlossrecovery")){
             UecSrc::_enable_fast_loss_recovery = true;
@@ -673,7 +673,8 @@ int main(int argc, char **argv) {
     }
     if (sender_driven) {
         // UecSrc::parameterScaleToTargetQ();
-        UecSrc::initNsccParams(network_max_unloaded_rtt, linkspeed, target_Qdelay);
+        bool trimming_enabled = !disable_trim;
+        UecSrc::initNsccParams(network_max_unloaded_rtt, linkspeed, target_Qdelay, trimming_enabled);
     }
 
     vector<UecPullPacer*> pacers;
