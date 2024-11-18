@@ -1196,9 +1196,6 @@ void UecSrc::dontUpdateCwndOnAck(bool skip, simtime_picosec delay, mem_b newly_a
 void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_acked_bytes) {
     // bool can_decrease = _exp_avg_ecn > _ecn_thresh;
 
-    if (_bytes_ignored < _bytes_to_ignore && skip)
-        return;
-
     if (quick_adapt(false, skip, delay))
         return;
 
