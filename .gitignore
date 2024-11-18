@@ -13,3 +13,4 @@ idmap.txt
 *.pdf
 *.png
 !example_validate.json
+build/
