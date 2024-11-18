@@ -15,6 +15,7 @@ using namespace std;
 uint32_t UecSrc::_path_entropy_size = 256;
 int UecSrc::_global_node_count = 0;
 bool UecSrc::_shown = false;
+mem_b UecSrc::_configured_maxwnd = 0;
 
 /* _min_rto can be tuned using setMinRTO. Don't change it here.  */
 simtime_picosec UecSrc::_min_rto = timeFromUs((uint32_t)DEFAULT_UEC_RTO_MIN);
@@ -147,7 +148,10 @@ void UecSrc::initNscc(mem_b cwnd, simtime_picosec peer_rtt) {
     _base_rtt = peer_rtt;
     _base_bdp = timeAsSec(_base_rtt)*(_nic.linkspeed()/8);
     _bdp = _base_bdp;
-    _maxwnd =  1.5*_bdp;
+
+    setMaxWnd(1.5*_bdp);
+    setConfiguredMaxWnd(1.5*_bdp);
+
     if (cwnd == 0) {
         _cwnd = _maxwnd;
     } else {
@@ -170,7 +174,10 @@ void UecSrc::initRccc(mem_b cwnd, simtime_picosec peer_rtt) {
     _base_rtt = peer_rtt;
     _base_bdp = timeAsSec(_base_rtt)*(_nic.linkspeed()/8);
     _bdp = _base_bdp;
-    _maxwnd =  1.5*_bdp;
+
+    setMaxWnd(1.5*_bdp);
+    setConfiguredMaxWnd(1.5*_bdp);
+
     if (cwnd == 0) {
         _cwnd = _maxwnd;
     } else {
@@ -786,8 +793,8 @@ void UecSrc::handlePull(UecBasePacket::pull_quanta pullno) {
     if (pullno > _pull) {
         UecBasePacket::pull_quanta extra_credit = pullno - _pull;
         _credit += UecBasePacket::unquantize(extra_credit);
-        if (_credit > _maxwnd)
-            _credit = _maxwnd;
+        if (_credit > _configured_maxwnd)
+            _credit = _configured_maxwnd;
         _pull = pullno;
     }
     if(_flow.flow_id() == _debug_flowid){
@@ -1200,6 +1207,7 @@ void UecSrc::update_base_rtt(simtime_picosec raw_rtt, uint16_t packet_size){
     if (_base_rtt > _raw_rtt && packet_size == _mtu) {
         _base_rtt = _raw_rtt;
         _bdp = timeAsUs(_raw_rtt) * _nic.linkspeed() / 8000000; 
+        
         _maxwnd = 1.5 * _bdp;
         
         if (UecSrc::_debug)
@@ -1427,7 +1435,7 @@ void UecSrc::setFlowsize(uint64_t flow_size_in_bytes) {
 
 void UecSrc::startFlow() {
     //_cwnd = _maxwnd;
-    _credit = _maxwnd;
+    _credit = _configured_maxwnd;
 
     if (_debug_src)
         cout << _flow.str() << " " << "startflow " << _flow._name << " CWND " << _cwnd << " at "
@@ -1512,8 +1520,8 @@ UecBasePacket::pull_quanta UecSrc::computePullTarget() {
         }
     }
 
-    if (pull_target > _maxwnd) {
-        pull_target = _maxwnd;
+    if (pull_target > _configured_maxwnd) {
+        pull_target = _configured_maxwnd;
     }
 
     pull_target -= _credit;
@@ -2809,13 +2817,13 @@ void UecPullPacer::doNextEvent() {
             cout << "PullPacer: Idle: " << sink->getSrc()->flow()->str() << " at "
                  << timeAsUs(eventlist().now()) << " backlog " << sink->backlog() << " "
                  << sink->slowCredit() << " max "
-                 << UecBasePacket::quantize_floor(sink->getMaxCwnd()) << endl;
+                 << UecBasePacket::quantize_floor(sink->getConfiguredMaxWnd()) << endl;
         extra_credit = UecSink::_credit_per_pull;
         pullPkt = sink->pull(extra_credit);
         pullPkt->set_slow_pull(true);
 
         if (sink->backlog() == 0 &&
-            sink->slowCredit() < UecBasePacket::quantize_floor(sink->getMaxCwnd())) {
+            sink->slowCredit() < UecBasePacket::quantize_floor(sink->getConfiguredMaxWnd())) {
             // only send upto 1BDP worth of speculative credit.
             // backlog will be negative once this source starts receiving speculative credit.
             _idle_senders.push_back(sink);

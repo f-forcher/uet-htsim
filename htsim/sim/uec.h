@@ -147,17 +147,22 @@ public:
         _maxwnd = maxwnd;
     }
 
+    void setConfiguredMaxWnd(mem_b wnd){
+        _configured_maxwnd = wnd;
+    }
+
     void boundBaseRTT(simtime_picosec network_rtt){
         _base_rtt = network_rtt;
         _bdp = timeAsUs(_base_rtt) * _nic.linkspeed() / 8000000;
         _maxwnd =  1.5*_bdp;
+        _configured_maxwnd = _maxwnd;
 
         if (!_shown){
             cout << "Bound base RTT: _bdp " << _bdp << " _maxwnd " << _maxwnd << " _base_rtt " << timeAsUs(_base_rtt) << endl;
             _shown = true;
         }
     }
-    mem_b maxWnd() const { return _maxwnd; }
+    mem_b configuredMaxWnd() const { return _configured_maxwnd; }
 
     const Stats& stats() const { return _stats; }
 
@@ -306,6 +311,7 @@ public:
     mem_b _rtx_backlog;
     mem_b _cwnd;
     mem_b _maxwnd;
+    static mem_b _configured_maxwnd;
     UecBasePacket::pull_quanta _pull_target;
     UecBasePacket::pull_quanta _pull;
     mem_b _credit;  // receive request credit in pull_quanta, but consume it in bytes
@@ -525,7 +531,7 @@ class UecSink : public DataReceiver {
     uint16_t nextEntropy();
 
     UecSrc* getSrc() { return _src; }
-    uint32_t getMaxCwnd() { return _src->maxWnd(); };
+    uint32_t getConfiguredMaxWnd() { return _src->configuredMaxWnd(); };
 
     PCIeModel* pcieModel() const{ return _pcie;}
 
