@@ -56,7 +56,7 @@ void PCIeModel::adjustCreditRate() {
         /*
         //linear model below
         mem_b delta = _max_pcie_backlog - pcieBacklog();
-        _pcie_rate = (double)delta / (_max_pcie_backlog - _src->maxWnd());
+        _pcie_rate = (double)delta / (_max_pcie_backlog - _src->configuredMaxWnd());
         */
         // quadratic model, should scale better.
         mem_b gap = _max_pcie_backlog - _min_threshold;
