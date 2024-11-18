@@ -311,7 +311,9 @@ public:
     bool checkFinished(UecDataPacket::seq_t cum_ack);
 
     Stats _stats;
-    NsccStats _nscc_stats;
+    // Stats over the whole connection lifetime
+    NsccStats _nscc_overall_stats;
+    // Stats per fulfill-adjustment period
     NsccStats _nscc_fulfill_stats;
     UecSink* _sink;
 

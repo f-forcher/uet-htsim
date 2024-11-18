@@ -584,7 +584,7 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
     _highest_recv_seqno = 0;
     _highest_rtx_sent = 0;
 
-    _nscc_stats = {};
+    _nscc_overall_stats = {};
     _nscc_fulfill_stats = {};
 }
 
@@ -818,13 +818,13 @@ bool UecSrc::checkFinished(UecDataPacket::seq_t cum_ack) {
              << timeAsUs(eventlist().now()) << " total packets " << cum_ack << " RTS "
              << _stats.rts_pkts_sent << " total bytes " << ((mem_b)cum_ack - _stats.rts_pkts_sent) * _mss
              << " in_flight now " << _in_flight 
-             << " fair_inc " << _nscc_stats.inc_fair_bytes
-             << " prop_inc " << _nscc_stats.inc_prop_bytes
-             << " fast_inc " << _nscc_stats.inc_fast_bytes 
-             << " eta_inc " << _nscc_stats.inc_eta_bytes 
-             << " multi_dec -" << _nscc_stats.dec_multi_bytes 
-             << " quick_dec -" << _nscc_stats.dec_quick_bytes 
-             << " nack_dec -" << _nscc_stats.dec_nack_bytes 
+             << " fair_inc " << _nscc_overall_stats.inc_fair_bytes
+             << " prop_inc " << _nscc_overall_stats.inc_prop_bytes
+             << " fast_inc " << _nscc_overall_stats.inc_fast_bytes 
+             << " eta_inc " << _nscc_overall_stats.inc_eta_bytes 
+             << " multi_dec -" << _nscc_overall_stats.dec_multi_bytes 
+             << " quick_dec -" << _nscc_overall_stats.dec_quick_bytes 
+             << " nack_dec -" << _nscc_overall_stats.dec_nack_bytes 
              << endl;
         _speculating = false;
         if (_end_trigger) {
@@ -1047,7 +1047,7 @@ bool UecSrc::quick_adapt(bool is_loss, simtime_picosec delay) {
             } else {
                 mem_b before = _cwnd;
                 _cwnd = max(_achieved_bytes, (mem_b)_min_cwnd); //* _qa_scaling;
-                _nscc_stats.dec_quick_bytes += before - _cwnd;
+                _nscc_overall_stats.dec_quick_bytes += before - _cwnd;
                 _nscc_fulfill_stats.dec_quick_bytes += before - _cwnd;
 
                 if(_flow.flow_id() == _debug_flowid)
@@ -1091,7 +1091,7 @@ void UecSrc::fast_increase(uint32_t newly_acked_bytes,simtime_picosec delay){
         if (_fi_count > _cwnd || _increase){
             mem_b before = _cwnd;
             _cwnd += newly_acked_bytes * _fi_scale;
-            _nscc_stats.inc_fast_bytes += _cwnd - before;
+            _nscc_overall_stats.inc_fast_bytes += _cwnd - before;
             _nscc_fulfill_stats.inc_fast_bytes += _cwnd - before;
 
             _increase = true;
@@ -1113,7 +1113,7 @@ void UecSrc::multiplicative_decrease(uint32_t newly_acked_bytes){
         if (eventlist().now() - _last_dec_time > _base_rtt){
             mem_b before = _cwnd;
             _cwnd *= max(1-_gamma*(avg_delay-_target_Qdelay)/avg_delay, 0.5);/*_max_md_jump instead of 1*/
-            _nscc_stats.dec_multi_bytes += before - _cwnd;
+            _nscc_overall_stats.dec_multi_bytes += before - _cwnd;
             _nscc_fulfill_stats.dec_multi_bytes += before - _cwnd;
 
             _last_dec_time = eventlist().now();
@@ -1129,8 +1129,8 @@ void UecSrc::fulfill_adjustment(){
     _nscc_fulfill_stats.inc_fair_bytes /= _cwnd;
     _nscc_fulfill_stats.inc_prop_bytes /= _cwnd;
 
-    _nscc_stats.inc_fair_bytes += _nscc_fulfill_stats.inc_fair_bytes;
-    _nscc_stats.inc_prop_bytes += _nscc_fulfill_stats.inc_prop_bytes;
+    _nscc_overall_stats.inc_fair_bytes += _nscc_fulfill_stats.inc_fair_bytes;
+    _nscc_overall_stats.inc_prop_bytes += _nscc_fulfill_stats.inc_prop_bytes;
 
     if (_debug_src) {
         cout << timeAsUs(eventlist().now())
@@ -1215,7 +1215,7 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
 
     if (eventlist().now() - _last_eta_time > _adjust_period_threshold ) {
         _cwnd += _eta;
-        _nscc_stats.inc_eta_bytes += _eta;
+        _nscc_overall_stats.inc_eta_bytes += _eta;
         _nscc_fulfill_stats.inc_eta_bytes += _eta;
 
         _last_eta_time = eventlist().now();
@@ -1235,7 +1235,7 @@ void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes) {
 
     set_cwnd_bounds();
     _bytes_ignored += nacked_bytes;
-    _nscc_stats.dec_nack_bytes += nacked_bytes;
+    _nscc_overall_stats.dec_nack_bytes += nacked_bytes;
     _nscc_fulfill_stats.dec_nack_bytes += nacked_bytes;
 
     // We use _network_rtt as an estimate for the trimming threshold
