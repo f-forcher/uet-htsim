@@ -483,10 +483,6 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
 
     _flow_logger = NULL;
 
-    _rtt = _min_rto;
-
-    _mdev = 0;
-    _rto = _min_rto;
     _logger = NULL;
 
     _maxwnd = 50 * _mtu;
@@ -887,16 +883,17 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
 
     mem_b pkt_size;
     simtime_picosec delay;
+    simtime_picosec raw_rtt = 0;
     simtime_picosec send_time = 0;
     if (i != _tx_bitmap.end() && validateSendTs(acked_psn, pkt.rtx_echo())) {
         //auto seqno = i->first;
         send_time = i->second.send_time;
         pkt_size = i->second.pkt_size;
-        _raw_rtt = eventlist().now() - send_time;
-        update_base_rtt(_raw_rtt, pkt_size);
-        if (_raw_rtt >= _base_rtt) {
-            update_delay(_raw_rtt, true, pkt.ecn_echo());
-            delay = _raw_rtt - _base_rtt; 
+        raw_rtt = eventlist().now() - send_time;
+        update_base_rtt(raw_rtt, pkt_size);
+        if (raw_rtt >= _base_rtt) {
+            update_delay(raw_rtt, true, pkt.ecn_echo());
+            delay = raw_rtt - _base_rtt; 
         } else {
             delay = get_avg_delay();
         }
@@ -946,7 +943,7 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
 
     if(_flow.flow_id() == _debug_flowid ){
         cout <<  timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " track_avg_rtt " << timeAsUs(get_avg_delay())
-            << " rtt " << timeAsUs(_raw_rtt) << " skip " << pkt.ecn_echo()  << " ev " << pkt.ev()
+            << " rtt " << timeAsUs(raw_rtt) << " skip " << pkt.ecn_echo()  << " ev " << pkt.ev()
             << " cum_ack " << cum_ack
             << " bitmap_base " << pkt.ref_ack()
             << " ooo " << ooo
@@ -966,7 +963,7 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
     }
 
     if (_debug_src) {
-        cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " " << _nodename << " processAck: " << cum_ack << " flow " << _flow.str() << " cwnd " << _cwnd << " flightsize " << _in_flight << " delay " << timeAsUs(delay) << " newlyrecvd " << newly_recvd_bytes << " skip " << pkt.ecn_echo() << " raw rtt " << _raw_rtt << endl;
+        cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " " << _nodename << " processAck: " << cum_ack << " flow " << _flow.str() << " cwnd " << _cwnd << " flightsize " << _in_flight << " delay " << timeAsUs(delay) << " newlyrecvd " << newly_recvd_bytes << " skip " << pkt.ecn_echo() << " raw rtt " << raw_rtt << endl;
     }
 
     if (_sender_based_cc && _enable_fast_loss_recovery) {
@@ -1204,10 +1201,9 @@ void UecSrc::dontUpdateCwndOnNack(bool skip, mem_b nacked_bytes) {
 }
 
 void UecSrc::update_base_rtt(simtime_picosec raw_rtt, uint16_t packet_size){
-    if (_base_rtt > _raw_rtt && packet_size == _mtu) {
-        _base_rtt = _raw_rtt;
-        _bdp = timeAsUs(_raw_rtt) * _nic.linkspeed() / 8000000; 
-        
+    if (_base_rtt > raw_rtt && packet_size == _mtu) {
+        _base_rtt = raw_rtt;
+        _bdp = timeAsUs(raw_rtt) * _nic.linkspeed() / 8000000; 
         _maxwnd = 1.5 * _bdp;
         
         if (UecSrc::_debug)
@@ -1216,7 +1212,7 @@ void UecSrc::update_base_rtt(simtime_picosec raw_rtt, uint16_t packet_size){
 }
 
 void UecSrc::update_delay(simtime_picosec raw_rtt, bool update_avg, bool skip){
-    simtime_picosec delay = _raw_rtt - _base_rtt;
+    simtime_picosec delay = raw_rtt - _base_rtt;
     if(update_avg){
 
         if(skip == false && delay > _target_Qdelay){
@@ -1358,10 +1354,9 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
     auto seqno = i->first;
     simtime_picosec send_time = i->second.send_time;
 
-    // The average queue delay is not updated, since the packet was trimmed.
-    _raw_rtt = eventlist().now() - send_time;
-    if(_raw_rtt > _base_rtt) {
-        update_delay(_raw_rtt, false, true);
+    simtime_picosec raw_rtt = eventlist().now() - send_time;
+    if(raw_rtt > _base_rtt) {
+        update_delay(raw_rtt, false, true);
     }
 
     if(_flow.flow_id() == _debug_flowid){
@@ -1649,7 +1644,7 @@ void UecSrc::startRTO(simtime_picosec send_time) {
     if (!_rtx_timeout_pending) {
         // timer is not running - start it
         _rtx_timeout_pending = true;
-        _rtx_timeout = send_time + _rto;
+        _rtx_timeout = send_time + _min_rto;
         _rto_send_time = send_time;
 
         if (_rtx_timeout < eventlist().now())
@@ -1668,7 +1663,7 @@ void UecSrc::startRTO(simtime_picosec send_time) {
         }
     } else {
         // timer is already running
-        if (send_time + _rto < _rtx_timeout) {
+        if (send_time + _min_rto < _rtx_timeout) {
             // RTO needs to expire earlier than it is currently set
             cancelRTO();
             startRTO(send_time);
@@ -1931,7 +1926,7 @@ mem_b UecSrc::sendRtxPacket(const Route& route) {
 }
 
 void UecSrc::sendRTS() {
-    if (_last_rts > 0 && eventlist().now() - _last_rts < _rtt) {
+    if (_last_rts > 0 && eventlist().now() - _last_rts < _network_rtt) {
         // Don't send more than one RTS per RTT, or we can create an
         // incast of RTS.  Once per RTT is enough to restart things if we lost
         // a whole window.

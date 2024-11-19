@@ -380,7 +380,6 @@ private:
     uint16_t _ev_bad_count;
 
     // RTT estimate data for RTO and sender based CC.
-    simtime_picosec _rtt, _mdev, _rto, _raw_rtt;
     bool _rtx_timeout_pending;       // is the RTO running?
     simtime_picosec _rto_send_time;  // when we sent the oldest packet that the RTO is waiting on.
     simtime_picosec _rtx_timeout;    // when the RTO is currently set to expire
@@ -400,9 +399,9 @@ private:
     uint32_t _fi_count = 0;
     bool _trigger_qa = false;
     simtime_picosec _qa_endtime = 0;
-    uint32_t _bytes_to_ignore = 0;
-    uint32_t _bytes_ignored = 0;
-    uint32_t _inc_bytes = 0;
+    mem_b _bytes_to_ignore = 0;
+    mem_b _bytes_ignored = 0;
+    mem_b _inc_bytes = 0;
     simtime_picosec _avg_delay = 0;
 
     simtime_picosec _last_eta_time = 0;
