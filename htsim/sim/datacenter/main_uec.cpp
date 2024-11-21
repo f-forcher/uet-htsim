@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
     char* tm_file = NULL;
     char* topo_file = NULL;
     //bool disable_fair_decrease = true;
-    bool enable_qa_gate = true;
+    int8_t qa_gate = -1;
 
     while (i<argc) {
         if (!strcmp(argv[i],"-o")) {
@@ -143,8 +143,10 @@ int main(int argc, char **argv) {
 //        } else if (!strcmp(argv[i],"-disable_fd")) {
 //            disable_fair_decrease = true;
 //            cout << "fair_decrease disabled" << endl;
-        } else if (!strcmp(argv[i],"-enable_qa_gate")) {
-            enable_qa_gate = true;
+        } else if (!strcmp(argv[i],"-qa_gate")) {
+            qa_gate = atof(argv[i+1]);
+            cout << "qa_gate 2^" << qa_gate << endl;
+            i++;
         } else if (!strcmp(argv[i],"-target_q_delay")) {
             target_Qdelay = timeFromUs(atof(argv[i+1]));
             cout << "target_q_delay" << atof(argv[i+1]) << " us"<< endl;
@@ -491,11 +493,6 @@ int main(int argc, char **argv) {
         FatTreeTopology::set_ecn_parameters(true, !receiver_driven, ecn_low,ecn_high);
     }
 
-    if (enable_qa_gate){
-        UecSrc::_enable_qa_gate = true;
-        cout << "enable quick adapt gate" << endl;            
-    }
-
     // if(disable_fair_decrease){
     //     UecSrc::disableFairDecrease();
     // }
@@ -674,7 +671,7 @@ int main(int argc, char **argv) {
     if (sender_driven) {
         // UecSrc::parameterScaleToTargetQ();
         bool trimming_enabled = !disable_trim;
-        UecSrc::initNsccParams(network_max_unloaded_rtt, linkspeed, target_Qdelay, trimming_enabled);
+        UecSrc::initNsccParams(network_max_unloaded_rtt, linkspeed, target_Qdelay, qa_gate, trimming_enabled);
     }
 
     vector<UecPullPacer*> pacers;

@@ -74,13 +74,14 @@ double UecSrc::_qa_threshold = 4 * UecSrc::_target_Qdelay;
 
 double UecSrc::_eta = 0;
 bool UecSrc::_disable_quick_adapt = false;
-bool UecSrc::_enable_qa_gate = false;
+uint8_t UecSrc::_qa_gate = 0;
 bool UecSrc::_enable_fast_loss_recovery = false;
 
 
 void UecSrc::initNsccParams(simtime_picosec network_rtt,
                             linkspeed_bps linkspeed,
                             simtime_picosec target_Qdelay,
+                            int8_t qa_gate,
                             bool trimming_enabled){
     _reference_network_linkspeed = speedFromGbps(100);
     _reference_network_rtt = timeFromUs(12u); 
@@ -103,6 +104,12 @@ void UecSrc::initNsccParams(simtime_picosec network_rtt,
         }
     }
 
+    if (qa_gate >= 0) {
+        _qa_gate = 1 << qa_gate;
+    } else {
+        qa_gate = 3;
+        _qa_gate = 8;
+    }
     _qa_threshold = 4 * _target_Qdelay; 
 
     _scaling_factor_a = (double)_network_bdp/(double)_reference_network_bdp;
@@ -129,6 +136,7 @@ void UecSrc::initNsccParams(simtime_picosec network_rtt,
         << " _network_linkspeed=" << _network_linkspeed
         << " _network_rtt=" << _network_rtt
         << " _network_bdp=" << _network_bdp
+        << " _qa_gate=2^" << (uint32_t)qa_gate << "=" << (uint32_t)_qa_gate
         << " _qa_threshold=" << _qa_threshold
         << " _scaling_factor_a=" << _scaling_factor_a
         << " _scaling_factor_b=" << _scaling_factor_b
@@ -1045,7 +1053,7 @@ bool UecSrc::quick_adapt(bool is_loss, bool skip, simtime_picosec delay) {
     } else if (eventlist().now() > _qa_endtime){
         if (_qa_endtime != 0 
                 && (_trigger_qa || is_loss || (delay > _qa_threshold)) 
-                && _achieved_bytes < _maxwnd/8) {
+                && _achieved_bytes < _maxwnd/_qa_gate) {
 
             if (_debug_src) {
                 cout << "At " << timeAsUs(eventlist().now()) << " " << _flow.str() << " running quickadapt, CWND is " << _cwnd << " setting it to " << _achieved_bytes <<  endl;

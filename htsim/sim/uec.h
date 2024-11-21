@@ -126,7 +126,8 @@ public:
      * Initialize global NSCC parameters.
      */
     static void initNsccParams(simtime_picosec network_rtt, linkspeed_bps linkspeed, 
-                               simtime_picosec target_Qdelay, bool trimming_enabled);
+                               simtime_picosec target_Qdelay, int8_t qa_gate,
+                               bool trimming_enabled);
     /**
      * Initialize per-connection NSCC parameters.
      */
@@ -196,7 +197,7 @@ public:
     static LoadBalancing_Algo _load_balancing_algo;
 
     static bool _disable_quick_adapt;
-    static bool _enable_qa_gate;
+    static uint8_t _qa_gate;
 
     static bool _enable_fast_loss_recovery;
 
