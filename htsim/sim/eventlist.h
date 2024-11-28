@@ -16,6 +16,7 @@ public:
     EventSource(const string& name);
     virtual ~EventSource() {};
     virtual void doNextEvent() = 0;
+    virtual bool isTraffic() {return true;}
     inline EventList& eventlist() const {return _eventlist;}
 protected:
     EventList& _eventlist;
@@ -39,6 +40,7 @@ public:
     static void reschedulePendingSource(EventSource &src, simtime_picosec when);
     static void triggerIsPending(TriggerTarget &target);
     static inline simtime_picosec now() {return EventList::_lasteventtime;}
+    static inline int trafficEventCount() {return EventList::_trafficeventcount;}
     static Handle nullHandle() {return _pendingsources.end();}
 
 
@@ -54,6 +56,7 @@ private:
     static vector <TriggerTarget*> _pending_triggers;
 
     static int _instanceCount;
+    static int _trafficeventcount; // number of events that are not loggers/samplers
     static EventList* _theEventList;
 };
 

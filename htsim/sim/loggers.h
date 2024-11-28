@@ -124,6 +124,7 @@ public:
     QueueLoggerEmpty(simtime_picosec period, EventList& eventlist);
     virtual void logQueue(BaseQueue& queue, QueueEvent ev, Packet& pkt);
     void doNextEvent();
+    bool isTraffic() { return false;};
     static string event_to_str(RawLogEvent& event);
     void reset_count();
     simtime_picosec _last_transition;
@@ -142,6 +143,7 @@ class QueueLoggerSampling : public QueueLogger, public EventSource {
     QueueLoggerSampling(simtime_picosec period, EventList& eventlist);
     void logQueue(BaseQueue& queue, QueueEvent ev, Packet& pkt);
     void doNextEvent();
+    bool isTraffic() { return false;};
     static string event_to_str(RawLogEvent& event);
  private:
     BaseQueue* _queue;
@@ -165,6 +167,7 @@ class MultiQueueLoggerSampling : public QueueLogger, public EventSource {
     MultiQueueLoggerSampling(id_t id, simtime_picosec period, EventList& eventlist);
     void logQueue(BaseQueue& queue, QueueEvent ev, Packet& pkt);
     void doNextEvent();
+    bool isTraffic() { return false;};
     static string event_to_str(RawLogEvent& event);
  private:
     int _id;
@@ -180,6 +183,7 @@ class NicLoggerSampling: public Logger, public EventSource {
 public:    
     NicLoggerSampling(simtime_picosec period, EventList& eventlist);
     virtual void doNextEvent();
+    bool isTraffic() { return false;};
     void monitorNic(NIC* nic);
     static string event_to_str(RawLogEvent& event);
     
@@ -197,6 +201,7 @@ class SinkLoggerSampling : public Logger, public EventSource {
     SinkLoggerSampling(simtime_picosec period, EventList& eventlist,
                        Logger::EventType sink_type, int _event_type);
     virtual void doNextEvent();
+    bool isTraffic() { return false;};
     void monitorSink(DataReceiver* sink);
     void monitorMultipathSink(DataReceiver* sink);
  protected:
@@ -234,6 +239,7 @@ class SwiftSinkLoggerSampling : public SinkLoggerSampling {
  public:
     SwiftSinkLoggerSampling(simtime_picosec period, EventList& eventlist);
     virtual void doNextEvent();
+    bool isTraffic() { return false;};
     static string event_to_str(RawLogEvent& event);
 private:
     vector<vector<SwiftPacket::seq_t> > _last_sub_seq;
@@ -243,6 +249,7 @@ class STrackSinkLoggerSampling : public SinkLoggerSampling {
  public:
     STrackSinkLoggerSampling(simtime_picosec period, EventList& eventlist);
     virtual void doNextEvent();
+    bool isTraffic() { return false;};
     static string event_to_str(RawLogEvent& event);
 private:
     vector<vector<STrackPacket::seq_t> > _last_sub_seq;
@@ -250,6 +257,7 @@ private:
 
 class NdpSinkLoggerSampling : public SinkLoggerSampling {
     virtual void doNextEvent();
+    bool isTraffic() { return false;};
  public:
     NdpSinkLoggerSampling(simtime_picosec period, EventList& eventlist);
     static string event_to_str(RawLogEvent& event);
@@ -257,6 +265,7 @@ class NdpSinkLoggerSampling : public SinkLoggerSampling {
 
 class RoceSinkLoggerSampling : public SinkLoggerSampling {
     virtual void doNextEvent();
+    bool isTraffic() { return false;};
  public:
     RoceSinkLoggerSampling(simtime_picosec period, EventList& eventlist);
     static string event_to_str(RawLogEvent& event);
@@ -264,6 +273,7 @@ class RoceSinkLoggerSampling : public SinkLoggerSampling {
 
 class HPCCSinkLoggerSampling : public SinkLoggerSampling {
     virtual void doNextEvent();
+    bool isTraffic() { return false;};
  public:
     HPCCSinkLoggerSampling(simtime_picosec period, EventList& eventlist);
     static string event_to_str(RawLogEvent& event);
@@ -274,6 +284,7 @@ class MemoryLoggerSampling : public Logger, public EventSource {
  public:
     MemoryLoggerSampling(simtime_picosec period, EventList& eventlist);
     void doNextEvent();
+    bool isTraffic() { return false;};
     void monitorTcpSink(TcpSink* sink);
     void monitorTcpSource(TcpSrc* sink);
     void monitorMultipathTcpSink(MultipathTcpSink* sink);
@@ -293,6 +304,7 @@ class AggregateTcpLogger : public Logger, public EventSource {
  public:
     AggregateTcpLogger(simtime_picosec period, EventList& eventlist);
     void doNextEvent();
+    bool isTraffic() { return false;};
     void monitorTcp(TcpSrc& tcp);
     static string event_to_str(RawLogEvent& event);
  private:
@@ -315,6 +327,7 @@ class ReorderBufferLoggerSampling: public ReorderBufferLogger, public EventSourc
 public:
     ReorderBufferLoggerSampling(simtime_picosec period, EventList& eventlist);
     void doNextEvent();
+    bool isTraffic() { return false;};
     void logBuffer(BufferEvent ev);
 private:
     simtime_picosec _period;
