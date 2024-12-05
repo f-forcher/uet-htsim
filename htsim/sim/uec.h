@@ -197,7 +197,7 @@ public:
     static LoadBalancing_Algo _load_balancing_algo;
 
     static bool _disable_quick_adapt;
-    static uint8_t _qa_gate;
+    static uint8_t _qa_gate_denom;
 
     static bool _enable_fast_loss_recovery;
 
