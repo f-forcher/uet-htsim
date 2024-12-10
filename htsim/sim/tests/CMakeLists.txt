@@ -1,10 +1,7 @@
 # -------------------------------
 # Executable Definitions
 # -------------------------------
-
-# List of Executables and Their Main Source Files
-# Each executable corresponds to a target in the Makefile
-
+# List of Executables and Their Main Source Files.
 add_executable(htsim_dumbell_ndp main_dumbell_ndp.cpp)
 add_executable(htsim_dumbell_ndptunnel main_dumbell_ndptunnel.cpp)
 add_executable(htsim_dumbell_tcp main_dumbell_tcp.cpp)
@@ -23,8 +20,6 @@ add_executable(htsim_dumbell_uec main_dumbell_uec.cpp)
 # -------------------------------
 # Linking Executables with Libraries
 # -------------------------------
-
-# Link each executable with the 'htsim' library defined in the parent directory
 set(ALL_EXECUTABLES
     htsim_dumbell_ndp
     htsim_dumbell_ndptunnel
@@ -42,6 +37,8 @@ set(ALL_EXECUTABLES
     htsim_dumbell_uec
 )
 foreach(EXECUTABLE ${ALL_EXECUTABLES})
+    # Link each executable with the 'htsim' library defined in the parent directory.
     target_link_libraries(${EXECUTABLE} PRIVATE htsim)
+    # Add a post-build command to explicitly remove and recreate the symlink for all previous executables.
     add_symlink_target(${EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR})
 endforeach()

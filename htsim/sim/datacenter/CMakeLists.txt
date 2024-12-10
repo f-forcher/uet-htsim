@@ -14,36 +14,21 @@ set(COMMON_SOURCES
     generic_topology.cpp
 )
 
-# Add Executables
-# htsim_tcp
+# -------------------------------
+# Executable Definitions
+# -------------------------------
+# List of Executables and Their Main Source Files.
 add_executable(htsim_tcp main_tcp.cpp ${COMMON_SOURCES} )
-target_link_libraries(htsim_tcp PRIVATE htsim)
-
-# htsim_ndp
 add_executable(htsim_ndp main_ndp.cpp ${COMMON_SOURCES})
-target_link_libraries(htsim_ndp PRIVATE htsim)
-
-# htsim_roce
 add_executable(htsim_roce main_roce.cpp ${COMMON_SOURCES})
-target_link_libraries(htsim_roce PRIVATE htsim)
-
-# htsim_swift
 add_executable(htsim_swift main_swift.cpp ${COMMON_SOURCES} )
-target_link_libraries(htsim_swift PRIVATE htsim)
-
-# htsim_hpcc
 add_executable(htsim_hpcc main_hpcc.cpp ${COMMON_SOURCES})
-target_link_libraries(htsim_hpcc PRIVATE htsim)
-
-# htsim_eqds
 add_executable(htsim_eqds main_eqds.cpp ${COMMON_SOURCES})
-target_link_libraries(htsim_eqds PRIVATE htsim)
-
-# htsim_uec
 add_executable(htsim_uec main_uec.cpp ${COMMON_SOURCES})
-target_link_libraries(htsim_uec PRIVATE htsim)
 
-# Add a post-build command to explicitly remove and recreate the symlink for all previous executables.
+# -------------------------------
+# Linking Executables with Libraries
+# -------------------------------
 set (ALL_EXECUTABLES
     htsim_tcp
     htsim_ndp
@@ -54,5 +39,8 @@ set (ALL_EXECUTABLES
     htsim_uec
 )
 foreach(EXECUTABLE ${ALL_EXECUTABLES})
+    # Link each executable with the 'htsim' library defined in the parent directory.
+    target_link_libraries(${EXECUTABLE} PRIVATE htsim)
+    # Add a post-build command to explicitly remove and recreate the symlink for all previous executables.
     add_symlink_target(${EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR})
 endforeach()
