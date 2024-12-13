@@ -1,0 +1,117 @@
+cmake_minimum_required(VERSION 3.10)
+
+project(htsim_project LANGUAGES CXX)
+
+# Set C++ standard and compiler flags
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF) # Ensures GNU extensions are disabled
+
+# Set compiler flags
+add_compile_options(
+    -Wall
+    -g
+    -Wsign-compare
+    -Wuninitialized
+    -fPIE
+    -O3
+)
+# Optionally enable sanitizers
+# -fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined"
+
+# Function to add a symlink creation step for an executable. 
+# Used to create a symlink in the source directory to the executable 
+# in the build directory for easier access and backward compatibility.
+function(add_symlink_target EXECUTABLE TARGET_DIR)
+    add_custom_command(
+        TARGET ${EXECUTABLE}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E remove ${TARGET_DIR}/${EXECUTABLE} # Remove existing symlink
+        COMMAND ${CMAKE_COMMAND} -E create_symlink
+            $<TARGET_FILE:${EXECUTABLE}>  # Path to the executable
+            ${TARGET_DIR}/${EXECUTABLE}  # Path for the symlink
+        COMMENT "Removing and recreating symlink for ${EXECUTABLE} in ${TARGET_DIR}"
+    )
+endfunction()
+
+# Define source files
+set(SOURCE_FILES
+    aeolusqueue.cpp
+    callback_pipe.cpp
+    cbr.cpp
+    cbrpacket.cpp
+    clock.cpp
+    cnppacket.cpp
+    compositeprioqueue.cpp
+    compositequeue.cpp
+    config.cpp
+    cpqueue.cpp
+    dcqcn.cpp
+    dcqcn_logger.cpp
+    dctcp.cpp
+    dctcp_transfer.cpp
+    ecnprioqueue.cpp
+    ecnqueue.cpp
+    eqds.cpp
+    eqds_logger.cpp
+    eqdspacket.cpp
+    eth_pause_packet.cpp
+    eventlist.cpp
+    exoqueue.cpp
+    fairpullqueue.cpp
+    hpcc.cpp
+    hpccpacket.cpp
+    logfile.cpp
+    loggers.cpp
+    meter.cpp
+    mtcp.cpp
+    ndp.cpp
+    ndp_transfer.cpp
+    ndppacket.cpp
+    ndptunnel.cpp
+    ndptunnelpacket.cpp
+    network.cpp
+    oversubscribed_cc.cpp
+    pciemodel.cpp
+    pipe.cpp
+    priopullqueue.cpp
+    prioqueue.cpp
+    qcn.cpp
+    queue.cpp
+    queue_lossless.cpp
+    queue_lossless_input.cpp
+    queue_lossless_output.cpp
+    randomqueue.cpp
+    rng.cpp
+    roce.cpp
+    rocepacket.cpp
+    route.cpp
+    routetable.cpp
+    sent_packets.cpp
+    strack.cpp
+    strackpacket.cpp
+    swift.cpp
+    swift_scheduler.cpp
+    swiftpacket.cpp
+    switch.cpp
+    tcp.cpp
+    tcp_periodic.cpp
+    tcp_transfer.cpp
+    tcppacket.cpp
+    trigger.cpp
+    uec.cpp
+    uec_logger.cpp
+    uecpacket.cpp
+)
+
+# Create static library
+add_library(htsim STATIC ${SOURCE_FILES})
+target_include_directories(htsim PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}) # Needed for header-only libraries (e.g., loggertypes.h).
+
+# Add subdirectories
+add_subdirectory(tests)
+add_subdirectory(datacenter)
+
+# Define executables and link with htsim library
+add_executable(parse_output parse_output.cpp)
+target_link_libraries(parse_output PRIVATE htsim)
