@@ -118,7 +118,7 @@ void UecSrc::initNsccParams(simtime_picosec network_rtt,
     _delay_alpha = 0.0125;
 
     _adjust_period_threshold = _network_rtt;
-    _adjust_bytes_threshold = (uint32_t)(16000*_scaling_factor_b);
+    _adjust_bytes_threshold = 8 * _mtu;
 
     cout << "Initializing static NSCC parameters:"
         << " _reference_network_linkspeed=" << _reference_network_linkspeed
