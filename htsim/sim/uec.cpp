@@ -1134,7 +1134,7 @@ void UecSrc::fulfill_adjustment(){
 
     if ((eventlist().now() - _last_adjust_time) >= _adjust_period_threshold) {
         _cwnd += _eta;
-        _nscc_stats.inc_eta_bytes += _eta;
+        _nscc_overall_stats.inc_eta_bytes += _eta;
         _nscc_fulfill_stats.inc_eta_bytes += _eta;
         _last_adjust_time = eventlist().now();
     }
