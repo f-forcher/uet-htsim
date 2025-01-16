@@ -117,8 +117,8 @@ void UecSrc::initNsccParams(simtime_picosec network_rtt,
 
     _delay_alpha = 0.0125;
 
-    _adjust_period_threshold = _reference_network_rtt;
-    _adjust_bytes_threshold = (uint32_t)(16000*_scaling_factor_b);
+    _adjust_period_threshold = _network_rtt;
+    _adjust_bytes_threshold = 8 * _mtu;
 
     cout << "Initializing static NSCC parameters:"
         << " _reference_network_linkspeed=" << _reference_network_linkspeed
@@ -1131,6 +1131,13 @@ void UecSrc::fulfill_adjustment(){
 
     _nscc_overall_stats.inc_fair_bytes += _nscc_fulfill_stats.inc_fair_bytes;
     _nscc_overall_stats.inc_prop_bytes += _nscc_fulfill_stats.inc_prop_bytes;
+
+    if ((eventlist().now() - _last_adjust_time) >= _adjust_period_threshold) {
+        _cwnd += _eta;
+        _nscc_overall_stats.inc_eta_bytes += _eta;
+        _nscc_fulfill_stats.inc_eta_bytes += _eta;
+        _last_adjust_time = eventlist().now();
+    }
 
     if (_debug_src) {
         cout << timeAsUs(eventlist().now())
