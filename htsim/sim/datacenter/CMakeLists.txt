@@ -47,7 +47,5 @@ foreach(EXECUTABLE ${ALL_EXECUTABLES})
     # Link each executable with the 'htsim' library defined in the parent directory.
     target_link_libraries(${EXECUTABLE} PRIVATE htsim_dc)
     target_link_libraries(${EXECUTABLE} PRIVATE htsim)
-    # Add a post-build command to explicitly remove and recreate the symlink for all previous executables.
-    add_symlink_target(${EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR})
 endforeach()
 
