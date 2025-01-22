@@ -126,7 +126,8 @@ public:
      * Initialize global NSCC parameters.
      */
     static void initNsccParams(simtime_picosec network_rtt, linkspeed_bps linkspeed, 
-                               simtime_picosec target_Qdelay, bool trimming_enabled);
+                               simtime_picosec target_Qdelay, int8_t qa_gate,
+                               bool trimming_enabled);
     /**
      * Initialize per-connection NSCC parameters.
      */
@@ -195,7 +196,8 @@ public:
     static Sender_CC _sender_cc_algo;
     static LoadBalancing_Algo _load_balancing_algo;
 
-    static bool _enable_qa_gate;
+    static bool _disable_quick_adapt;
+    static uint8_t _qa_gate;
 
     static bool _enable_fast_loss_recovery;
 
@@ -367,7 +369,7 @@ public:
     //debug
     static flowid_t _debug_flowid;
 private:
-    bool quick_adapt(bool is_loss, simtime_picosec avgqdelay);
+    bool quick_adapt(bool is_loss, bool skip, simtime_picosec delay);
     void fair_increase(uint32_t newly_acked_bytes);
     void proportional_increase(uint32_t newly_acked_bytes,simtime_picosec delay);
     void fast_increase(uint32_t newly_acked_bytes,simtime_picosec delay);
@@ -393,6 +395,7 @@ private:
     uint16_t _ev_bad_count;
 
     // RTT estimate data for RTO and sender based CC.
+    simtime_picosec _rtt, _mdev, _rto, _raw_rtt;
     bool _rtx_timeout_pending;       // is the RTO running?
     simtime_picosec _rto_send_time;  // when we sent the oldest packet that the RTO is waiting on.
     simtime_picosec _rtx_timeout;    // when the RTO is currently set to expire
@@ -412,9 +415,9 @@ private:
     uint32_t _fi_count = 0;
     bool _trigger_qa = false;
     simtime_picosec _qa_endtime = 0;
-    mem_b _bytes_to_ignore = 0;
-    mem_b _bytes_ignored = 0;
-    mem_b _inc_bytes = 0;
+    uint32_t _bytes_to_ignore = 0;
+    uint32_t _bytes_ignored = 0;
+    uint32_t _inc_bytes = 0;
     simtime_picosec _avg_delay = 0;
 
     simtime_picosec _last_eta_time = 0;

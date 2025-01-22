@@ -25,30 +25,30 @@ Using binary: ./htsim_uec
 Experiment: Small 16 node incast 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/incast.cm -sender_cc_only -end 3000 
-[PASS] Tail FCT 2471.09 us below the target of 2550 us
+[PASS] Tail FCT 2460.98 us below the target of 2550 us
 [PASS] Connection count 15
-FCT Spread 1292.63 -> 2471.09 ratio 1.911676195044212
-Summary: New: 7350 Rtx: 1013 RTS: 0 Bounced: 0 ACKs: 7209 NACKs: 1013 Pulls: 0
+FCT Spread 1192.63 -> 2460.98 ratio 2.0634899340113866
+Summary: New: 7350 Rtx: 1144 RTS: 0 Bounced: 0 ACKs: 7238 NACKs: 1144 Pulls: 0
 Using binary: ./htsim_uec
 
 
 Experiment: 128 node incast 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/incast_128.cm -sender_cc_only -end 30000 
-[PASS] Tail FCT 21094.7 us below the target of 23000 us
+[PASS] Tail FCT 21092.9 us below the target of 23000 us
 [PASS] Connection count 127
-FCT Spread 9615.65 -> 21094.7 ratio 2.19378825144426
-Summary: New: 62230 Rtx: 84685 RTS: 0 Bounced: 0 ACKs: 62149 NACKs: 84685 Pulls: 0
+FCT Spread 9271.7 -> 21092.9 ratio 2.2749765415188152
+Summary: New: 62230 Rtx: 84586 RTS: 0 Bounced: 0 ACKs: 62197 NACKs: 84586 Pulls: 0
 Using binary: ./htsim_uec
 
 
 Experiment: 1024 node incast 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/incast_1024_100K.cm -sender_cc_only -end 15000 -cwnd 50 
-[FAIL] Tail FCT 10900.2 us above the target of 8950 us
+[FAIL] Tail FCT 10917.1 us above the target of 8950 us
 [PASS] Connection count 1023
-FCT Spread 892.049 -> 10900.2 ratio 12.219283918260096
-Summary: New: 25575 Rtx: 517779 RTS: 0 Bounced: 0 ACKs: 25580 NACKs: 501062 Pulls: 0
+FCT Spread 1068.97 -> 10917.1 ratio 10.212728140172315
+Summary: New: 25575 Rtx: 518006 RTS: 0 Bounced: 0 ACKs: 25580 NACKs: 501289 Pulls: 0
 Using binary: ./htsim_uec
 
 
@@ -126,27 +126,27 @@ Using binary: ./htsim_uec
 Experiment: Large permutation (1024 nodes), single path. 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -sender_cc_only -end 3000 -paths 1 
-[PASS] Tail FCT 1011.06 us below the target of 1300 us
+[PASS] Tail FCT 1013.03 us below the target of 1300 us
 [PASS] Connection count 1024
-FCT Spread 167.916 -> 1011.06 ratio 6.021224898163367
-Summary: New: 501760 Rtx: 29846 RTS: 0 Bounced: 0 ACKs: 430894 NACKs: 29846 Pulls: 0
+FCT Spread 168.059 -> 1013.03 ratio 6.027823561963358
+Summary: New: 501760 Rtx: 29848 RTS: 0 Bounced: 0 ACKs: 431608 NACKs: 29848 Pulls: 0
 Using binary: ./htsim_uec
 
 
 Experiment: Oversubscribed permutation with multipath 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 2000 -paths 128 -sender_cc_only -topo topologies/leaf_spine_1024_oversub.topo 
-[PASS] Tail FCT 748.327 us below the target of 880 us
+[PASS] Tail FCT 758.051 us below the target of 880 us
 [PASS] Connection count 1024
-FCT Spread 167.552 -> 748.327 ratio 4.466237347211612
-Summary: New: 501760 Rtx: 28152 RTS: 0 Bounced: 0 ACKs: 429169 NACKs: 28152 Pulls: 0
+FCT Spread 167.547 -> 758.051 ratio 4.524408076539718
+Summary: New: 501760 Rtx: 28058 RTS: 0 Bounced: 0 ACKs: 430624 NACKs: 28058 Pulls: 0
 Using binary: ./htsim_uec
 
 
 Experiment: 8:1 oversubscribed permutation with multipath 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 2000 -sender_cc_only -paths 128 -topo topologies/leaf_spine_1024_oversub_8-1.topo 
-[PASS] Tail FCT 1400.59 us below the target of 1760 us
+[PASS] Tail FCT 1411.89 us below the target of 1760 us
 [PASS] Connection count 1024
-FCT Spread 167.353 -> 1400.59 ratio 8.369076144437207
-Summary: New: 501760 Rtx: 36303 RTS: 0 Bounced: 0 ACKs: 448712 NACKs: 36303 Pulls: 0
+FCT Spread 167.307 -> 1411.89 ratio 8.438917678280049
+Summary: New: 501760 Rtx: 36145 RTS: 0 Bounced: 0 ACKs: 449450 NACKs: 36145 Pulls: 0
