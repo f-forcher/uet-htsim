@@ -19,6 +19,16 @@ add_compile_options(
 # Optionally enable sanitizers
 # -fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined"
 
+# enable LTO in release builds
+include(CheckIPOSupported)
+check_ipo_supported(RESULT HAVE_IPO)
+if(CMAKE_BUILD_TYPE STREQUAL "Release" OR
+   CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+  if(HAVE_IPO)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
+  endif()
+endif()
+
 # Function to add a symlink creation step for an executable. 
 # Used to create a symlink in the source directory to the executable 
 # in the build directory for easier access and backward compatibility.
