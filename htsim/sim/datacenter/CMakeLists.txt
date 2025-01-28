@@ -1,5 +1,5 @@
 # List of common source files shared among executables.
-set(COMMON_SOURCES
+set(LIB_SOURCES
     firstfit.cpp
     vl2_topology.cpp
     fat_tree_topology.cpp
@@ -14,17 +14,22 @@ set(COMMON_SOURCES
     generic_topology.cpp
 )
 
+# Create static library
+add_library(htsim_dc STATIC ${LIB_SOURCES})
+target_include_directories(htsim_dc PUBLIC ${PROJECT_SOURCE_DIR}) 
+target_include_directories(htsim_dc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}) 
+
 # -------------------------------
 # Executable Definitions
 # -------------------------------
 # List of Executables and Their Main Source Files.
-add_executable(htsim_tcp main_tcp.cpp ${COMMON_SOURCES} )
-add_executable(htsim_ndp main_ndp.cpp ${COMMON_SOURCES})
-add_executable(htsim_roce main_roce.cpp ${COMMON_SOURCES})
-add_executable(htsim_swift main_swift.cpp ${COMMON_SOURCES} )
-add_executable(htsim_hpcc main_hpcc.cpp ${COMMON_SOURCES})
-add_executable(htsim_eqds main_eqds.cpp ${COMMON_SOURCES})
-add_executable(htsim_uec main_uec.cpp ${COMMON_SOURCES})
+add_executable(htsim_tcp main_tcp.cpp)
+add_executable(htsim_ndp main_ndp.cpp)
+add_executable(htsim_roce main_roce.cpp)
+add_executable(htsim_swift main_swift.cpp)
+add_executable(htsim_hpcc main_hpcc.cpp)
+add_executable(htsim_eqds main_eqds.cpp)
+add_executable(htsim_uec main_uec.cpp)
 
 # -------------------------------
 # Linking Executables with Libraries
@@ -40,7 +45,7 @@ set (ALL_EXECUTABLES
 )
 foreach(EXECUTABLE ${ALL_EXECUTABLES})
     # Link each executable with the 'htsim' library defined in the parent directory.
+    target_link_libraries(${EXECUTABLE} PRIVATE htsim_dc)
     target_link_libraries(${EXECUTABLE} PRIVATE htsim)
-    # Add a post-build command to explicitly remove and recreate the symlink for all previous executables.
-    add_symlink_target(${EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR})
 endforeach()
+
