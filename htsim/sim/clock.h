@@ -12,6 +12,7 @@
 class Clock : public EventSource {
 public:
         Clock(simtime_picosec period, EventList& eventlist); 
+        bool isTraffic() {return false;};
         void doNextEvent();
 private:
         simtime_picosec _period;

@@ -5,6 +5,7 @@
 
 simtime_picosec EventList::_endtime = 0;
 simtime_picosec EventList::_lasteventtime = 0;
+int EventList::_trafficeventcount = 0;
 EventList::pendingsources_t EventList::_pendingsources;
 vector <TriggerTarget*> EventList::_pending_triggers;
 int EventList::_instanceCount = 0;
@@ -53,9 +54,13 @@ EventList::doNextEvent()
     if (_pendingsources.empty())
         return false;
     
-    simtime_picosec nexteventtime = _pendingsources.begin()->first;
-    EventSource* nextsource = _pendingsources.begin()->second;
-    _pendingsources.erase(_pendingsources.begin());
+    pendingsources_t::iterator i = _pendingsources.begin();
+    simtime_picosec nexteventtime = i->first;
+    EventSource* nextsource = i->second;
+    if (nextsource->isTraffic()) {
+        _trafficeventcount--;
+    } 
+    _pendingsources.erase(i);
     assert(nexteventtime >= _lasteventtime);
     _lasteventtime = nexteventtime; // set this before calling doNextEvent, so that this::now() is accurate
     nextsource->doNextEvent();
@@ -67,16 +72,25 @@ void
 EventList::sourceIsPending(EventSource &src, simtime_picosec when) 
 {
     assert(when>=now());
-    if (_endtime==0 || when<_endtime)
+    if ((_endtime==0 || when<_endtime) && (src.isTraffic() ||
+        (_trafficeventcount > 0 || _lasteventtime == 0))) {
         _pendingsources.insert(make_pair(when,&src));
+        if (src.isTraffic()) {
+            _trafficeventcount++;
+        }
+    }
 }
 
 EventList::Handle
 EventList::sourceIsPendingGetHandle(EventSource &src, simtime_picosec when) 
 {
     assert(when>=now());
-    if (_endtime==0 || when<_endtime) {
+    if ((_endtime==0 || when<_endtime) && (src.isTraffic() ||
+        (_trafficeventcount > 0 || _lasteventtime == 0))) {
         EventList::Handle handle =_pendingsources.insert(make_pair(when,&src));
+        if (src.isTraffic()) {
+            _trafficeventcount++;
+        }
         return handle;
     }
     return _pendingsources.end();
@@ -92,6 +106,9 @@ EventList::cancelPendingSource(EventSource &src) {
     pendingsources_t::iterator i = _pendingsources.begin();
     while (i != _pendingsources.end()) {
         if (i->second == &src) {
+            if (src.isTraffic()) {
+                _trafficeventcount--;
+            }
             _pendingsources.erase(i);
             return;
         }
@@ -108,6 +125,9 @@ EventList::cancelPendingSourceByTime(EventSource &src, simtime_picosec when) {
 
     for (auto i = range.first; i != range.second; ++i) {
         if (i->second == &src) {
+            if (src.isTraffic()) {
+                _trafficeventcount--;
+            }
             _pendingsources.erase(i);
             return;
         }
@@ -124,6 +144,9 @@ void EventList::cancelPendingSourceByHandle(EventSource &src, EventList::Handle 
     assert(handle != _pendingsources.end());
     assert(handle->first >= now());
     
+    if (src.isTraffic()) {
+        _trafficeventcount--;
+    }
     _pendingsources.erase(handle);
 }
 
