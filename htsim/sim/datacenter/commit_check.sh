@@ -1,5 +1,10 @@
+#!/usr/bin/env bash
+
 # This script runs the validation script on a list of files and then runs the regression check script
 # on the output files.
+
+# switch to our own directory
+cd "$(dirname "${BASH_SOURCE[0]}")"
 
 # The output directory where the output files will be stored. These files will be used by the regression
 # check script to check for regressions compared to the baseline files in the `validate_outputs` directory.
@@ -35,7 +40,7 @@ branch_to_compare="${remote}/${branchname}"
 echo "Using ${branch_to_compare} as baseline for this comparison."
 
 # Fetch the latest changes from the remote repository
-git fetch ${remote}
+env GIT_CONFIG_GLOBAL=/dev/null git fetch ${remote}
 if [ $? -ne "0" ]
 then
   echo "git fetch failed, aborting."
@@ -61,7 +66,7 @@ for file in "${files[@]}"; do
     python3 validate.py $file >$output_relative_dir
 
     # Get the old output file from branch_to_compare and store it in the old_validate_dir
-    git show refs/remotes/$branch_to_compare:htsim/sim/datacenter/$output_relative_dir >$old_validate_dir/$output_filename
+    env GIT_CONFIG_GLOBAL=/dev/null git show refs/remotes/$branch_to_compare:htsim/sim/datacenter/$output_relative_dir >$old_validate_dir/$output_filename
 
     # Run the regression check script on the output file
     # Example: if output_relative_dir is "validate_outputs/validate_uec_sender.out"

@@ -901,7 +901,6 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
     //compute RTT sample
     auto acked_psn = pkt.acked_psn();
     auto i = _tx_bitmap.find(acked_psn);
-    auto rtx_time = _rtx_times.find(acked_psn);
     uint32_t ooo = pkt.ooo();
 
     mem_b pkt_size;
