@@ -88,7 +88,7 @@ def run_experiments(input_filename):
             if (debug):
                 print("Connections in CM file:", connection_count)
         else:
-            print("Error getting connection count for file '{filename}': {errors.decode()}")
+            print(f"Error getting connection count for file '{filename}': {errors.decode()}")
 
 
         print ("\n\nExperiment:",experiment_name.rstrip("\n"),"\n==========================================")
