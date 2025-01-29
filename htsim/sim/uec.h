@@ -277,16 +277,16 @@ public:
     mem_b getNextPacketSize();
     void quick_adapt(bool trimmed);
     void updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
-    void updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes);
+    void updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes, bool last_hop);
 
     void updateCwndOnAck_DCTCP(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
-    void updateCwndOnNack_DCTCP(bool skip, mem_b nacked_bytes);
+    void updateCwndOnNack_DCTCP(bool skip, mem_b nacked_bytes, bool last_hop);
 
     void dontUpdateCwndOnAck(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
-    void dontUpdateCwndOnNack(bool skip, mem_b nacked_bytes);
+    void dontUpdateCwndOnNack(bool skip, mem_b nacked_bytes, bool last_hop);
 
     void (UecSrc::*updateCwndOnAck)(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
-    void (UecSrc::*updateCwndOnNack)(bool skip, mem_b nacked_bytes);
+    void (UecSrc::*updateCwndOnNack)(bool skip, mem_b nacked_bytes, bool last_hop);
 
     uint16_t nextEntropy_bitmap();
     uint16_t nextEntropy_REPS();
@@ -500,7 +500,7 @@ class UecSink : public DataReceiver {
     uint64_t buildSackBitmap(UecBasePacket::seq_t ref_epsn);
     UecAckPacket* sack(uint16_t path_id, UecBasePacket::seq_t seqno, UecBasePacket::seq_t acked_psn, bool ce, bool rtx_echo);
 
-    UecNackPacket* nack(uint16_t path_id, UecBasePacket::seq_t seqno);
+    UecNackPacket* nack(uint16_t path_id, UecBasePacket::seq_t seqno, bool last_hop, bool ecn_echo);
 
     UecBasePacket::pull_quanta backlog() {
         if (_highest_pull_target > _latest_pull)

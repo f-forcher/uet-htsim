@@ -1017,7 +1017,7 @@ void UecSrc::updateCwndOnAck_DCTCP(bool skip, simtime_picosec rtt, mem_b newly_a
     }
 }
 
-void UecSrc::updateCwndOnNack_DCTCP(bool skip, mem_b nacked_bytes) {
+void UecSrc::updateCwndOnNack_DCTCP(bool skip, mem_b nacked_bytes, bool last_hop) {
     _cwnd -= nacked_bytes;
     _cwnd = max(_cwnd, (mem_b)_mtu);
 }
@@ -1260,7 +1260,7 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
         cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " final _nscc_cwnd " << _cwnd << " _basertt " << timeAsUs(_base_rtt)<< endl;
 }
 
-void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes) {
+void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes, bool last_hop) {
     bool adjust_cwnd = true;
 
     _bytes_ignored += nacked_bytes;
@@ -1281,13 +1281,13 @@ void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes) {
         adjust_cwnd = false;
     }
 
-    if (adjust_cwnd) {
+    if (adjust_cwnd && (!_receiver_based_cc || !last_hop)) {
         _cwnd -= nacked_bytes;
         set_cwnd_bounds();
     }
 }
 
-void UecSrc::dontUpdateCwndOnNack(bool skip, mem_b nacked_bytes) {
+void UecSrc::dontUpdateCwndOnNack(bool skip, mem_b nacked_bytes, bool last_hop) {
 }
 
 void UecSrc::update_base_rtt(simtime_picosec raw_rtt, uint16_t packet_size){
@@ -1455,7 +1455,7 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
             << " trimming " << endl;
     }
     if (_sender_based_cc){
-        (this->*updateCwndOnNack)(ev, pkt_size);
+        (this->*updateCwndOnNack)(ev, pkt_size,pkt.last_hop());
     }
 
     if (_debug_src)
@@ -1477,7 +1477,10 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
         recalculateRTO();
     }
 
-    (this->*processEv)(ev, PATH_NACK);
+    if (pkt.last_hop())
+        (this->*processEv)(ev, pkt.ecn_echo() ? PATH_ECN : PATH_GOOD);
+    else
+        (this->*processEv)(ev, PATH_NACK);
 
     sendIfPermitted();
 }
@@ -2560,9 +2563,14 @@ void UecSink::processTrimmed(const UecDataPacket& pkt) {
     _nic.logReceivedTrim(pkt.size());
 
     _stats.trimmed++;
+    
+    /*Currently, the trimming support in htsim does not change (or support) DSCP code points. However, upon trim, it
+    does save the TTL of the packet at the trim point. To detect last hop trims, we compare the received TTL to the 
+    one saved in the trim packet. The "-2” part comes from the fact that every hop in htsim is composed of a queue 
+    (which models bandwidth + buffer) and a pipe (which models propagation latency).*/
+    bool is_last_hop = (pkt.nexthop() - pkt.trim_hop() - 2) == 0;
+    
     if (_oversubscribed_cc){
-        bool is_last_hop = (pkt.nexthop() - pkt.trim_hop() - 2) == 0;
-
         _receiver_cc->trimmed_received(is_last_hop);
     }
 
@@ -2589,7 +2597,7 @@ void UecSink::processTrimmed(const UecDataPacket& pkt) {
              << " rtx_backlog " << rtx_backlog() << " at " << timeAsUs(getSrc()->eventlist().now())
              << " flow " << _src->flow()->str() << endl;
 
-    UecNackPacket* nack_packet = nack(pkt.path_id(), pkt.epsn());
+    UecNackPacket* nack_packet = nack(pkt.path_id(), pkt.epsn(), is_last_hop, (bool)(pkt.flags() & ECN_CE));
 
     // nack_packet->sendOn();
     _nic.sendControlPacket(nack_packet, NULL, this);
@@ -2815,8 +2823,10 @@ UecAckPacket* UecSink::sack(uint16_t path_id, UecBasePacket::seq_t seqno, UecBas
     return pkt;
 }
 
-UecNackPacket* UecSink::nack(uint16_t path_id, UecBasePacket::seq_t seqno) {
+UecNackPacket* UecSink::nack(uint16_t path_id, UecBasePacket::seq_t seqno,bool last_hop, bool ecn_echo) {
     UecNackPacket* pkt = UecNackPacket::newpkt(_flow, NULL, seqno, path_id,  _recvd_bytes,_rcv_cwnd_pen,_srcaddr);
+    pkt->set_last_hop(last_hop);
+    pkt->set_ecn_echo(ecn_echo);
     return pkt;
 }
 

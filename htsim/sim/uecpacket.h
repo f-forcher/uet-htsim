@@ -294,6 +294,7 @@ public:
 
         p->_recvd_bytes = recv_bytes;
         p->_target_bytes = tbytes;
+        p->_last_hop = false;
 
         return p;
     }
@@ -307,6 +308,8 @@ public:
     inline uint64_t recvd_bytes() const {return _recvd_bytes;}
     inline uint64_t target_bytes() const {return _target_bytes;}
 
+    inline void set_last_hop(bool lh){ _last_hop = lh;}
+    inline bool last_hop() const { return _last_hop;}
     virtual PktPriority priority() const {return Packet::PRIO_HI;}
   
     virtual ~UecNackPacket(){}
@@ -317,6 +320,7 @@ protected:
     uint16_t _ev;
     uint64_t _recvd_bytes;
     uint64_t _target_bytes;
+    bool _last_hop;
 
     bool _rnr;
     bool _ecn_echo;
