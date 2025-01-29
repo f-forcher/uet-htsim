@@ -39,6 +39,7 @@ class AeolusQueue : public Queue {
     int num_prio_packets() const { return _num_prio_packets;}
     int num_packets() const { return _num_packets;}
     int num_speculative_packets() const { return _num_speculative_packets;}
+    mem_b queuesize_high_watermark() const { return _queuesize_high_watermark;}
     virtual mem_b queuesize() const;
     virtual void setName(const string& name) {
         Logged::setName(name); 
@@ -60,6 +61,7 @@ class AeolusQueue : public Queue {
     }
 
     int _num_packets, _num_prio_packets, _num_speculative_packets;
+    mem_b _queuesize_high_watermark; // max occupancy of high priority queue
 
  protected:
     // Mechanism

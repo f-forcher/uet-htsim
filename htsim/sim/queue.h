@@ -49,6 +49,7 @@ class BaseQueue  : public EventSource, public PacketSink, public Drawable {
     virtual const string& nodename() { return _nodename; }
     virtual mem_b queuesize() const = 0;
     virtual mem_b maxsize() const = 0;
+    virtual mem_b queuesize_high_watermark() const { return 0; }
     
     inline simtime_picosec drainTime(Packet *pkt) { 
             return (simtime_picosec)(pkt->size() * _ps_per_byte); 

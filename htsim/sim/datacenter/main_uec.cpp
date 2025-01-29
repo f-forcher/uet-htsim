@@ -331,7 +331,7 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i],"-logtime")){
             double log_ms = atof(argv[i+1]);            
             logtime = timeFromMs(log_ms);
-            cout << "logtime "<< logtime << " ms" << endl;
+            cout << "logtime "<< log_ms << " ms" << endl;
             i++;
         } else if (!strcmp(argv[i],"-logtime_us")){
             double log_us = atof(argv[i+1]);            
@@ -468,6 +468,11 @@ int main(int argc, char **argv) {
         i++;
     }
 
+    if (end_time > 0 && logtime >= timeFromUs((uint32_t)end_time)){
+        cout << "Logtime set to endtime" << endl;
+        logtime = timeFromUs((uint32_t)end_time) - 1;
+    }
+
     if (!param_queuesize_set || !param_ecn_set){
         cout << "queuesizes and ecn threshold should be input from the parameters, otherwise, queuesize = BDP of 100Gbps and 12us RTT and ecn_low is 20\% of queuesize and 80\% of queuesize."<< endl;
         //abort(); We should restore to default values here, not abort
@@ -584,10 +589,10 @@ int main(int argc, char **argv) {
     QueueLoggerFactory *qlf = 0;
     if (log_tor_downqueue || log_tor_upqueue) {
         qlf = new QueueLoggerFactory(&logfile, QueueLoggerFactory::LOGGER_SAMPLING, eventlist);
-        qlf->set_sample_period(timeFromUs(10.0));
+        qlf->set_sample_period(logtime);
     } else if (log_queue_usage) {
         qlf = new QueueLoggerFactory(&logfile, QueueLoggerFactory::LOGGER_EMPTY, eventlist);
-        qlf->set_sample_period(timeFromUs(10.0));
+        qlf->set_sample_period(logtime);
     }
 
     ConnectionMatrix* conns = new ConnectionMatrix(no_of_nodes);
@@ -639,7 +644,7 @@ int main(int argc, char **argv) {
         } 
 
         if (log_switches) {
-            topo[p]->add_switch_loggers(logfile, timeFromUs(20.0));
+            topo[p]->add_switch_loggers(logfile, logtime);
         }
 
         if (p==0) {

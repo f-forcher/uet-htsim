@@ -16,6 +16,7 @@ CtrlPrioQueue::CtrlPrioQueue(linkspeed_bps bitrate, mem_b maxsize, EventList& ev
   _num_drops = 0;
 
   _queuesize_high = _queuesize_low = 0;
+  _queuesize_high_watermark = 0;
   _serv = QUEUE_INVALID;
   stringstream ss;
   ss << "compqueue(" << bitrate/1000000 << "Mb/s," << maxsize << "bytes)";
@@ -49,6 +50,9 @@ CtrlPrioQueue::completeService(){
     assert(!_enqueued_high.empty());
     pkt = _enqueued_high.back();
     _enqueued_high.pop_back();
+    if (_queuesize_high > _queuesize_high_watermark) {
+        _queuesize_high_watermark = _queuesize_high;
+    }
     _queuesize_high -= pkt->size();
     switch (pkt->type()) {
     case NDPACK:

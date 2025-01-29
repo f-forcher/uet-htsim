@@ -152,7 +152,7 @@ QueueLoggerEmpty::doNextEvent()
             trim_frac = ((double)_pkt_trims)/_pkt_arrivals;
         }
         cout << eventlist().now() << " " << _queue->nodename() << " " << _total_busy << " " << eventlist().now() - _last_dump <<
-            " " << ((double)_total_busy) / (eventlist().now() - _last_dump) << " " << trim_frac << endl;
+            " " << ((double)_total_busy) / (eventlist().now() - _last_dump) << " " << trim_frac << " " << _queue->queuesize_high_watermark() << endl;
     }
     reset_count();
     _last_dump = eventlist().now();

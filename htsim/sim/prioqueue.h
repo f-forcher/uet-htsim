@@ -30,6 +30,7 @@ public:
     int num_packets() const { return _num_packets;}
     int num_acks() const { return _num_acks;}
     int num_pulls() const { return _num_pulls;}
+    mem_b queuesize_high_watermark() const { return _queuesize_high_watermark;}
     virtual mem_b queuesize() const;
     virtual void setName(const string& name) {
         Logged::setName(name); 
@@ -41,6 +42,7 @@ public:
     int _num_acks;
     int _num_nacks;
     int _num_pulls;
+    mem_b _queuesize_high_watermark; // max occupancy of high priority queue
 
 protected:
     // Mechanism

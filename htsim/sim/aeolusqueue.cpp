@@ -35,6 +35,7 @@ AeolusQueue::AeolusQueue(linkspeed_bps bitrate, mem_b maxsize, mem_b specsize, E
     assert (_speculative_thresh <= _maxsize);
 
     _queuesize_high = _queuesize_low = 0;
+    _queuesize_high_watermark = 0;
     _serv = QUEUE_INVALID;
     stringstream ss;
     ss << "aeolusqueue(" << bitrate/1000000 << "Mb/s," << maxsize << "bytes)";
@@ -103,6 +104,9 @@ AeolusQueue::completeService(){
     } else if (_serv==QUEUE_HIGH) {
         assert(!_enqueued_high.empty());
         pkt = _enqueued_high.pop();
+        if (_queuesize_high > _queuesize_high_watermark) {
+            _queuesize_high_watermark = _queuesize_high;
+        }
         _queuesize_high -= pkt->size();
         if (_logger) _logger->logQueue(*this, QueueLogger::PKT_SERVICE, *pkt);
 

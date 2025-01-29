@@ -91,10 +91,11 @@ def get_file_to_run(name_exp, parameters_experiment, global_params, args):
     dir = f"{name_exp}_size{global_params['topology_sizes']}_osratio{global_params['oversubscription_ratio']}_linkspeed{global_params['link_speed_Gbps']}/tmp"
     cm_name = ""
     output_file = ""
+    extra_start_time = parameters_experiment.get('extra_start_time', 0)
     if (name_exp == "incast"):
         cm_name = f"{args.output_folder}/{dir}/incast_{parameters_experiment['ratio']}to1_size{parameters_experiment['message_size_bytes']}B.cm"
         output_file = (f"{args.output_folder}/{dir}/incast_{parameters_experiment['ratio']}to1_size{parameters_experiment['message_size_bytes']}B_")
-        cmd_to_run_cm_file = "python ../connection_matrices/gen_incast.py {} {} {} {} 0 42 1".format(cm_name, global_params["topology_sizes"], parameters_experiment["ratio"], parameters_experiment["message_size_bytes"])
+        cmd_to_run_cm_file = "python ../connection_matrices/gen_incast.py {} {} {} {} {} 42 1".format(cm_name, global_params["topology_sizes"], parameters_experiment["ratio"], parameters_experiment["message_size_bytes"], extra_start_time)
         try:
             # Execute the command
             print(f"Creating CM named {cmd_to_run_cm_file}")
@@ -105,7 +106,7 @@ def get_file_to_run(name_exp, parameters_experiment, global_params, args):
     elif (name_exp == "permutation"):
         cm_name = f"{args.output_folder}/{dir}/permutation_size{parameters_experiment['message_size_bytes']}B.cm"
         output_file = f"{args.output_folder}/{dir}/permutation_size{parameters_experiment['message_size_bytes']}B_"
-        cmd_to_run_cm_file = "python ../connection_matrices/gen_permutation.py {} {} {} {} 0 42".format(cm_name, global_params["topology_sizes"], global_params["topology_sizes"], parameters_experiment["message_size_bytes"])
+        cmd_to_run_cm_file = "python ../connection_matrices/gen_permutation.py {} {} {} {} {} 42".format(cm_name, global_params["topology_sizes"], global_params["topology_sizes"], parameters_experiment["message_size_bytes"], extra_start_time)
         try:
             # Execute the command
             print(f"Creating CM named {cmd_to_run_cm_file}")
@@ -197,7 +198,8 @@ def run_experiment(experiment_name, global_params, subparams, args):
     degraded_links = get_num_degraded_links(subparams)
 
     # Launch experiment
-    command = "../htsim_uec -tm {} -end 1000000 {} -topo {} -linkspeed {} {} {} > {}".format(connection_matrix, cc_algo_to_use, topo_file, int(global_params["link_speed_Gbps"].replace("Gbps","")) * 1000, disable_os_cc, degraded_links, output_file)
+    command = "../htsim_uec -tm {} -end 1000000 {} -topo {} -linkspeed {} {} {} {} > {}".format(connection_matrix, cc_algo_to_use, topo_file, int(global_params["link_speed_Gbps"].replace("Gbps","")) * 1000, disable_os_cc, degraded_links, args.command_flags, output_file)
+    command = ' '.join(command.split());
     print(f"Executing: {command}")
     try:
         # Execute the command
@@ -245,11 +247,16 @@ def main():
     parser.add_argument('--config_json_file', required=True, help='Path to the JSON file')
     parser.add_argument('--show_plot', action='store_true', help='A boolean flag')
     parser.add_argument('--output_folder', required=False, help='Parent output folder where to save all results', default="experiments")
+    parser.add_argument('--command_flags', required=False, help='Additional command flags to run with each experiment. Include in \"\", e.g. \"-log queue_usage\".', default="")
 
     args = parser.parse_args()
 
     # Read and parse the JSON file
     data = read_json_file(args.config_json_file)
+
+    # add data command flags to args
+    if 'command_flags' in data:
+        args.command_flags = args.command_flags + " " + data['command_flags']
 
     # Experiments Folder
     if not os.path.exists(args.output_folder):

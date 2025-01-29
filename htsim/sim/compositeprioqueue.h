@@ -33,6 +33,7 @@ class CompositePrioQueue : public Queue {
     int num_acks() const { return _num_acks;}
     int num_nacks() const { return _num_nacks;}
     int num_pulls() const { return _num_pulls;}
+    mem_b queuesize_high_watermark() const { return _queuesize_high_watermark;}
     virtual mem_b queuesize() const;
     virtual void setName(const string& name) {
         Logged::setName(name); 
@@ -55,6 +56,7 @@ class CompositePrioQueue : public Queue {
     int _num_pulls;
     int _stripped;
     int _dropped;
+    mem_b _queuesize_high_watermark; // max occupancy of high priority queue
 
     list<Packet*> _enqueued_low;
     vector <uint32_t> _enqueued_path_lens;

@@ -34,6 +34,7 @@ class CompositeQueue : public Queue {
     int num_acks() const { return _num_acks;}
     int num_nacks() const { return _num_nacks;}
     int num_pulls() const { return _num_pulls;}
+    mem_b queuesize_high_watermark() const { return _queuesize_high_watermark;}
     virtual mem_b queuesize() const;
     virtual void setName(const string& name) {
         Logged::setName(name); 
@@ -61,6 +62,7 @@ class CompositeQueue : public Queue {
     int _num_pulls;
     int _num_stripped; // count of packets we stripped
     int _num_bounced;  // count of packets we bounced
+    mem_b _queuesize_high_watermark; // max occupancy of high priority queue
 
  protected:
     // Mechanism
