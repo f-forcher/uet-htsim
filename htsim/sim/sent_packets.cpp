@@ -2,15 +2,12 @@
 #include "sent_packets.h"
 #include <iostream>
 
-SentPackets::SentPackets(int max){
+SentPackets::SentPackets(int max): sub_seq(max), data_seq(max) {
     size = max;
     crt_start = 0;
     crt_end = 0;
     crt_count = 0;
   
-    sub_seq = new uint64_t[max];
-    data_seq = new uint64_t[max];
-
     highest_seq = 0;
 }
 

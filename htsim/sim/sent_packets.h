@@ -2,6 +2,7 @@
 #ifndef SENT_PACKETS
 #define SENT_PACKETS
 #include "config.h"
+#include <vector>
 
 class SentPackets {
 public:
@@ -11,8 +12,8 @@ public:
     int crt_end;
     int highest_seq;
 
-    uint64_t* sub_seq;
-    uint64_t* data_seq;
+    std::vector<uint64_t> sub_seq;
+    std::vector<uint64_t> data_seq;
  
     SentPackets(int max=20000);
 
