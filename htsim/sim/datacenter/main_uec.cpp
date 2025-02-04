@@ -768,8 +768,8 @@ int main(int argc, char **argv) {
             uec_snk->setOversubscribedCC(oversubscribed_ccs[dest]);
         }
 
-        ((DataReceiver*)uec_snk)->setName("Uec_sink_" + ntoa(src) + "_" + ntoa(dest));
-        logfile.writeName(*(DataReceiver*)uec_snk);
+        uec_snk->setName("Uec_sink_" + ntoa(src) + "_" + ntoa(dest));
+        logfile.writeName(*uec_snk);
 
         if (crt->flowid) {
             uec_src->setFlowId(crt->flowid);

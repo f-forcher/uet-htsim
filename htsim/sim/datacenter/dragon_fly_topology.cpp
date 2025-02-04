@@ -16,7 +16,6 @@
 #include "main.h"
 
 string ntoa(double n);
-string itoa(uint64_t n);
 
 DragonFlyTopology::DragonFlyTopology(uint32_t p, uint32_t a, uint32_t h, mem_b queuesize, Logfile* lg,EventList* ev,queue_type q,simtime_picosec rtt){
     _queuesize = queuesize;

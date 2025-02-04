@@ -12,7 +12,6 @@
 #include "fat_tree_switch.h"
 
 string ntoa(double n);
-string itoa(uint64_t n);
 
 OversubscribedFatTreeTopology::OversubscribedFatTreeTopology(mem_b queuesize, Logfile* lg, EventList* ev,FirstFit * fit,queue_type q,simtime_picosec rtt, int N){
     logfile = lg;

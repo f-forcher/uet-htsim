@@ -130,12 +130,6 @@ string ntoa(double n) {
     return s.str();
 }
 
-string itoa(uint64_t n) {
-    std::stringstream s;
-    s << n;
-    return s.str();
-}
-
 void print_path(std::iostream &paths,const Route* rt){
     for (size_t i=1;i<rt->size()-1;i++) {
         BaseQueue* q = dynamic_cast<BaseQueue*>(rt->at(i));

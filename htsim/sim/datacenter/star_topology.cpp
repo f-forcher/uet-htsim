@@ -7,7 +7,6 @@
 #include "main.h"
 
 string ntoa(double n);
-string itoa(uint64_t n);
 
 StarTopology::StarTopology(Logfile* lg, EventList* ev,FirstFit * fit,simtime_picosec rtt){
   logfile = lg;

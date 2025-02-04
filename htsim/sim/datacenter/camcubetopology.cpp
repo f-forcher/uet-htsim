@@ -11,7 +11,6 @@
 #include "main.h"
 
 string ntoa(double n);
-string itoa(uint64_t n);
 
 CamCubeTopology::CamCubeTopology(Logfile* lg, EventList* ev,queue_type qt,simtime_picosec rtt){
     logfile = lg;

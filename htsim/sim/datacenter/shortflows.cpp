@@ -2,7 +2,6 @@
 #include <iostream>
 
 string ntoa(double n);
-string itoa(uint64_t n);
 
 ShortFlows::ShortFlows(double lambda, EventList& eventlist, vector<const Route*>*** n,
                        ConnectionMatrix* conns,Logfile* logfile,TcpRtxTimerScanner * rtx)

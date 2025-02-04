@@ -262,6 +262,8 @@ class PacketDB {
  public:
     PacketDB() : _alloc_count(0) {}
     ~PacketDB() {
+        for (P* p : _freelist)
+            delete p;
         //cout << "Pkt count: " << _alloc_count << endl;
         //cout << "Pkt mem used: " << _alloc_count * sizeof(P) << endl;
     }

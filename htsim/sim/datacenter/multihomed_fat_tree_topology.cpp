@@ -8,7 +8,6 @@
 #include "main.h"
 
 string ntoa(double n);
-string itoa(uint64_t n);
 
 MultihomedFatTreeTopology::MultihomedFatTreeTopology(Logfile* lg, EventList* ev,FirstFit * fit,simtime_picosec rtt){
     logfile = lg;
