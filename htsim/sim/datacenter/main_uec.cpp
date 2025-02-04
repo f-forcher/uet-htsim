@@ -322,7 +322,7 @@ int main(int argc, char **argv) {
             i+=2;
         } else if (!strcmp(argv[i],"-disable_trim")) {
             disable_trim = true;
-            cout << "Trimming disabled, dropping instread." << endl;
+            cout << "Trimming disabled, dropping instead." << endl;
         } else if (!strcmp(argv[i],"-trimsize")){
             // size of trimmed packet in bytes
             trimsize = atoi(argv[i+1]);

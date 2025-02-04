@@ -18,20 +18,10 @@ using namespace std;
 //#define hashmap __gnu_cxx::hash_map
 //#endif
 
-#include <vector>
-
 #include "loggers.h"
 #include "eqds_logger.h"
 #include "uec_logger.h"
 #include "dcqcn_logger.h"
-
-struct eqint
-{
-    bool operator()(int s1, int s2) const
-    {
-        return s1==s2;
-    }
-};
 
 int main(int argc, char** argv){
     if (argc < 2){
