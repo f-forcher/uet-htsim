@@ -124,5 +124,4 @@ add_subdirectory(datacenter)
 
 # Define executables and link with htsim library
 add_executable(parse_output parse_output.cpp)
-target_link_libraries(parse_output PRIVATE htsim_dc)
 target_link_libraries(parse_output PRIVATE htsim)
