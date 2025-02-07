@@ -513,7 +513,8 @@ int main(int argc, char **argv) {
     srandom(seed);
     cout << "Parsed args\n";
     Packet::set_packet_size(packet_size);
-
+    UecSrc::_mtu = Packet::data_packet_size();
+    UecSrc::_mss = UecSrc::_mtu - UecSrc::_hdr_size;
     if (route_strategy==NOT_SET){
         route_strategy = ECMP_FIB;
         FatTreeSwitch::set_strategy(FatTreeSwitch::ECMP);
