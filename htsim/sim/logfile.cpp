@@ -5,6 +5,7 @@
 #include <sstream>
 #include <iomanip>
 #include <ios>
+#include <vector>
 
 RawLogEvent::RawLogEvent(double time, uint32_t type, uint32_t id, uint32_t ev, 
                          double val1, double val2, double val3, string name = "") :
@@ -81,13 +82,13 @@ Logfile::writeRecord(uint32_t type, uint32_t id, uint32_t ev,
 
 void
 Logfile::transposeLog() {
-    double* timeRec = new double[_numRecords];
-    uint32_t* typeRec = new uint32_t[_numRecords];
-    uint32_t* idRec = new uint32_t[_numRecords];
-    uint32_t* evRec = new uint32_t[_numRecords];
-    double* val1Rec = new double[_numRecords];
-    double* val2Rec = new double[_numRecords];
-    double *val3Rec = new double[_numRecords];
+    std::vector<double> timeRec(_numRecords);
+    std::vector<uint32_t> typeRec(_numRecords);
+    std::vector<uint32_t> idRec(_numRecords);
+    std::vector<uint32_t> evRec(_numRecords);
+    std::vector<double> val1Rec(_numRecords);
+    std::vector<double> val2Rec(_numRecords);
+    std::vector<double> val3Rec(_numRecords);
     FILE* logfile;
     logfile = fopen(_logfilename.c_str(),"rbS");
     if (logfile==NULL) {
@@ -125,7 +126,7 @@ Logfile::transposeLog() {
     while (true) {
         if (_preamble.peek()==-1) break;
         char thisLine[1000];
-        _preamble.getline(&thisLine[0],1000);
+        _preamble.getline(thisLine, 1000);
         fputs(thisLine, logfile);
         fputs("\n", logfile);
     }
@@ -141,10 +142,4 @@ Logfile::transposeLog() {
         fwrite(&val3Rec[i], sizeof(double), 1, logfile);
     }
     fclose(logfile);
-    delete[] timeRec;
-    delete[] typeRec;
-    delete[] idRec;
-    delete[] evRec;
-    delete[] val1Rec;
-    delete[] val2Rec;
 }
