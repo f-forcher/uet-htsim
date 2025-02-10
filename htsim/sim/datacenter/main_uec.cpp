@@ -1,5 +1,6 @@
 // -*- c-basic-offset: 4; indent-tabs-mode: nil -*-
 //#include "config.h"
+#include <memory>
 #include <sstream>
 #include <string.h>
 
@@ -595,7 +596,7 @@ int main(int argc, char **argv) {
         qlf->set_sample_period(logtime);
     }
 
-    ConnectionMatrix* conns = new ConnectionMatrix(no_of_nodes);
+    auto conns = std::make_unique<ConnectionMatrix>(no_of_nodes);
 
     if (tm_file){
         cout << "Loading connection matrix from  " << tm_file << endl;
