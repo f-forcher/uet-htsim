@@ -349,7 +349,7 @@ void RoceSrc::doNextEvent() {
 
 /* Only use this constructor when there is only one for to this receiver */
 RoceSink::RoceSink()
-    : DataReceiver("roce_sink"),_cumulative_ack(0) , _total_received(0), _epsn_rx_bitmap(0)
+    : DataReceiver("roce_sink"), _cumulative_ack(0), _epsn_rx_bitmap(0), _total_received(0)
 {
     _src = 0;
     
@@ -358,7 +358,6 @@ RoceSink::RoceSink()
     _log_me = false;
     //if (get_id() == 144214)
     //    _log_me = true;
-    _total_received = 0;
     _nack_sent = false;
     _out_of_order_count = 0;
 }
