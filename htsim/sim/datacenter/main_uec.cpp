@@ -737,20 +737,22 @@ int main(int argc, char **argv) {
         UecSrc::initNsccParams(network_max_unloaded_rtt, linkspeed, target_Qdelay, qa_gate, trimming_enabled);
     }
 
-    vector<UecPullPacer*> pacers;
+    vector<unique_ptr<UecPullPacer>> pacers;
     vector<PCIeModel*> pcie_models;
     vector<OversubscribedCC*> oversubscribed_ccs;
 
     vector<UecNIC*> nics;
 
     for (size_t ix = 0; ix < no_of_nodes; ix++){
-        pacers.push_back(new UecPullPacer(linkspeed, 0.99, UecBasePacket::unquantize(UecSink::_credit_per_pull), eventlist, ports));
+        auto &pacer = pacers.emplace_back(make_unique<UecPullPacer>(linkspeed, 0.99,
+          UecBasePacket::unquantize(UecSink::_credit_per_pull), eventlist, ports));
 
         if (UecSink::_model_pcie)
-            pcie_models.push_back(new PCIeModel(linkspeed * pcie_rate,UecSrc::_mtu,eventlist,pacers[ix]));
+            pcie_models.push_back(new PCIeModel(linkspeed * pcie_rate, UecSrc::_mtu, eventlist,
+              pacer.get()));
 
         if (UecSink::_oversubscribed_cc)
-            oversubscribed_ccs.push_back(new OversubscribedCC(eventlist,pacers[ix]));
+            oversubscribed_ccs.push_back(new OversubscribedCC(eventlist, pacer.get()));
 
         UecNIC* nic = new UecNIC(ix, eventlist, linkspeed, ports);
         nics.push_back(nic);
@@ -822,7 +824,8 @@ int main(int argc, char **argv) {
             }
 
             if (receiver_driven)
-                uec_snk = new UecSink(NULL,pacers[dest],*nics.at(dest), ports);
+                uec_snk = new UecSink(NULL, pacers[dest].get(), *nics.at(dest),
+                                      ports);
             else //each connection has its own pacer, so receiver driven mode does not kick in! 
                 uec_snk = new UecSink(NULL,linkspeed,1.1,UecBasePacket::unquantize(UecSink::_credit_per_pull),eventlist,*nics.at(dest), ports);
 
