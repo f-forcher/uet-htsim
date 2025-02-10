@@ -4,11 +4,11 @@
 #include <stdio.h>
 #include <iostream>
 #include "math.h"
+#include <memory>
 
 ConnectionMatrix::ConnectionMatrix(uint32_t n)
 {
   N = n;
-  conns = NULL;
 }
 
 void ConnectionMatrix::setPermutation(uint32_t conn){
@@ -303,11 +303,11 @@ void ConnectionMatrix::setVL2(){
 vector<connection*>* ConnectionMatrix::getAllConnections(){
     if (conns!=NULL){
         //conns is initialized from file or from the old connections vector. 
-        return conns;
+        return conns.get();
     }
 
     //builds conns from the other old connections vector
-    conns = new vector<connection*>();
+    conns = make_unique<vector<connection*>>();
 
     vector<uint32_t>* destinations;
     map<uint32_t, vector<uint32_t>*>::iterator it;
@@ -327,7 +327,7 @@ vector<connection*>* ConnectionMatrix::getAllConnections(){
             conns->push_back(tmp);
         }
     }
-    return conns;
+    return conns.get();
 }
 
 void ConnectionMatrix::setStaggeredRandom(Topology* top,uint32_t conns,double local){
@@ -676,7 +676,7 @@ bool ConnectionMatrix::load(istream& file){
     uint32_t conns_size = 0, triggers_size = 0, failures_size = 0;
   
     assert(!conns);
-    conns = new vector<connection*>();
+    conns = make_unique<vector<connection*>>();
 
     /*
     fscanf(f,"Nodes %d\n",&N);

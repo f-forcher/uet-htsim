@@ -10,6 +10,7 @@
 #include "eventlist.h"
 #include <list>
 #include <map>
+#include <memory>
 
 #define NO_START ((simtime_picosec)0xffffffffffffffff)
 
@@ -76,7 +77,7 @@ public:
     void bindTriggers(connection* c, EventList& eventlist);
 
     uint32_t N;
-    vector<connection*>* conns;
+    unique_ptr<vector<connection*>> conns;
     map<uint32_t, vector<uint32_t>*> connections;
     vector<failure*> failures; 
 private:
