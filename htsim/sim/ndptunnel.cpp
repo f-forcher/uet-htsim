@@ -16,7 +16,7 @@
 //#define LOGSINK 2332
 #define LOGSINK 0
 
-/* We experimented with adding extra puls to cope with scenarios
+/* We experimented with adding extra pulls to cope with scenarios
    where you've got a bad link and pulls get dropped.  Generally you
    don't want to do this though, so best leave RCV_CWND set to
    zero. Lost pulls are well handled by the cumulative pull number. */
