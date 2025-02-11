@@ -103,6 +103,10 @@ void NdpTunnelSrc::set_paths(vector<const Route*>* rt_list){
     switch(_route_strategy) {
     case NOT_SET:
     case SINGLE_PATH:
+    case SCATTER_ECMP:
+    case ECMP_FIB:
+    case ECMP_FIB_ECN:
+    case REACTIVE_ECN:
         // shouldn't call this with these strategies
         abort();
     case SCATTER_PERMUTE:
@@ -419,6 +423,10 @@ const Route* NdpTunnelSrc::choose_route() {
         abort();  //not sure if this can ever happen - if it can, remove this line
         return _route;
     case PULL_BASED: // added this to shut to compiler warnings - add real code if we ever hit this abort
+    case SCATTER_ECMP:
+    case ECMP_FIB:
+    case ECMP_FIB_ECN:
+    case REACTIVE_ECN:
         abort();  
     case NOT_SET:
         abort();  // shouldn't be here at all
@@ -499,6 +507,10 @@ int NdpTunnelSrc::send_packet(NdpPull::seq_t pacer_no) {
                                         false,pkt);
             break;
         case NOT_SET:
+        case SCATTER_ECMP:
+        case ECMP_FIB:
+        case ECMP_FIB_ECN:
+        case REACTIVE_ECN:
             abort();
         }
         assert(p);
@@ -625,6 +637,10 @@ NdpTunnelSrc::retransmit_packet() {
                                   _paths.size(), last_packet);
             break;
         case NOT_SET:
+        case SCATTER_ECMP:
+        case ECMP_FIB:
+        case ECMP_FIB_ECN:
+        case REACTIVE_ECN:
             abort();
         }
         
@@ -786,6 +802,10 @@ void NdpTunnelSink::set_paths(vector<const Route*>* rt_list){
         break;
     case SINGLE_PATH:
     case NOT_SET:
+    case SCATTER_ECMP:
+    case ECMP_FIB:
+    case ECMP_FIB_ECN:
+    case REACTIVE_ECN:
         abort();
     }
 }
@@ -927,6 +947,10 @@ void NdpTunnelSink::send_ack(simtime_picosec ts, NdpTunnelPacket::seq_t ackno, N
                              _pull_no, 0);
         break;
     case NOT_SET:
+    case SCATTER_ECMP:
+    case ECMP_FIB:
+    case ECMP_FIB_ECN:
+    case REACTIVE_ECN:
         abort();
     }
 
@@ -961,6 +985,10 @@ void NdpTunnelSink::send_nack(simtime_picosec ts, NdpTunnelPacket::seq_t ackno, 
       nack = NdpNack::newpkt(_src->_flow, *_route, 0, ackno, _cumulative_ack,  _pull_no, 0 );
       break;
     case NOT_SET:
+    case SCATTER_ECMP:
+    case ECMP_FIB:
+    case ECMP_FIB_ECN:
+    case REACTIVE_ECN:
       abort();
     }
     nack->flow().logTraffic(*nack,*this,TrafficLogger::PKT_CREATE);

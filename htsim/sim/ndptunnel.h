@@ -1,12 +1,5 @@
 // -*- c-basic-offset: 4; indent-tabs-mode: nil -*-        
 
-
-#ifndef NDP_H
-#define NDP_H
-enum RouteStrategy {NOT_SET, SINGLE_PATH, SCATTER_PERMUTE, SCATTER_RANDOM, PULL_BASED};
-
-#endif
-
 #ifndef NDPTUNNEL_H
 #define NDPTUNNEL_H
 
@@ -17,6 +10,7 @@ enum RouteStrategy {NOT_SET, SINGLE_PATH, SCATTER_PERMUTE, SCATTER_RANDOM, PULL_
 #include <list>
 #include <map>
 #include "config.h"
+#include "ndp.h"
 #include "network.h"
 #include "ndppacket.h"
 #include "ndptunnelpacket.h"
