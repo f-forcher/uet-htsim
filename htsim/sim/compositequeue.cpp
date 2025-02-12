@@ -91,14 +91,15 @@ void CompositeQueue::completeService(){
         pkt = _enqueued_low.pop();
         _queuesize_low -= pkt->size();
 
+        bool ecn = decide_ECN();
         //ECN mark on deque
-        if (decide_ECN()) {
+        if (ecn) {
             pkt->set_flags(pkt->flags() | ECN_CE);
         }
         if (_queue_id == DEBUG_QUEUE_ID) {
             cout << timeAsUs(eventlist().now()) <<" name " <<_nodename <<" _queuesize_low " 
                 << _queuesize_low*8/((_bitrate/1000000.0)) <<" _queueid " << _queue_id << " switch " << _switch->getID() 
-                << " ecn " << decide_ECN() 
+                << " ecn " << ecn 
                 << " _queuesize_high " << _queuesize_high*8/((_bitrate/1000000.0))
                 << endl;    
 
