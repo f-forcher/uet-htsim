@@ -45,30 +45,30 @@ Using binary: ./htsim_uec
 Experiment: Large permutation, REPS, 1SACK/packet (1024 nodes), 8 core links running at 10% capacity 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 3000 -load_balancing_algo reps -sack_threshold 4000 -paths 128 -failed 8 
-[PASS] Tail FCT 207.821 us below the target of 220 us
+[PASS] Tail FCT 207.354 us below the target of 220 us
 [PASS] Connection count 1024
-FCT Spread 169.942 -> 207.821 ratio 1.2228936931423662
-Summary: New: 501760 Rtx: 1550 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 1550 Pulls: 231146
+FCT Spread 169.978 -> 207.354 ratio 1.2198872795302922
+Summary: New: 501760 Rtx: 1621 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 1621 Pulls: 231494
 Using binary: ./htsim_uec
 
 
 Experiment: Large permutation, REPS, 1SACK/packet , large queues (1024 nodes), 8 core links running at 10% capacity 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 3000 -q 500 -load_balancing_algo reps -sack_threshold 4000 -paths 128 -failed 8 
-[FAIL] Tail FCT 354.812 us above the target of 220 us
+[FAIL] Tail FCT 354.196 us above the target of 220 us
 [PASS] Connection count 1024
-FCT Spread 169.913 -> 354.812 ratio 2.0881980778398357
-Summary: New: 501760 Rtx: 54 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 54 Pulls: 231247
+FCT Spread 170.107 -> 354.196 ratio 2.082195324119525
+Summary: New: 501760 Rtx: 64 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 64 Pulls: 231645
 Using binary: ./htsim_uec
 
 
 Experiment: Large permutation, REPS, 4SACK/packet (1024 nodes), 8 core links running at 10% capacity 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end 3000 -load_balancing_algo reps -paths 128 -failed 8 
-[PASS] Tail FCT 215.673 us below the target of 220 us
+[PASS] Tail FCT 216.094 us below the target of 220 us
 [PASS] Connection count 1024
-FCT Spread 168.856 -> 215.673 ratio 1.277259913772682
-Summary: New: 501760 Rtx: 9407 RTS: 0 Bounced: 0 ACKs: 260462 NACKs: 9407 Pulls: 211311
+FCT Spread 168.758 -> 216.094 ratio 1.280496332025741
+Summary: New: 501760 Rtx: 8542 RTS: 0 Bounced: 0 ACKs: 258160 NACKs: 8542 Pulls: 210845
 Using binary: ./htsim_uec
 
 

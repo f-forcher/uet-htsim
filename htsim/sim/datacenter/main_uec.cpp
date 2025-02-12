@@ -13,6 +13,7 @@
 #include "uec_logger.h"
 #include "clock.h"
 #include "uec.h"
+#include "uec_mp.h"
 #include "compositequeue.h"
 #include "topology.h"
 #include "connection_matrix.h"
@@ -61,7 +62,8 @@ int main(int argc, char **argv) {
     simtime_picosec switch_latency = timeFromUs((uint32_t)0);
     queue_type qt = COMPOSITE;
 
-    UecSrc::_load_balancing_algo = UecSrc::MIXED;
+    enum LoadBalancing_Algo { BITMAP, REPS, OBLIVIOUS, MIXED};
+    LoadBalancing_Algo load_balancing_algo = MIXED;
 
     bool log_sink = false;
     bool log_nic = false;
@@ -176,16 +178,16 @@ int main(int argc, char **argv) {
         }
         else if (!strcmp(argv[i],"-load_balancing_algo")){
             if (!strcmp(argv[i+1], "bitmap")) {
-                UecSrc::_load_balancing_algo = UecSrc::BITMAP;
+                load_balancing_algo = BITMAP;
             } 
             else if (!strcmp(argv[i+1], "reps")) {
-                UecSrc::_load_balancing_algo = UecSrc::REPS;
+                load_balancing_algo = REPS;
             }
             else if (!strcmp(argv[i+1], "oblivious")) {
-                UecSrc::_load_balancing_algo = UecSrc::OBLIVIOUS;
+                load_balancing_algo = OBLIVIOUS;
             }
             else if (!strcmp(argv[i+1], "mixed")) {
-                UecSrc::_load_balancing_algo = UecSrc::MIXED;
+                load_balancing_algo = MIXED;
             }
             else {
                 cout << "Unknown load balancing algorithm of type " << argv[i+1] << ", expecting bitmap, reps or reps2" << endl;
@@ -577,8 +579,6 @@ int main(int argc, char **argv) {
     }
 
     //UecSrc::setMinRTO(50000); //increase RTO to avoid spurious retransmits
-    UecSrc::_path_entropy_size = path_entropy_size;
-    
     UecSrc* uec_src;
     UecSink* uec_snk;
 
@@ -725,7 +725,21 @@ int main(int argc, char **argv) {
 
         //cout << "Connection " << crt->src << "->" <<crt->dst << " starting at " << crt->start << " size " << crt->size << endl;
 
-        uec_src = new UecSrc(traffic_logger, eventlist, *nics.at(src), ports);
+        unique_ptr<UecMultipath> mp = nullptr;
+        if (load_balancing_algo == BITMAP){
+            mp = make_unique<UecMpBitmap>(path_entropy_size, UecSrc::_debug);
+        } else if (load_balancing_algo == REPS){
+            mp = make_unique<UecMpReps>(path_entropy_size, UecSrc::_debug);
+        } else if (load_balancing_algo == OBLIVIOUS){
+            mp = make_unique<UecMpOblivious>(path_entropy_size, UecSrc::_debug);
+        } else if (load_balancing_algo == MIXED){
+            mp = make_unique<UecMpMixed>(path_entropy_size, UecSrc::_debug);
+        } else {
+            cout << "ERROR: Failed to set multipath algorithm, abort." << endl;
+            abort();
+        }
+
+        uec_src = new UecSrc(traffic_logger, eventlist, move(mp), *nics.at(src), ports);
 
         // If cwnd is 0 initXXcc will set a sensible default value 
         if (receiver_driven) {

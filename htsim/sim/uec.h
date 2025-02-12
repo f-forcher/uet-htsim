@@ -13,6 +13,7 @@
 #include "modular_vector.h"
 #include "pciemodel.h"
 #include "oversubscribed_cc.h"
+#include "uec_mp.h"
 
 #define timeInf 0
 // min RTO bound in us
@@ -119,7 +120,12 @@ public:
         mem_b dec_quick_bytes;
         mem_b dec_nack_bytes;
     };
-    UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, uint32_t no_of_ports, bool rts = false);
+    UecSrc(TrafficLogger* trafficLogger, 
+           EventList& eventList, 
+           unique_ptr<UecMultipath> mp,
+           UecNIC& nic, 
+           uint32_t no_of_ports, 
+           bool rts = false);
     void delFromSendTimes(simtime_picosec time, UecDataPacket::seq_t seq_no);
     static void disableFairDecrease();
     /**
@@ -179,7 +185,6 @@ public:
     void setEndTrigger(Trigger& trigger);
     // called from a trigger to start the flow.
     virtual void activate();
-    static uint32_t _path_entropy_size;  // now many paths do we include in our path set
     static int _global_node_count;
     static simtime_picosec _min_rto;
     static uint16_t _hdr_size;
@@ -190,11 +195,7 @@ public:
     static bool _receiver_based_cc;
 
     enum Sender_CC { DCTCP, NSCC, CONSTANT};
-    enum LoadBalancing_Algo { BITMAP, REPS, OBLIVIOUS, MIXED};
-    enum PathFeedback {PATH_GOOD,PATH_ECN,PATH_NACK,PATH_TIMEOUT};
-    enum EvState {STATE_GOOD,STATE_SKIP,STATE_ASSUMED_BAD};
     static Sender_CC _sender_cc_algo;
-    static LoadBalancing_Algo _load_balancing_algo;
 
     static bool _disable_quick_adapt;
     static uint8_t _qa_gate;
@@ -202,6 +203,7 @@ public:
     static bool _enable_fast_loss_recovery;
 
     virtual const string& nodename() { return _nodename; }
+    virtual void setName(const string& name) override { _name=name; _mp->set_debug_tag(name); }
     inline void setFlowId(flowid_t flow_id) { _flow.set_flowid(flow_id); }
     void setFlowsize(uint64_t flow_size_in_bytes);
     mem_b flowsize() { return _flow_size; }
@@ -215,6 +217,7 @@ public:
     bool debug() const { return _debug_src; }
 
    private:
+    unique_ptr<UecMultipath> _mp;
     UecNIC& _nic;
     uint32_t _no_of_ports;
     vector <UecSrcPort*> _ports;
@@ -288,28 +291,6 @@ public:
     void (UecSrc::*updateCwndOnAck)(bool skip, simtime_picosec delay, mem_b newly_acked_bytes);
     void (UecSrc::*updateCwndOnNack)(bool skip, mem_b nacked_bytes, bool last_hop);
 
-    uint16_t nextEntropy_bitmap();
-    uint16_t nextEntropy_REPS();
-    uint16_t nextEntropy_oblivious();
-    uint16_t nextEntropy_mixed();
-
-    void processEv_bitmap(uint16_t path_id, PathFeedback feedback);
-    void processEv_REPS(uint16_t path_id, PathFeedback feedback);
-    void processEv_oblivious(uint16_t path_id, PathFeedback feedback);
-    void processEv_mixed(uint16_t path_id, PathFeedback feedback);
-
-    inline EvState ev_state(uint16_t path) const { 
-        if (_ev_skip_bitmap[path]==0) 
-            return STATE_GOOD; 
-        else if (_ev_skip_bitmap[path]==_max_penalty) 
-            return STATE_ASSUMED_BAD; 
-        else 
-            return STATE_SKIP;
-    }
-
-    uint16_t (UecSrc::*nextEntropy)();
-    void (UecSrc::*processEv)(uint16_t path_id, PathFeedback feedback);
-
     bool checkFinished(UecDataPacket::seq_t cum_ack);
 
     Stats _stats;
@@ -382,18 +363,6 @@ private:
     simtime_picosec get_avg_delay();
     uint16_t get_avg_pktsize();
 
-    // entropy value calculation
-    uint16_t _no_of_paths;       // must be a power of 2
-    uint16_t _path_random;       // random upper bits of EV, set at startup and never changed
-    uint16_t _path_xor;          // random value set each time we wrap the entropy values - XOR with
-                                 // _current_ev_index
-    uint16_t _current_ev_index;  // count through _no_of_paths and then wrap.  XOR with _path_xor to
-                                 // get EV
-    vector<uint8_t> _ev_skip_bitmap;  // paths scores for load balancing
-    uint8_t _max_penalty;             // max value we allow in _path_penalties (typically 1 or 2).
-    uint16_t _ev_skip_count;
-    uint16_t _ev_bad_count;
-
     // RTT estimate data for RTO and sender based CC.
     simtime_picosec _rtt, _mdev, _rto, _raw_rtt;
     bool _rtx_timeout_pending;       // is the RTO running?
@@ -428,10 +397,6 @@ private:
     bool _loss_recovery_mode = false;
     uint32_t _recovery_seqno = 0;
     uint32_t _loss_counter = 0;
-
-    uint16_t _crt_path;
-    list<uint16_t> _next_pathid;
-    list<uint16_t> _knowngood_pathid;
 
     // Connectivity
     PacketFlow _flow;

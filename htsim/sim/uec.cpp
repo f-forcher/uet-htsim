@@ -12,7 +12,6 @@ using namespace std;
 
 // _path_entropy_size is the number of paths we spray across.  If you don't set it, it will default
 // to all paths.
-uint32_t UecSrc::_path_entropy_size = 256;
 int UecSrc::_global_node_count = 0;
 bool UecSrc::_shown = false;
 mem_b UecSrc::_configured_maxwnd = 0;
@@ -43,7 +42,6 @@ bool UecSrc::_receiver_based_cc = false;
 bool UecSink::_oversubscribed_cc = false; // can only be enabled when receiver_based_cc is set to true
 
 UecSrc::Sender_CC UecSrc::_sender_cc_algo = UecSrc::NSCC;
-UecSrc::LoadBalancing_Algo UecSrc::_load_balancing_algo = UecSrc::BITMAP;
 
 /* 
     The following variable values are not default values, there are initializer values. The actual
@@ -474,8 +472,19 @@ const string& UecSrcPort::nodename() {
 //  UEC SRC
 ////////////////////////////////////////////////////////////////
 
-UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, uint32_t no_of_ports, bool rts)
-    : EventSource(eventList, "uecSrc"), _nic(nic), _flow(trafficLogger) {
+UecSrc::UecSrc(TrafficLogger* trafficLogger, 
+               EventList& eventList, 
+               unique_ptr<UecMultipath> mp,
+               UecNIC& nic, 
+               uint32_t no_of_ports, 
+               bool rts)
+    : EventSource(eventList, "uecSrc"), 
+      _mp(move(mp)),
+      _nic(nic), 
+      _flow(trafficLogger) {
+    assert(_mp != nullptr);
+
+    _mp->set_debug_tag(_flow.str());
     _node_num = _global_node_count++;
     _nodename = "uecSrc " + to_string(_node_num);
 
@@ -506,50 +515,13 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger, EventList& eventList, UecNIC& nic, 
     _in_flight = 0;
     _highest_sent = 0;
     _send_blocked_on_nic = false;
-    _no_of_paths = _path_entropy_size;
-    _path_random = rand() % 0xffff;  // random upper bits of EV
-    _path_xor = rand() % _no_of_paths;
-    _current_ev_index = 0;
     _inc_bytes = 0;
 
     //must be at least two, to allow us to encode assumed_bad state.
-    _max_penalty = 15;
-    _ev_skip_count = 0;
-    _ev_bad_count = 0;
     _last_rts = 0;
 
     // stats for debugging
     _stats = {};
-
-    if (_load_balancing_algo == BITMAP){
-        nextEntropy = &UecSrc::nextEntropy_bitmap;
-        processEv = &UecSrc::processEv_bitmap;
-        _crt_path = 0;
-        
-        // reset path penalties
-        _ev_skip_bitmap.resize(_no_of_paths);
-        for (uint32_t i = 0; i < _no_of_paths; i++) {
-            _ev_skip_bitmap[i] = 0;
-        }
-    } else if (_load_balancing_algo == REPS){
-        nextEntropy = &UecSrc::nextEntropy_REPS;
-        processEv = &UecSrc::processEv_REPS;
-        _crt_path = 0;
-    } else if (_load_balancing_algo == OBLIVIOUS ){
-        nextEntropy = &UecSrc::nextEntropy_oblivious;
-        processEv = &UecSrc::processEv_oblivious;
-        _crt_path = 0;
-    } else if (_load_balancing_algo == MIXED ){
-        nextEntropy = &UecSrc::nextEntropy_mixed;
-        processEv = &UecSrc::processEv_mixed;
-        _crt_path = 0;
-
-        // reset path penalties
-        _ev_skip_bitmap.resize(_no_of_paths);
-        for (uint32_t i = 0; i < _no_of_paths; i++) {
-            _ev_skip_bitmap[i] = 0;
-        }
-    }
 
     // by default, end silently
     _end_trigger = 0;
@@ -961,7 +933,7 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
 
     _loss_counter --;
 
-    (this->*processEv)(pkt.ev(), pkt.ecn_echo() ? PATH_ECN:PATH_GOOD);
+    _mp->processEv(pkt.ev(), pkt.ecn_echo() ? UecMultipath::PATH_ECN : UecMultipath::PATH_GOOD);
 
     if(_flow.flow_id() == _debug_flowid ){
         cout <<  timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " track_avg_rtt " << timeAsUs(get_avg_delay())
@@ -1477,9 +1449,9 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
     }
 
     if (pkt.last_hop())
-        (this->*processEv)(ev, pkt.ecn_echo() ? PATH_ECN : PATH_GOOD);
+        _mp->processEv(ev, pkt.ecn_echo() ? UecMultipath::PATH_ECN : UecMultipath::PATH_GOOD);
     else
-        (this->*processEv)(ev, PATH_NACK);
+        _mp->processEv(ev, UecMultipath::PATH_NACK);
 
     sendIfPermitted();
 }
@@ -1780,149 +1752,6 @@ void UecSrc::cancelRTO() {
     }
 }
 
-void UecSrc::processEv_mixed(uint16_t path_id, PathFeedback reason){
-    processEv_bitmap(path_id,reason);
-    processEv_REPS(path_id,reason);
-}
-
-void UecSrc::processEv_bitmap(uint16_t path_id, PathFeedback reason){
-    // _no_of_paths must be a power of 2
-    uint16_t mask = _no_of_paths - 1;
-    path_id &= mask;  // only take the relevant bits for an index
-
-    if (reason != PathFeedback::PATH_GOOD && !_ev_skip_bitmap[path_id])
-        _ev_skip_count++;
-
-    uint8_t penalty = 0;
-
-    if (reason == PathFeedback::PATH_ECN)
-        penalty = 1;
-    else if (reason == PathFeedback::PATH_NACK)
-        penalty = 4;
-    else if (reason == PathFeedback::PATH_TIMEOUT)
-        penalty = _max_penalty;
-
-    _ev_skip_bitmap[path_id] += penalty;
-    if (_ev_skip_bitmap[path_id] > _max_penalty) {
-        _ev_skip_bitmap[path_id] = _max_penalty;
-    }
-}
-
-void UecSrc::processEv_REPS(uint16_t path_id, PathFeedback feedback) {
-    if (feedback == PATH_GOOD){
-        _next_pathid.push_back(path_id);
-        if (_debug){
-            cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS Add " << path_id << " " << _next_pathid.size() << endl;
-        }
-    }
-}
-
-void UecSrc::processEv_oblivious(uint16_t path_id, PathFeedback feedback) {
-    return;
-}
-
-
-uint16_t UecSrc::nextEntropy_bitmap() {
-    // _no_of_paths must be a power of 2
-    uint16_t mask = _no_of_paths - 1;
-    uint16_t entropy = (_current_ev_index ^ _path_xor) & mask;
-    bool flag = false;
-    int counter = 0;
-    while (_ev_skip_bitmap[entropy] > 0) {
-        if (flag == false){
-            _ev_skip_bitmap[entropy]--;
-            if (!_ev_skip_bitmap[entropy]){
-                assert(_ev_skip_count>0);
-                _ev_skip_count--;
-            }
-        }
-
-        flag = true;
-        counter ++;
-        if (counter > _no_of_paths){
-            break;
-        }
-        _current_ev_index++;
-        if (_current_ev_index == _no_of_paths) {
-            _current_ev_index = 0;
-            _path_xor = rand() & mask;
-        }
-        entropy = (_current_ev_index ^ _path_xor) & mask;
-    }
-
-    // set things for next time
-    _current_ev_index++;
-    if (_current_ev_index == _no_of_paths) {
-        _current_ev_index = 0;
-        _path_xor = rand() & mask;
-    }
-
-    entropy |= _path_random ^ (_path_random & mask);  // set upper bits
-    return entropy;
-}
-
-uint16_t UecSrc::nextEntropy_REPS(){
-	uint64_t allpathssizes = _mss * _no_of_paths;
-    if (_mss * _highest_sent < min((uint64_t)_cwnd, allpathssizes)) {
-        _crt_path++;
-        if (_crt_path == _no_of_paths) {
-            _crt_path = 0;
-        }
-
-        if (_debug) 
-            cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS FirstWindow " << _crt_path << " highest sent " << _mss * _highest_sent << " maxwnd " << _maxwnd << " allpaths " << allpathssizes << endl;
-
-    } else {
-        if (_next_pathid.empty()) {
-            assert(_no_of_paths > 0);
-		    _crt_path = random() % _no_of_paths;
-
-            if (_debug) 
-                cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS Steady " << _crt_path << endl;
-
-        } else {
-            _crt_path = _next_pathid.front();
-            _next_pathid.pop_front();
-
-            if (_debug) 
-                cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " REPS Recycle " << _crt_path << " " << _next_pathid.size() << endl;
-
-        }
-    }
-    return _crt_path;
-}
-
-uint16_t UecSrc::nextEntropy_mixed(){
-    if (_next_pathid.empty()) {
-        return nextEntropy_bitmap();
-    }
-    else {
-        _crt_path = _next_pathid.front();
-        _next_pathid.pop_front();
-
-        if (_debug) 
-            cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " MIXED Recycle " << _crt_path << " " << _next_pathid.size() << endl;
-    }
-    return _crt_path;
-}
-
-uint16_t UecSrc::nextEntropy_oblivious(){
-    // _no_of_paths must be a power of 2
-    uint16_t mask = _no_of_paths - 1;
-    uint16_t entropy = (_current_ev_index ^ _path_xor) & mask;
-
-    // set things for next time
-    _current_ev_index++;
-    if (_current_ev_index == _no_of_paths) {
-        _current_ev_index = 0;
-        _path_xor = rand() & mask;
-    }
-
-    entropy |= _path_random ^ (_path_random & mask);  // set upper bits
-    return entropy;
-}
-
-
 mem_b UecSrc::sendNewPacket(const Route& route) {
     if (_debug_src)
         cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " " << _nodename
@@ -1953,7 +1782,8 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
 
     auto* p = UecDataPacket::newpkt(_flow, route, _highest_sent, full_pkt_size, ptype,
                                      _pull_target, _dstaddr);
-    uint16_t ev = (this->*nextEntropy)();
+
+    uint16_t ev = _mp->nextEntropy(_highest_sent, (uint64_t)_cwnd/_mss);
     p->set_pathid(ev);
     p->flow().logTraffic(*p, *this, TrafficLogger::PKT_CREATESEND);
 
@@ -1994,7 +1824,8 @@ mem_b UecSrc::sendRtxPacket(const Route& route) {
     
     auto* p = UecDataPacket::newpkt(_flow, route, seq_no, full_pkt_size, UecDataPacket::DATA_RTX,
                                      _pull_target, _dstaddr);
-    uint16_t ev = (this->*nextEntropy)();
+
+    uint16_t ev = _mp->nextEntropy(_highest_sent, (uint64_t)_cwnd/_mss);
     p->set_pathid(ev);
     p->flow().logTraffic(*p, *this, TrafficLogger::PKT_CREATESEND);
 
@@ -2032,7 +1863,8 @@ void UecSrc::sendRTS() {
     auto* p =
         UecRtsPacket::newpkt(_flow, NULL, _highest_sent, _pull_target, _dstaddr);
     p->set_dst(_dstaddr);
-    uint16_t ev = (this->*nextEntropy)();
+
+    uint16_t ev = _mp->nextEntropy(_highest_sent, (uint64_t)_cwnd/_mss);
     p->set_pathid(ev);
 
     // p->sendOn();

@@ -45,9 +45,9 @@ Using binary: ./htsim_uec
 Experiment: Large permutation, REPS, 1SACK/packet (1024 nodes) 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -sender_cc_only -end 1000 -load_balancing_algo reps -sack_threshold 4000 -paths 128 
-[PASS] Tail FCT 195.747 us below the target of 220 us
+[PASS] Tail FCT 196.42 us below the target of 220 us
 [PASS] Connection count 1024
-FCT Spread 169.23 -> 195.747 ratio 1.1566920758730723
+FCT Spread 169.15 -> 196.42 ratio 1.161217853975761
 Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 0 Pulls: 0
 Using binary: ./htsim_uec
 
@@ -55,9 +55,9 @@ Using binary: ./htsim_uec
 Experiment: Large permutation, REPS 1 packet per SACK, large queues (1024 nodes) 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -sender_cc_only -end 1000 -q 500 -load_balancing_algo reps -sack_threshold 4000 -paths 128 
-[PASS] Tail FCT 195.747 us below the target of 220 us
+[PASS] Tail FCT 196.42 us below the target of 220 us
 [PASS] Connection count 1024
-FCT Spread 169.23 -> 195.747 ratio 1.1566920758730723
+FCT Spread 169.15 -> 196.42 ratio 1.161217853975761
 Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 0 Pulls: 0
 Using binary: ./htsim_uec
 
@@ -65,10 +65,10 @@ Using binary: ./htsim_uec
 Experiment: Large permutation, REPS, 4SACK/packet (1024 nodes) 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -sender_cc_only -end 1000 -load_balancing_algo reps -paths 128 
-[PASS] Tail FCT 206.464 us below the target of 220 us
+[PASS] Tail FCT 211.105 us below the target of 220 us
 [PASS] Connection count 1024
-FCT Spread 167.853 -> 206.464 ratio 1.230028656026404
-Summary: New: 501760 Rtx: 302 RTS: 0 Bounced: 0 ACKs: 203668 NACKs: 302 Pulls: 0
+FCT Spread 167.79 -> 211.105 ratio 1.2581500685380536
+Summary: New: 501760 Rtx: 375 RTS: 0 Bounced: 0 ACKs: 204383 NACKs: 375 Pulls: 0
 Using binary: ./htsim_uec
 
 

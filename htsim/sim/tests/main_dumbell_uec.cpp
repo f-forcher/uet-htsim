@@ -246,7 +246,8 @@ int main(int argc, char **argv) {
 
     for (int i=0;i<flow_count;i++){
         uecNic = new UecNIC(i, eventlist, linkspeed, 1);
-        uecSrc = new UecSrc(NULL,eventlist,*uecNic,1, rts);
+        unique_ptr<UecMultipath> mp = make_unique<UecMpMixed>(256, UecSrc::_debug);
+        uecSrc = new UecSrc(NULL, eventlist, move(mp), *uecNic, 1, rts);
         //UecSrc->setRouteStrategy(SINGLE_PATH);
         uecSrc->setCwnd(cwnd*Packet::data_packet_size());
         uecSrc->setMaxWnd(cwnd*Packet::data_packet_size());
