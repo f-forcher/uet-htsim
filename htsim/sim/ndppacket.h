@@ -2,7 +2,9 @@
 #ifndef NDPPACKET_H
 #define NDPPACKET_H
 
+#include <cstdint>
 #include <list>
+#include <optional>
 #include "network.h"
 #include "ecn.h"
 
@@ -41,7 +43,7 @@ public:
         p->_path_len = 0;
         p->_direction = NONE;
         p->set_dst(destination);
-        p->_trim_hop = UINT32_MAX;
+        p->_trim_hop = {};
         p->_trim_direction = NONE;
         return p;
     }
@@ -63,7 +65,7 @@ public:
         p->_no_of_paths = no_of_paths;
         p->_last_packet = last_packet;
         p->_path_len = route.size();
-        p->_trim_hop = UINT32_MAX;
+        p->_trim_hop = {};
         p->_trim_direction = NONE;
         p->set_dst(destination);
         return p;
@@ -76,8 +78,8 @@ public:
     };
 
     virtual inline void set_route(const Route &route) {
-        if (_trim_hop!=INT32_MAX)
-            _trim_hop -= route.size();
+        if (_trim_hop.has_value())
+            _trim_hop = *_trim_hop - route.size();
 
         Packet::set_route(route);
     }
@@ -89,7 +91,7 @@ public:
     inline void set_pacerno(seq_t pacerno) {_pacerno = pacerno;}
     inline bool retransmitted() const {return _retransmitted;}
     inline bool last_packet() const {return _last_packet;}
-    inline int32_t trim_hop() const {return _trim_hop;}
+    inline int32_t trim_hop() const {return _trim_hop.value_or(INT32_MAX);}
     inline packet_direction trim_direction() const {return _trim_direction;}
 
     inline simtime_picosec ts() const {return _ts;}
@@ -116,7 +118,7 @@ protected:
     // simulation, and this is easiest to
     // implement
     bool _last_packet;  // set to true in the last packet in a flow.
-    int32_t _trim_hop;
+    std::optional<int32_t> _trim_hop;
     packet_direction _trim_direction;
     static PacketDB<NdpPacket> _packetdb;
 };

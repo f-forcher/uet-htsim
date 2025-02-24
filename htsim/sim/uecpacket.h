@@ -2,7 +2,9 @@
 #ifndef UECPACKET_H
 #define UECPACKET_H
 
+#include <cstdint>
 #include <list>
+#include <optional>
 #include "network.h"
 #include "ecn.h"
 
@@ -64,7 +66,7 @@ public:
 
         p->_direction = NONE;
         p->_path_len = route.size();
-        p->_trim_hop = UINT32_MAX;
+        p->_trim_hop = {};
         p->_trim_direction = NONE;
 
         return p;
@@ -77,15 +79,15 @@ public:
     };
 
     virtual inline void set_route(const Route &route) {
-        if (_trim_hop!=INT32_MAX)
-            _trim_hop -= route.size();
+        if (_trim_hop.has_value())
+            _trim_hop = *_trim_hop - route.size();
 
         Packet::set_route(route);
     }
 
     virtual inline void set_route(PacketFlow& flow, const Route &route, int pkt_size, packetid_t id){
-        if (_trim_hop!=INT32_MAX)
-            _trim_hop -= route.size();
+        if (_trim_hop.has_value())
+            _trim_hop = *_trim_hop - route.size();
 
         Packet::set_route(flow,route,pkt_size,id);
     };
@@ -107,7 +109,7 @@ public:
     inline bool fin() const {return _fin;}
     inline PacketType packet_type() const {return _packet_type;}
 
-    inline int32_t trim_hop() const {return _trim_hop;}
+    inline int32_t trim_hop() const {return _trim_hop.value_or(INT32_MAX);}
     inline packet_direction trim_direction() const {return _trim_direction;}
 
     inline int32_t path_id() const {if (_pathid!=UINT32_MAX) return _pathid; else return _route->path_id();}
@@ -133,7 +135,7 @@ protected:
     PacketType _packet_type;
 
     //trim information, need to see if this stays here or goes to separate header.
-    int32_t _trim_hop;
+    std::optional<int32_t> _trim_hop;
     packet_direction _trim_direction;
     static PacketDB<UecDataPacket> _packetdb;
 };
