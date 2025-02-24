@@ -1,5 +1,6 @@
 // -*- c-basic-offset: 4; indent-tabs-mode: nil -*-
 //#include "config.h"
+#include <cstdlib>
 #include <memory>
 #include <sstream>
 #include <string.h>
@@ -918,5 +919,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < 10; i++)
         cout << "Hop " << i << " Count " << counts[i] << endl;
     */  
+
+    return EXIT_SUCCESS;
 }
 
