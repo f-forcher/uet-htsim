@@ -405,6 +405,8 @@ FairPriorityQueue::getPriority(Packet& pkt) {
         // the packet to say what queue service it desires.
         abort();
     }
+    // unreachable, but shut up g++ warnings
+    abort();
 }
 
 //this is inaccurate!
