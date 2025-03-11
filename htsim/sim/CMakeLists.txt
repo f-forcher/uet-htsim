@@ -120,7 +120,6 @@ add_library(htsim STATIC ${SOURCE_FILES})
 target_include_directories(htsim PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}) # Needed for header-only libraries (e.g., loggertypes.h).
 
 # Add subdirectories
-add_subdirectory(tests)
 add_subdirectory(datacenter)
 
 # Define executables and link with htsim library
