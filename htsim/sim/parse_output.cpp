@@ -49,13 +49,11 @@ int main(int argc, char** argv){
         } else if (!strcmp(argv[i],"-ascii") || !strcmp(argv[i],"--ascii")){
             ascii = true;
         } else if (!strcmp(argv[i],"-filter")){
-            string* s = new string(argv[i+1]);
-            filters.push_back(*s);
-            cout << *s << endl;
+            filters.push_back(argv[i + 1]);
+            cout << argv[i + 1] << endl;
             i++;
         } else if (!strcmp(argv[i],"-split")){
-            string* s = new string(argv[i+1]);
-            splits.push_back(*s);
+            splits.push_back(argv[i + 1]);
             i++;
         } else if (!strcmp(argv[i],"-field")){
             fields.push_back(atoi(argv[i+1]));
@@ -128,9 +126,8 @@ int main(int argc, char** argv){
                 id = atoi(split+1);
             
             split[0]=0;
-            string * name = new string(line+2);
             assert(id >= 0);
-            object_names[id] = *name;
+            object_names[id] = line + 2;
         }
     }
     //cout << "done\n";
@@ -150,15 +147,14 @@ int main(int argc, char** argv){
                 continue;
 
             split++;
-            split[strlen(split)-1] = 0;
 
-            string * name = new string(split);
+            const string name{split, strlen(split) - 1};
             split[0]=0;
 
             id = atoi(line);
                                 
             //cout << "Found mapping " << id << " to " << *name << endl;
-            object_names[id] = *name;
+            object_names[id] = name;
         }
     }
 
@@ -167,23 +163,23 @@ int main(int argc, char** argv){
 
     int numread = numRecords;
 
-    double* timeRec = new double[numRecords];
-    uint32_t* typeRec = new uint32_t[numRecords];
-    uint32_t* idRec = new uint32_t[numRecords];
-    uint32_t* evRec = new uint32_t[numRecords];
-    double* val1Rec = new double[numRecords];
-    double* val2Rec = new double[numRecords];
-    double *val3Rec = new double[numRecords];
+    std::vector<double> timeRec(numRecords);
+    std::vector<uint32_t> typeRec(numRecords);
+    std::vector<uint32_t> idRec(numRecords);
+    std::vector<uint32_t> evRec(numRecords);
+    std::vector<double> val1Rec(numRecords);
+    std::vector<double> val2Rec(numRecords);
+    std::vector<double> val3Rec(numRecords);
 
     if (transpose) {
         /* old-style transposed data */
-        std::ignore = fread(timeRec, sizeof(double), numread, logfile);
-        std::ignore = fread(typeRec, sizeof(uint32_t), numread, logfile);
-        std::ignore = fread(idRec,   sizeof(uint32_t), numread, logfile);
-        std::ignore = fread(evRec,   sizeof(uint32_t), numread, logfile);
-        std::ignore = fread(val1Rec, sizeof(double), numread, logfile);
-        std::ignore = fread(val2Rec, sizeof(double), numread, logfile);
-        std::ignore = fread(val3Rec, sizeof(double), numread, logfile);  
+        std::ignore = fread(timeRec.data(), sizeof(double), numread, logfile);
+        std::ignore = fread(typeRec.data(), sizeof(uint32_t), numread, logfile);
+        std::ignore = fread(idRec.data(),   sizeof(uint32_t), numread, logfile);
+        std::ignore = fread(evRec.data(),   sizeof(uint32_t), numread, logfile);
+        std::ignore = fread(val1Rec.data(), sizeof(double), numread, logfile);
+        std::ignore = fread(val2Rec.data(), sizeof(double), numread, logfile);
+        std::ignore = fread(val3Rec.data(), sizeof(double), numread, logfile);
     } else {
         /* new-style one record at a time */
         for (int i = 0; i < numRecords; i++) {
@@ -497,11 +493,5 @@ int main(int argc, char** argv){
            cnt, (total/cnt)*8/1000000, mean_rate/rates.size()*8/1000000, 
            mean_rate2/flow_rates2.size()*8/1000000);
   
-    delete[] timeRec;
-    delete[] typeRec;
-    delete[] idRec;
-    delete[] evRec;
-    delete[] val1Rec;
-    delete[] val2Rec;
     delete[] line;
 }
