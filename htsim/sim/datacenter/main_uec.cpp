@@ -40,7 +40,7 @@ int DEFAULT_NODES = 128;
 EventList eventlist;
 
 void exit_error(char* progr) {
-    cout << "Usage " << progr << " [-nodes N]\n\t[-conns C]\n\t[-cwnd cwnd_size]\n\t[-q queue_size]\n\t[-recv_oversub_cc] Use receiver-driven AIMD to reduce total window when trims are not last hop\n\t[-queue_type composite|random|lossless|lossless_input|]\n\t[-tm traffic_matrix_file]\n\t[-strat route_strategy (single,rand,perm,pull,ecmp,\n\tecmp_host path_count,ecmp_ar,ecmp_rr,\n\tecmp_host_ar ar_thresh)]\n\t[-log log_level]\n\t[-seed random_seed]\n\t[-end end_time_in_usec]\n\t[-mtu MTU]\n\t[-hop_latency x] per hop wire latency in us,default 1 \n\t[-disable_fd] disable fair decrease to get higher throughput, \n\t[-target_q_delay x] target_queuing_delay in us, default is 6us \n\t[-switch_latency x] switching latency in us, default 0\n\t[-host_queue_type  swift|prio|fair_prio]\n\t[-logtime dt] sample time for sinklogger, etc" << endl;
+    cout << "Usage " << progr << " [-nodes N]\n\t[-cwnd cwnd_size]\n\t[-q queue_size]\n\t[-recv_oversub_cc] Use receiver-driven AIMD to reduce total window when trims are not last hop\n\t[-queue_type composite|random|lossless|lossless_input|]\n\t[-tm traffic_matrix_file]\n\t[-strat route_strategy (single,rand,perm,pull,ecmp,\n\tecmp_host path_count,ecmp_ar,ecmp_rr,\n\tecmp_host_ar ar_thresh)]\n\t[-log log_level]\n\t[-seed random_seed]\n\t[-end end_time_in_usec]\n\t[-mtu MTU]\n\t[-hop_latency x] per hop wire latency in us,default 1 \n\t[-disable_fd] disable fair decrease to get higher throughput, \n\t[-target_q_delay x] target_queuing_delay in us, default is 6us \n\t[-switch_latency x] switching latency in us, default 0\n\t[-host_queue_type  swift|prio|fair_prio]\n\t[-logtime dt] sample time for sinklogger, etc" << endl;
     exit(1);
 }
 
@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
     linkspeed_bps linkspeed = speedFromMbps((double)HOST_NIC);
     int packet_size = 4150;
     uint32_t path_entropy_size = 64;
-    uint32_t no_of_conns = 0, cwnd = 0, no_of_nodes = 0;
+    uint32_t cwnd = 0, no_of_nodes = 0;
     uint32_t tiers = 3; // we support 2 and 3 tier fattrees
     uint32_t planes = 1;  // multi-plane topologies
     uint32_t ports = 1;  // ports per NIC
@@ -112,10 +112,6 @@ int main(int argc, char **argv) {
         if (!strcmp(argv[i],"-o")) {
             filename.str(std::string());
             filename << argv[i+1];
-            i++;
-        } else if (!strcmp(argv[i],"-conns")) {
-            no_of_conns = atoi(argv[i+1]);
-            cout << "no_of_conns "<<no_of_conns << endl;
             i++;
         } else if (!strcmp(argv[i],"-end")) {
             end_time = atoi(argv[i+1]);

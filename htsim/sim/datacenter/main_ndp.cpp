@@ -44,7 +44,7 @@ int DEFAULT_NODES = 432;
 EventList eventlist;
 
 void exit_error(char* progr) {
-    cout << "Usage " << progr << " [-nodes N]\n\t[-conns C]\n\t[-cwnd cwnd_size]\n\t[-q queue_size]\n\t[-oversubscribed_cc] Use receiver-driven AIMD to reduce total window when trims are not last hop\n\t[-queue_type composite|random|lossless|lossless_input|]\n\t[-tm traffic_matrix_file]\n\t[-strat route_strategy (single,rand,perm,pull,ecmp,\n\tecmp_host path_count,ecmp_ar,ecmp_rr,\n\tecmp_host_ar ar_thresh)]\n\t[-log log_level]\n\t[-seed random_seed]\n\t[-end end_time_in_usec]\n\t[-mtu MTU]\n\t[-hop_latency x] per hop wire latency in us,default 1\n\t[-switch_latency x] switching latency in us, default 0\n\t[-host_queue_type  swift|prio|fair_prio]" << endl;
+    cout << "Usage " << progr << " [-nodes N]\n\t[-cwnd cwnd_size]\n\t[-q queue_size]\n\t[-oversubscribed_cc] Use receiver-driven AIMD to reduce total window when trims are not last hop\n\t[-queue_type composite|random|lossless|lossless_input|]\n\t[-tm traffic_matrix_file]\n\t[-strat route_strategy (single,rand,perm,pull,ecmp,\n\tecmp_host path_count,ecmp_ar,ecmp_rr,\n\tecmp_host_ar ar_thresh)]\n\t[-log log_level]\n\t[-seed random_seed]\n\t[-end end_time_in_usec]\n\t[-mtu MTU]\n\t[-hop_latency x] per hop wire latency in us,default 1\n\t[-switch_latency x] switching latency in us, default 0\n\t[-host_queue_type  swift|prio|fair_prio]" << endl;
     exit(1);
 }
 
@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
     linkspeed_bps linkspeed = speedFromMbps((double)HOST_NIC);
     int packet_size = 9000;
     uint32_t path_entropy_size = 10000000;
-    uint32_t no_of_conns = 0, cwnd = 15, no_of_nodes = DEFAULT_NODES;
+    uint32_t cwnd = 15, no_of_nodes = DEFAULT_NODES;
     uint32_t tiers = 3; // we support 2 and 3 tier fattrees
     double logtime = 0.25; // ms;
     stringstream filename(ios_base::out);
@@ -120,10 +120,6 @@ int main(int argc, char **argv) {
             i++;
         } else if (!strcmp(argv[i],"-oversubscribed_cc")) {
             oversubscribed_congestion_control = true;
-        } else if (!strcmp(argv[i],"-conns")) {
-            no_of_conns = atoi(argv[i+1]);
-            cout << "no_of_conns "<<no_of_conns << endl;
-            i++;
         } else if (!strcmp(argv[i],"-end")) {
             end_time = atoi(argv[i+1]);
             cout << "endtime(us) "<< end_time << endl;

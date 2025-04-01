@@ -58,7 +58,7 @@ void exit_error(char* progr) {
 
 int main(int argc, char **argv) {
     Clock c(timeFromSec(5 / 100.), eventlist);
-    uint32_t no_of_conns = DEFAULT_NODES, cwnd = 15, no_of_nodes = DEFAULT_NODES,flowsize = 0;
+    uint32_t cwnd = 15, no_of_nodes = DEFAULT_NODES,flowsize = 0;
     mem_b queuesize = DEFAULT_QUEUE_SIZE;
     linkspeed_bps linkspeed = speedFromMbps((double)HOST_NIC);
     stringstream filename(ios_base::out);
@@ -77,9 +77,6 @@ int main(int argc, char **argv) {
         if (!strcmp(argv[i],"-o")){
             filename.str(std::string());
             filename << argv[i+1];
-            i++;
-        } else if (!strcmp(argv[i],"-conns")){
-            no_of_conns = atoi(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i],"-nodes")){
             no_of_nodes = atoi(argv[i+1]);
@@ -138,7 +135,6 @@ int main(int argc, char **argv) {
     srand(13);
       
 
-    cout << "conns " << no_of_conns << endl;
     cout << "requested nodes " << no_of_nodes << endl;
     cout << "cwnd " << cwnd << endl;
     cout << "flowsize " << flowsize << endl;

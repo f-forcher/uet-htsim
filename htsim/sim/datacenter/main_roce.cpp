@@ -47,7 +47,7 @@ int DEFAULT_NODES = 432;
 EventList eventlist;
 
 void exit_error(char* progr) {
-    cout << "Usage " << progr << " [-nodes N]\n\t[-conns C]\n\t[-q queue_size]\n\t[-queue_type composite|random|lossless|lossless_input|]\n\t[-tm traffic_matrix_file]\n\t[-strat route_strategy (single,\n\tecmp_host,ecmp_ar,\n\tecmp_host_ar ar_thresh)]\n\t[-log log_level]\n\t[-seed random_seed]\n\t[-end end_time_in_usec]\n\t[-mtu MTU]\n\t[-hop_latency x] per hop wire latency in us,default 1\n\t[-switch_latency x] switching latency in us, default 0\n\t[-start_delta] time in us to randomly delay the start of connections\n\t[-pfc_thresholds low high]" << endl;
+    cout << "Usage " << progr << " [-nodes N]\n\t[-q queue_size]\n\t[-queue_type composite|random|lossless|lossless_input|]\n\t[-tm traffic_matrix_file]\n\t[-strat route_strategy (single,\n\tecmp_host,ecmp_ar,\n\tecmp_host_ar ar_thresh)]\n\t[-log log_level]\n\t[-seed random_seed]\n\t[-end end_time_in_usec]\n\t[-mtu MTU]\n\t[-hop_latency x] per hop wire latency in us,default 1\n\t[-switch_latency x] switching latency in us, default 0\n\t[-start_delta] time in us to randomly delay the start of connections\n\t[-pfc_thresholds low high]" << endl;
     exit(1);
 }
 
@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
     linkspeed_bps linkspeed = speedFromMbps((double)HOST_NIC);
     int packet_size = 4000;
     uint32_t path_entropy_size = 10000000;
-    uint32_t no_of_conns = 0, no_of_nodes = DEFAULT_NODES;
+    uint32_t no_of_nodes = DEFAULT_NODES;
     uint32_t tiers = 3; // we support 2 and 3 tier fattrees     
     double logtime = 0.25; // ms;
     stringstream filename(ios_base::out);
@@ -93,10 +93,6 @@ int main(int argc, char **argv) {
         if (!strcmp(argv[i],"-o")) {
             filename.str(std::string());
             filename << argv[i+1];
-            i++;
-        } else if (!strcmp(argv[i],"-conns")) {
-            no_of_conns = atoi(argv[i+1]);
-            cout << "no_of_conns "<<no_of_conns << endl;
             i++;
         } else if (!strcmp(argv[i],"-end")) {
             end_time = atoi(argv[i+1]);
