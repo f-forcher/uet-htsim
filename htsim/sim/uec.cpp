@@ -478,10 +478,12 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger,
                UecNIC& nic, 
                uint32_t no_of_ports, 
                bool rts)
-    : EventSource(eventList, "uecSrc"), 
-      _mp(move(mp)),
-      _nic(nic), 
-      _flow(trafficLogger) {
+        : EventSource(eventList, "uecSrc"), 
+          _mp(move(mp)),
+          _nic(nic), 
+          _last_event_time(),
+          _flow(trafficLogger)
+          {
     assert(_mp != nullptr);
 
     _mp->set_debug_tag(_flow.str());
@@ -993,9 +995,16 @@ void UecSrc::updateCwndOnNack_DCTCP(bool skip, mem_b nacked_bytes, bool last_hop
     _cwnd = max(_cwnd, (mem_b)_mtu);
 }
 
+bool UecSrc::can_send_RCCC() {
+    assert(_receiver_based_cc);
+    return credit() > 0;
+}
+
 bool UecSrc::can_send_NSCC(mem_b pkt_size) {
-    return (pkt_size > 0) && (((!_loss_recovery_mode && _cwnd >= _in_flight + pkt_size) 
-          || (_loss_recovery_mode && !_rtx_queue.empty())));
+    assert(_sender_based_cc);
+    return (pkt_size > 0) 
+            && (((!_loss_recovery_mode && _cwnd >= _in_flight + pkt_size) 
+                  || (_loss_recovery_mode && !_rtx_queue.empty())));
 }
 
 void UecSrc::set_cwnd_bounds() {
@@ -1488,6 +1497,10 @@ void UecSrc::doNextEvent() {
     }
 }
 
+bool UecSrc::hasStarted() {
+    return _last_event_time.has_value();
+}
+
 void UecSrc::setFlowsize(uint64_t flow_size_in_bytes) {
     _flow_size = flow_size_in_bytes;
 }
@@ -1500,6 +1513,15 @@ void UecSrc::startFlow() {
         cout << _flow.str() << " " << "startflow " << _flow._name << " CWND " << _cwnd << " at "
              << timeAsUs(eventlist().now()) << " flow " << _flow.str() << endl;
 
+    if (_last_event_time.has_value() and _last_event_time.value() == eventlist().now()) {
+        cout << "Flow " << _name << " flowId " << flowId() << " " << _nodename << " duplicate call to starting at "
+            << timeAsUs(eventlist().now()) << endl;
+        abort();
+    } 
+
+    assert(!hasStarted());
+    _last_event_time.emplace(eventlist().now());
+
     cout << "Flow " << _name << " flowId " << flowId() << " " << _nodename << " starting at "
          << timeAsUs(eventlist().now()) << endl;
 
@@ -1507,6 +1529,7 @@ void UecSrc::startFlow() {
     if (_flow_logger) {
         _flow_logger->logEvent(_flow, *this, FlowEventLogger::START, _flow_size, 0);
     }
+
     clearRTO();
     _in_flight = 0;
     _pull_target = INIT_PULL;
@@ -1516,7 +1539,8 @@ void UecSrc::startFlow() {
     _backlog = ceil(((double)_flow_size) / _mss) * _hdr_size + _flow_size;
     _rtx_backlog = 0;
     _send_blocked_on_nic = false;
-    while (_send_blocked_on_nic == false && credit() > 0 && _backlog > 0) {
+
+    while (_send_blocked_on_nic == false && isSendPermitted()) {
         if (_debug_src) {
             cout << _flow.str() << " " << "requestSending 0 "<< endl;
         }
@@ -1536,9 +1560,27 @@ void UecSrc::startFlow() {
             }
         } else {
             _send_blocked_on_nic = true;
-            return;
         }
     }
+    // No packet might be sent here, this can happen e.g., with outcast workloads.
+}
+
+bool UecSrc::isSendPermitted() {
+    if (_rtx_queue.empty() && _backlog == 0) {
+        return false;
+    }
+
+    if (_receiver_based_cc && !can_send_RCCC()) {
+        // can send if we have *any* credit, but we don't                                                                                                         
+        return false;
+    }
+
+    mem_b next_packet_size = getNextPacketSize();        
+    if (_sender_based_cc && !can_send_NSCC(next_packet_size)) {
+        return false;
+    }
+
+    return true;
 }
 
 mem_b UecSrc::credit() const {
@@ -1741,7 +1783,7 @@ void UecSrc::clearRTO() {
     _rtx_timeout_pending = false;
 
     if (_debug_src)
-        cout << "Clear RTO " << timeAsUs(eventlist().now()) << " source " << _flow.str() << endl;
+        cout << "Clear RTO " << timeAsUs(eventlist().now()) << " would have expired at " << _rtx_timeout << " source " << _flow.str() << endl;
 }
 
 void UecSrc::cancelRTO() {
@@ -1924,26 +1966,24 @@ void UecSrc::timeToSend(const Route& route) {
     }
 
     mem_b next_packet_size = getNextPacketSize();
-    if (_sender_based_cc) {
-        if (!can_send_NSCC(next_packet_size)) {
-            if (_debug_src)
-                cout << _flow.str() << " " << _node_num << "cantSend, limited by sender CWND " << _cwnd << " _in_flight "
-                     << _in_flight << "\n";
+    if (_sender_based_cc && !can_send_NSCC(next_packet_size)) {
+        if (_debug_src)
+            cout << _flow.str() << " " << _node_num << " cantSend, limited by sender CWND " << _cwnd << " _in_flight "
+                    << _in_flight << "\n";
 
-            _nic.cantSend(*this);
-            return;
-        }
+        _nic.cantSend(*this);
+        return;
     }
+
     if (_flow.flow_id() == _debug_flowid ){
         cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " _receiver_based_cc " << _receiver_based_cc << " credit " << credit()
             << endl;
     }
     // do we have enough credit if we're using receiver CC?
-    if (_receiver_based_cc && credit() <= 0) {
+    if (_receiver_based_cc && !can_send_RCCC()) {
         if (_debug_src)
             cout << "cantSend"
-                 << " flow " << _flow.str() << endl;
-        ;
+                << " flow " << _flow.str() << endl;
         _nic.cantSend(*this);
         return;
     }
@@ -1964,20 +2004,7 @@ void UecSrc::timeToSend(const Route& route) {
         return;
     }
     
-    next_packet_size = getNextPacketSize();
-    if (_sender_based_cc) {
-        if (!can_send_NSCC(next_packet_size)) {
-            return;
-        }
-    }
-
-    // do we have enough credit to send again?
-    if (_receiver_based_cc && credit() <= 0) {
-        return;
-    }
-
-    if (_backlog == 0 && _rtx_queue.empty()) {
-        // we're done - nothing more to send.
+    if (!isSendPermitted()) {
         return;
     }
 

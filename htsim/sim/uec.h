@@ -150,6 +150,7 @@ public:
     void timeToSend(const Route& route);
     void receivePacket(Packet& pkt, uint32_t portnum);
     void doNextEvent();
+    uint32_t dst() { return _dstaddr; }
     void setDst(uint32_t dst) { _dstaddr = dst; }
     static void setMinRTO(uint32_t min_rto_in_us) {
         _min_rto = timeFromUs((uint32_t)min_rto_in_us);
@@ -241,8 +242,9 @@ public:
     map<UecDataPacket::seq_t, uint16_t> _rtx_times;
 
     map<UecDataPacket::seq_t, mem_b> _rtx_queue;
+    bool hasStarted();
     void startFlow();
-    bool isSpeculative();
+    bool isSendPermitted();
     void sendIfPermitted();
     mem_b sendPacket(const Route& route);
     mem_b sendNewPacket(const Route& route);
@@ -276,6 +278,7 @@ public:
 
     //added for NSCC
     bool can_send_NSCC(mem_b pkt_size);
+    bool can_send_RCCC();
     void set_cwnd_bounds();
     mem_b getNextPacketSize();
     void quick_adapt(bool trimmed);
@@ -321,6 +324,8 @@ public:
     bool _send_blocked_on_nic;
     bool _speculating;
 
+    // Record last time this UecSrc was scheduled.
+    optional<simtime_picosec> _last_event_time;
 public:
     static linkspeed_bps _reference_network_linkspeed; 
     static simtime_picosec _reference_network_rtt; 
