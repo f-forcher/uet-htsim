@@ -343,7 +343,7 @@ int main(int argc, char **argv) {
             cout << "logtime "<< log_us << " us" << endl;
             i++;
         } else if (!strcmp(argv[i],"-failed")){
-            // number of failed links (failed to 10% linkspeed)
+            // number of failed links (failed to 25% linkspeed)
             int num_failed = atoi(argv[i+1]);
             FatTreeTopology::set_failed_links(num_failed);
             i++;
