@@ -83,6 +83,7 @@ int main(int argc, char **argv) {
     RouteStrategy route_strategy = NOT_SET;
     int seed = 13;
     int i = 1;
+    uint32_t topo_num_failed = 0;
     filename << "logout.dat";
     int end_time = 1000;//in microseconds
 
@@ -109,8 +110,7 @@ int main(int argc, char **argv) {
             i++;
         } else if (!strcmp(argv[i],"-failed")){
             // number of failed links (failed to 25% linkspeed)
-            int num_failed = atoi(argv[i+1]);
-            FatTreeTopology::set_failed_links(num_failed);
+            topo_num_failed = atoi(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i],"-tiers")) {
             tiers = atoi(argv[i+1]);
@@ -392,14 +392,26 @@ int main(int argc, char **argv) {
         qlf->set_sample_period(timeFromUs(10.0));
     }
 #ifdef FAT_TREE
-    FatTreeTopology* top;
+    unique_ptr<FatTreeTopology> top;
+    unique_ptr<FatTreeTopologyCfg> topo_cfg;
     if (topo_file) {
-        top = FatTreeTopology::load(topo_file, qlf, eventlist, queuesize, qt, snd_type);
+        topo_cfg = FatTreeTopologyCfg::load(topo_file, queuesize, qt, snd_type);
+
+        if (topo_cfg->no_of_nodes() != no_of_nodes) {
+            cerr << "Mismatch between connection matrix (" << no_of_nodes << " nodes) and topology ("
+                    << topo_cfg->no_of_nodes() << " nodes)" << endl;
+            exit(1);
+        }
     } else {
-        FatTreeTopology::set_tiers(tiers);
-        top = new FatTreeTopology(no_of_nodes, linkspeed, queuesize, qlf, 
-                                               &eventlist,NULL,qt,hop_latency,switch_latency,snd_type);
+        topo_cfg = make_unique<FatTreeTopologyCfg>(tiers, no_of_nodes, linkspeed, queuesize, 
+                                                   hop_latency, switch_latency, qt, snd_type);
     }
+
+    if (topo_num_failed > 0) {
+        topo_cfg->set_failed_links(topo_num_failed);
+    }
+
+    top = make_unique<FatTreeTopology>(topo_cfg.get(), qlf, &eventlist, nullptr);
 #endif
 
 #ifdef OV_FAT_TREE
@@ -543,21 +555,21 @@ int main(int argc, char **argv) {
         roceSnk->setName("Roce_sink_" + ntoa(src) + "_" + ntoa(dest));
         logfile.writeName(*roceSnk);
                         
-        ((HostQueue*)top->queues_ns_nlp[src][top->HOST_POD_SWITCH(src)][0])->addHostSender(roceSrc);
+        ((HostQueue*)top->queues_ns_nlp[src][topo_cfg->HOST_POD_SWITCH(src)][0])->addHostSender(roceSrc);
 
         if (route_strategy!=SINGLE_PATH && route_strategy!=ECMP_FIB){
             abort();
         } else if (route_strategy==ECMP_FIB) {
             Route* srctotor = new Route();
             
-            srctotor->push_back(top->queues_ns_nlp[src][top->HOST_POD_SWITCH(src)][0]);
-            srctotor->push_back(top->pipes_ns_nlp[src][top->HOST_POD_SWITCH(src)][0]);
-            srctotor->push_back(top->queues_ns_nlp[src][top->HOST_POD_SWITCH(src)][0]->getRemoteEndpoint());
+            srctotor->push_back(top->queues_ns_nlp[src][topo_cfg->HOST_POD_SWITCH(src)][0]);
+            srctotor->push_back(top->pipes_ns_nlp[src][topo_cfg->HOST_POD_SWITCH(src)][0]);
+            srctotor->push_back(top->queues_ns_nlp[src][topo_cfg->HOST_POD_SWITCH(src)][0]->getRemoteEndpoint());
 
             Route* dsttotor = new Route();
-            dsttotor->push_back(top->queues_ns_nlp[dest][top->HOST_POD_SWITCH(dest)][0]);
-            dsttotor->push_back(top->pipes_ns_nlp[dest][top->HOST_POD_SWITCH(dest)][0]);
-            dsttotor->push_back(top->queues_ns_nlp[dest][top->HOST_POD_SWITCH(dest)][0]->getRemoteEndpoint());
+            dsttotor->push_back(top->queues_ns_nlp[dest][topo_cfg->HOST_POD_SWITCH(dest)][0]);
+            dsttotor->push_back(top->pipes_ns_nlp[dest][topo_cfg->HOST_POD_SWITCH(dest)][0]);
+            dsttotor->push_back(top->queues_ns_nlp[dest][topo_cfg->HOST_POD_SWITCH(dest)][0]->getRemoteEndpoint());
 
 
             if (crt->start != TRIGGER_START && start_delta > 0){
@@ -567,10 +579,10 @@ int main(int argc, char **argv) {
             roceSrc->connect(srctotor, dsttotor, *roceSnk, crt->start);
 
             //register src and snk to receive packets from their respective TORs. 
-            assert(top->switches_lp[top->HOST_POD_SWITCH(src)]);
-            assert(top->switches_lp[top->HOST_POD_SWITCH(src)]);
-            top->switches_lp[top->HOST_POD_SWITCH(src)]->addHostPort(src,roceSrc->flow_id(),roceSrc);
-            top->switches_lp[top->HOST_POD_SWITCH(dest)]->addHostPort(dest,roceSrc->flow_id(),roceSnk);
+            assert(top->switches_lp[topo_cfg->HOST_POD_SWITCH(src)]);
+            assert(top->switches_lp[topo_cfg->HOST_POD_SWITCH(src)]);
+            top->switches_lp[topo_cfg->HOST_POD_SWITCH(src)]->addHostPort(src,roceSrc->flow_id(),roceSrc);
+            top->switches_lp[topo_cfg->HOST_POD_SWITCH(dest)]->addHostPort(dest,roceSrc->flow_id(),roceSnk);
         } else {
             int choice = rand()%net_paths[src][dest]->size();
             routeout = new Route(*(net_paths[src][dest]->at(choice)));

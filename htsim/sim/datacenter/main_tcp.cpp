@@ -178,7 +178,9 @@ int main(int argc, char **argv) {
 #endif
 
 #ifdef FAT_TREE
-    FatTreeTopology* top = new FatTreeTopology(no_of_nodes, linkspeed, memFromPkt(8), &qlf, &eventlist,ff,RANDOM,0);
+    unique_ptr<FatTreeTopologyCfg> topo_cfg = make_unique<FatTreeTopologyCfg>(no_of_nodes, linkspeed, memFromPkt(8),
+                                                                              RANDOM, 0);
+    FatTreeTopology* top = new FatTreeTopology(topo_cfg.get(), &qlf, &eventlist,ff);
 #endif
 
 #ifdef OV_FAT_TREE

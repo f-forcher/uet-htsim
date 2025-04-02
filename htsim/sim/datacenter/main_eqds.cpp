@@ -401,12 +401,6 @@ int main(int argc, char **argv) {
         EqdsSink::_bytes_unacked_threshold = 4000;
     };
 
-    if (ecn){
-        ecn_low = memFromPkt(ecn_low);
-        ecn_high = memFromPkt(ecn_high);
-        FatTreeTopology::set_ecn_parameters(true, false, ecn_low,ecn_high);
-    }
-
     /*
     EqdsSink::_oversubscribed_congestion_control = oversubscribed_congestion_control;
     */
@@ -525,24 +519,30 @@ int main(int argc, char **argv) {
 
     no_of_nodes = conns->N;
 
+    unique_ptr<FatTreeTopologyCfg> topo_cfg;
+    if (topo_file) {
+        topo_cfg = FatTreeTopologyCfg::load(topo_file, queuesize, qt, snd_type);
 
-    vector <FatTreeTopology*> topo;
+        if (topo_cfg->no_of_nodes() != no_of_nodes) {
+            cerr << "Mismatch between connection matrix (" << no_of_nodes << " nodes) and topology ("
+                    << topo_cfg->no_of_nodes() << " nodes)" << endl;
+            exit(1);
+        }
+    } else {
+        topo_cfg = make_unique<FatTreeTopologyCfg>(tiers, no_of_nodes, linkspeed, queuesize, 
+                                                   hop_latency, switch_latency, qt, snd_type);
+    }
+
+    if (ecn){
+        ecn_low = memFromPkt(ecn_low);
+        ecn_high = memFromPkt(ecn_high);
+        topo_cfg->set_ecn_parameters(true, false, ecn_low,ecn_high);
+    }
+
+    vector<unique_ptr<FatTreeTopology>> topo;
     topo.resize(planes);
     for (uint32_t p = 0; p < planes; p++) {
-        if (topo_file) {
-            topo[p] = FatTreeTopology::load(topo_file, qlf, eventlist, queuesize, qt, snd_type);
-            if (topo[p]->no_of_nodes() != no_of_nodes) {
-                cerr << "Mismatch between connection matrix (" << no_of_nodes << " nodes) and topology ("
-                     << topo[p]->no_of_nodes() << " nodes)" << endl;
-                exit(1);
-            }
-        } else {
-            FatTreeTopology::set_tiers(tiers);
-            topo[p] = new FatTreeTopology(no_of_nodes, linkspeed, queuesize, qlf, 
-                                          &eventlist, NULL, qt, hop_latency,
-                                          switch_latency,
-                                          snd_type);
-        }
+        topo[p] = make_unique<FatTreeTopology>(topo_cfg.get(), qlf, &eventlist, nullptr);
 
         if (log_switches) {
             topo[p]->add_switch_loggers(logfile, timeFromUs(20.0));
@@ -642,24 +642,24 @@ int main(int argc, char **argv) {
             case REACTIVE_ECN:
                 {
                     Route* srctotor = new Route();
-                    srctotor->push_back(topo[p]->queues_ns_nlp[src][topo[p]->HOST_POD_SWITCH(src)][0]);
-                    srctotor->push_back(topo[p]->pipes_ns_nlp[src][topo[p]->HOST_POD_SWITCH(src)][0]);
-                    srctotor->push_back(topo[p]->queues_ns_nlp[src][topo[p]->HOST_POD_SWITCH(src)][0]->getRemoteEndpoint());
+                    srctotor->push_back(topo[p]->queues_ns_nlp[src][topo_cfg->HOST_POD_SWITCH(src)][0]);
+                    srctotor->push_back(topo[p]->pipes_ns_nlp[src][topo_cfg->HOST_POD_SWITCH(src)][0]);
+                    srctotor->push_back(topo[p]->queues_ns_nlp[src][topo_cfg->HOST_POD_SWITCH(src)][0]->getRemoteEndpoint());
 
                     Route* dsttotor = new Route();
-                    dsttotor->push_back(topo[p]->queues_ns_nlp[dest][topo[p]->HOST_POD_SWITCH(dest)][0]);
-                    dsttotor->push_back(topo[p]->pipes_ns_nlp[dest][topo[p]->HOST_POD_SWITCH(dest)][0]);
-                    dsttotor->push_back(topo[p]->queues_ns_nlp[dest][topo[p]->HOST_POD_SWITCH(dest)][0]->getRemoteEndpoint());
+                    dsttotor->push_back(topo[p]->queues_ns_nlp[dest][topo_cfg->HOST_POD_SWITCH(dest)][0]);
+                    dsttotor->push_back(topo[p]->pipes_ns_nlp[dest][topo_cfg->HOST_POD_SWITCH(dest)][0]);
+                    dsttotor->push_back(topo[p]->queues_ns_nlp[dest][topo_cfg->HOST_POD_SWITCH(dest)][0]->getRemoteEndpoint());
 
                     eqds_src->connectPort(p, *srctotor, *dsttotor, *eqds_snk, crt->start);
                     //eqds_src->setPaths(path_entropy_size);
                     //eqds_snk->setPaths(path_entropy_size);
 
                     //register src and snk to receive packets from their respective TORs. 
-                    assert(topo[p]->switches_lp[topo[p]->HOST_POD_SWITCH(src)]);
-                    assert(topo[p]->switches_lp[topo[p]->HOST_POD_SWITCH(src)]);
-                    topo[p]->switches_lp[topo[p]->HOST_POD_SWITCH(src)]->addHostPort(src,eqds_snk->flowId(),eqds_src->getPort(p));
-                    topo[p]->switches_lp[topo[p]->HOST_POD_SWITCH(dest)]->addHostPort(dest,eqds_src->flowId(),eqds_snk->getPort(p));
+                    assert(topo[p]->switches_lp[topo_cfg->HOST_POD_SWITCH(src)]);
+                    assert(topo[p]->switches_lp[topo_cfg->HOST_POD_SWITCH(src)]);
+                    topo[p]->switches_lp[topo_cfg->HOST_POD_SWITCH(src)]->addHostPort(src,eqds_snk->flowId(),eqds_src->getPort(p));
+                    topo[p]->switches_lp[topo_cfg->HOST_POD_SWITCH(dest)]->addHostPort(dest,eqds_src->flowId(),eqds_snk->getPort(p));
                     break;
                 }
             default:

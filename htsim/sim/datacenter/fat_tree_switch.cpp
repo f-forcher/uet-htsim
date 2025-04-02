@@ -59,8 +59,8 @@ void FatTreeSwitch::receivePacket(Packet& pkt){
 
 void FatTreeSwitch::addHostPort(int addr, int flowid, PacketSink* transport_port){
     Route* rt = new Route();
-    rt->push_back(_ft->queues_nlp_ns[_ft->HOST_POD_SWITCH(addr)][addr][0]);
-    rt->push_back(_ft->pipes_nlp_ns[_ft->HOST_POD_SWITCH(addr)][addr][0]);
+    rt->push_back(_ft->queues_nlp_ns[_ft->cfg().HOST_POD_SWITCH(addr)][addr][0]);
+    rt->push_back(_ft->pipes_nlp_ns[_ft->cfg().HOST_POD_SWITCH(addr)][addr][0]);
     rt->push_back(transport_port);
     _fib->addHostRoute(addr,rt,flowid);
 }
@@ -412,7 +412,7 @@ Route* FatTreeSwitch::getNextHop(Packet& pkt, BaseQueue* ingress_port){
 
     //no route table entries for this destination. Add them to FIB or fail. 
     if (_type == TOR){
-        if ( _ft->HOST_POD_SWITCH(pkt.dst()) == _id) { 
+        if ( _ft->cfg().HOST_POD_SWITCH(pkt.dst()) == _id) { 
             //this host is directly connected!
             HostFibEntry* fe = _fib->getHostRoute(pkt.dst(),pkt.flow_id());
             assert(fe);
@@ -425,18 +425,18 @@ Route* FatTreeSwitch::getNextHop(Packet& pkt, BaseQueue* ingress_port){
             else {
                 uint32_t podid,agg_min,agg_max;
 
-                if (_ft->get_tiers()==3) {
-                    podid = _id / _ft->tor_switches_per_pod();
-                    agg_min = _ft->MIN_POD_AGG_SWITCH(podid);
-                    agg_max = _ft->MAX_POD_AGG_SWITCH(podid);
+                if (_ft->cfg().get_tiers()==3) {
+                    podid = _id / _ft->cfg().tor_switches_per_pod();
+                    agg_min = _ft->cfg().MIN_POD_AGG_SWITCH(podid);
+                    agg_max = _ft->cfg().MAX_POD_AGG_SWITCH(podid);
                 }
                 else {
                     agg_min = 0;
-                    agg_max = _ft->getNAGG()-1;
+                    agg_max = _ft->cfg().getNAGG()-1;
                 }
 
                 for (uint32_t k=agg_min; k<=agg_max;k++){
-                    for (uint32_t b = 0; b < _ft->bundlesize(AGG_TIER); b++) {
+                    for (uint32_t b = 0; b < _ft->cfg().bundlesize(AGG_TIER); b++) {
                         Route * r = new Route();
                         r->push_back(_ft->queues_nlp_nup[_id][k][b]);
                         assert(((BaseQueue*)r->at(0))->getSwitch() == this);
@@ -456,11 +456,11 @@ Route* FatTreeSwitch::getNextHop(Packet& pkt, BaseQueue* ingress_port){
             }
         }
     } else if (_type == AGG) {
-        if ( _ft->get_tiers()==2 || _ft->HOST_POD(pkt.dst()) == _ft->AGG_SWITCH_POD_ID(_id)) {
+        if (_ft->cfg().get_tiers()==2 || _ft->cfg().HOST_POD(pkt.dst()) == _ft->cfg().AGG_SWITCH_POD_ID(_id)) {
             //must go down!
             //target NLP id is 2 * pkt.dst()/K
-            uint32_t target_tor = _ft->HOST_POD_SWITCH(pkt.dst());
-            for (uint32_t b = 0; b < _ft->bundlesize(AGG_TIER); b++) {
+            uint32_t target_tor = _ft->cfg().HOST_POD_SWITCH(pkt.dst());
+            for (uint32_t b = 0; b < _ft->cfg().bundlesize(AGG_TIER); b++) {
                 Route * r = new Route();
                 r->push_back(_ft->queues_nup_nlp[_id][target_tor][b]);
                 assert(((BaseQueue*)r->at(0))->getSwitch() == this);
@@ -475,11 +475,11 @@ Route* FatTreeSwitch::getNextHop(Packet& pkt, BaseQueue* ingress_port){
             if (_uproutes)
                 _fib->setRoutes(pkt.dst(),_uproutes);
             else {
-                uint32_t podpos = _id % _ft->agg_switches_per_pod();
-                uint32_t uplink_bundles = _ft->radix_up(AGG_TIER) / _ft->bundlesize(CORE_TIER);
+                uint32_t podpos = _id % _ft->cfg().agg_switches_per_pod();
+                uint32_t uplink_bundles = _ft->cfg().radix_up(AGG_TIER) / _ft->cfg().bundlesize(CORE_TIER);
                 for (uint32_t l = 0; l <  uplink_bundles ; l++) {
-                    uint32_t core = l * _ft->agg_switches_per_pod() + podpos;
-                    for (uint32_t b = 0; b < _ft->bundlesize(CORE_TIER); b++) {
+                    uint32_t core = l * _ft->cfg().agg_switches_per_pod() + podpos;
+                    for (uint32_t b = 0; b < _ft->cfg().bundlesize(CORE_TIER); b++) {
                         Route *r = new Route();
                         r->push_back(_ft->queues_nup_nc[_id][core][b]);
                         assert(((BaseQueue*)r->at(0))->getSwitch() == this);
@@ -502,8 +502,8 @@ Route* FatTreeSwitch::getNextHop(Packet& pkt, BaseQueue* ingress_port){
             }
         }
     } else if (_type == CORE) {
-        uint32_t nup = _ft->MIN_POD_AGG_SWITCH(_ft->HOST_POD(pkt.dst())) + (_id % _ft->agg_switches_per_pod());
-        for (uint32_t b = 0; b < _ft->bundlesize(CORE_TIER); b++) {
+        uint32_t nup = _ft->cfg().MIN_POD_AGG_SWITCH(_ft->cfg().HOST_POD(pkt.dst())) + (_id % _ft->cfg().agg_switches_per_pod());
+        for (uint32_t b = 0; b < _ft->cfg().bundlesize(CORE_TIER); b++) {
             Route *r = new Route();
             //cout << "CORE switch " << _id << " adding route to " << pkt.dst() << " via AGG " << nup << endl;
 

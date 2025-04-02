@@ -81,6 +81,7 @@ int main(int argc, char **argv) {
     bool param_ecn_set = false;
     bool ecn = true;
     mem_b ecn_low = 0.2 * queuesize, ecn_high = 0.8 * queuesize;
+    uint32_t topo_num_failed = 0;
 
     bool receiver_driven = true;
     bool sender_driven = false;
@@ -340,8 +341,7 @@ int main(int argc, char **argv) {
             i++;
         } else if (!strcmp(argv[i],"-failed")){
             // number of failed links (failed to 25% linkspeed)
-            int num_failed = atoi(argv[i+1]);
-            FatTreeTopology::set_failed_links(num_failed);
+            topo_num_failed = atoi(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i],"-linkspeed")){
             // linkspeed specified is in Mbps
@@ -489,15 +489,6 @@ int main(int argc, char **argv) {
         FatTreeSwitch::set_strategy(FatTreeSwitch::ECMP);
     }
 
-    queuesize = memFromPkt(queuesize);
-
-    if (ecn){
-        ecn_low = memFromPkt(ecn_low);
-        ecn_high = memFromPkt(ecn_high);
-        cout << "Setting ECN for queues with size " << queuesize << ", with parameters low " << ecn_low << " high " << ecn_high <<  " enable on tor downlink " << !receiver_driven << endl;
-        FatTreeTopology::set_ecn_parameters(true, !receiver_driven, ecn_low,ecn_high);
-    }
-
     // if(disable_fair_decrease){
     //     UecSrc::disableFairDecrease();
     // }
@@ -514,12 +505,6 @@ int main(int argc, char **argv) {
 
     eventlist.setEndtime(timeFromUs((uint32_t)end_time));
 
-    //2 priority queues; 3 hops for incast
-    UecSrc::_min_rto = timeFromUs(15 + queuesize * 6.0 * 8 * 1000000 / linkspeed);
-
-    cout << "Setting queuesize to " << queuesize << endl;
-    cout << "Setting min RTO to " << timeAsUs(UecSrc::_min_rto) << endl;
-    
     switch (route_strategy) {
     case ECMP_FIB_ECN:
     case REACTIVE_ECN:
@@ -615,41 +600,56 @@ int main(int argc, char **argv) {
 
     no_of_nodes = conns->N;
 
+    queuesize = memFromPkt(queuesize);
+    //2 priority queues; 3 hops for incast
+    UecSrc::_min_rto = timeFromUs(15 + queuesize * 6.0 * 8 * 1000000 / linkspeed);
+
+    cout << "Setting queuesize to " << queuesize << endl;
+    cout << "Setting min RTO to " << timeAsUs(UecSrc::_min_rto) << endl;
+
     simtime_picosec network_max_unloaded_rtt = 0;
-    vector <FatTreeTopology*> topo;
+    unique_ptr<FatTreeTopologyCfg> topo_cfg;
+    if (topo_file) {
+        topo_cfg = FatTreeTopologyCfg::load(topo_file, queuesize, qt, snd_type);
+
+        if (topo_cfg->no_of_nodes() != no_of_nodes) {
+            cerr << "Mismatch between connection matrix (" << no_of_nodes << " nodes) and topology ("
+                    << topo_cfg->no_of_nodes() << " nodes)" << endl;
+            exit(1);
+        }
+    } else {
+        topo_cfg = make_unique<FatTreeTopologyCfg>(tiers, no_of_nodes, linkspeed, queuesize, 
+                                                   hop_latency, switch_latency, qt, snd_type);
+    }
+
+    if (topo_num_failed > 0) {
+        topo_cfg->set_failed_links(topo_num_failed);
+    }
+
+    if (ecn){
+        ecn_low = memFromPkt(ecn_low);
+        ecn_high = memFromPkt(ecn_high);
+        cout << "Setting ECN for queues with size " << queuesize << ", with parameters low " << ecn_low << " high " << ecn_high <<  " enable on tor downlink " << !receiver_driven << endl;
+        topo_cfg->set_ecn_parameters(true, !receiver_driven, ecn_low,ecn_high);
+    }
+
+
+    if (topo_cfg->get_oversubscription_ratio() > 1 && !UecSrc::_sender_based_cc && !force_disable_oversubscribed_cc) {
+        UecSink::_oversubscribed_cc = true;
+        OversubscribedCC::setOversubscriptionRatio(topo_cfg->get_oversubscription_ratio());
+        cout << "Using simple receiver oversubscribed CC. Oversubscription ratio is " << topo_cfg->get_oversubscription_ratio() << endl;
+    } 
+    network_max_unloaded_rtt = 2 * topo_cfg->get_diameter_latency() 
+                               + (Packet::data_packet_size() * 8 / speedAsGbps(linkspeed) * topo_cfg->get_diameter() * 1000) 
+                               + (UecBasePacket::get_ack_size() * 8 / speedAsGbps(linkspeed) * topo_cfg->get_diameter() * 1000);
+
+    vector<unique_ptr<FatTreeTopology>> topo;
     topo.resize(planes);
     for (uint32_t p = 0; p < planes; p++) {
-        if (topo_file) {
-            topo[p] = FatTreeTopology::load(topo_file, qlf, eventlist, queuesize, qt, snd_type);
-
-            if (topo[p]->no_of_nodes() != no_of_nodes) {
-                cerr << "Mismatch between connection matrix (" << no_of_nodes << " nodes) and topology ("
-                     << topo[p]->no_of_nodes() << " nodes)" << endl;
-                exit(1);
-            }
-        } else {
-            FatTreeTopology::set_tiers(tiers);
-            topo[p] = new FatTreeTopology(no_of_nodes, linkspeed, queuesize, qlf, 
-                                          &eventlist, NULL, qt, hop_latency,
-                                          switch_latency,
-                                          snd_type);
-        }
-
-        if (topo[p]->get_oversubscription_ratio() > 1 && !UecSrc::_sender_based_cc && !force_disable_oversubscribed_cc) {
-            UecSink::_oversubscribed_cc = true;
-            OversubscribedCC::setOversubscriptionRatio(topo[p]->get_oversubscription_ratio());
-            cout << "Using simple receiver oversubscribed CC. Oversubscription ratio is " << topo[p]->get_oversubscription_ratio() << endl;
-        } 
+        topo[p] = make_unique<FatTreeTopology>(topo_cfg.get(), qlf, &eventlist, nullptr);
 
         if (log_switches) {
             topo[p]->add_switch_loggers(logfile, logtime);
-        }
-
-        if (p==0) {
-            network_max_unloaded_rtt = 2 * topo[p]->get_diameter_latency() + (Packet::data_packet_size() * 8 / speedAsGbps(linkspeed) * topo[p]->get_diameter() * 1000) + (UecBasePacket::get_ack_size() * 8 / speedAsGbps(linkspeed) * topo[p]->get_diameter() * 1000);
-        } else {
-            // We only allow identical network rtts for now
-            assert(network_max_unloaded_rtt == topo[p]->get_diameter_latency());
         }
     }
     cout << "network_max_unloaded_rtt " << timeAsUs(network_max_unloaded_rtt) << endl;
@@ -717,8 +717,9 @@ int main(int argc, char **argv) {
         int src = crt->src;
         int dest = crt->dst;
         assert(planes > 0);
-        simtime_picosec transmission_delay = (Packet::data_packet_size() * 8 / speedAsGbps(linkspeed) * topo[0]->get_diameter() * 1000) + (UecBasePacket::get_ack_size() * 8 / speedAsGbps(linkspeed) * topo[0]->get_diameter() * 1000);
-        simtime_picosec base_rtt_bw_two_points = 2*topo[0]->get_two_point_diameter_latency(src, dest) + transmission_delay;
+        simtime_picosec transmission_delay = (Packet::data_packet_size() * 8 / speedAsGbps(linkspeed) * topo_cfg->get_diameter() * 1000) 
+                                             + (UecBasePacket::get_ack_size() * 8 / speedAsGbps(linkspeed) * topo_cfg->get_diameter() * 1000);
+        simtime_picosec base_rtt_bw_two_points = 2*topo_cfg->get_two_point_diameter_latency(src, dest) + transmission_delay;
 
         //cout << "Connection " << crt->src << "->" <<crt->dst << " starting at " << crt->start << " size " << crt->size << endl;
 
@@ -819,24 +820,24 @@ int main(int argc, char **argv) {
             case REACTIVE_ECN:
                 {
                     Route* srctotor = new Route();
-                    srctotor->push_back(topo[p]->queues_ns_nlp[src][topo[p]->HOST_POD_SWITCH(src)][0]);
-                    srctotor->push_back(topo[p]->pipes_ns_nlp[src][topo[p]->HOST_POD_SWITCH(src)][0]);
-                    srctotor->push_back(topo[p]->queues_ns_nlp[src][topo[p]->HOST_POD_SWITCH(src)][0]->getRemoteEndpoint());
+                    srctotor->push_back(topo[p]->queues_ns_nlp[src][topo_cfg->HOST_POD_SWITCH(src)][0]);
+                    srctotor->push_back(topo[p]->pipes_ns_nlp[src][topo_cfg->HOST_POD_SWITCH(src)][0]);
+                    srctotor->push_back(topo[p]->queues_ns_nlp[src][topo_cfg->HOST_POD_SWITCH(src)][0]->getRemoteEndpoint());
 
                     Route* dsttotor = new Route();
-                    dsttotor->push_back(topo[p]->queues_ns_nlp[dest][topo[p]->HOST_POD_SWITCH(dest)][0]);
-                    dsttotor->push_back(topo[p]->pipes_ns_nlp[dest][topo[p]->HOST_POD_SWITCH(dest)][0]);
-                    dsttotor->push_back(topo[p]->queues_ns_nlp[dest][topo[p]->HOST_POD_SWITCH(dest)][0]->getRemoteEndpoint());
+                    dsttotor->push_back(topo[p]->queues_ns_nlp[dest][topo_cfg->HOST_POD_SWITCH(dest)][0]);
+                    dsttotor->push_back(topo[p]->pipes_ns_nlp[dest][topo_cfg->HOST_POD_SWITCH(dest)][0]);
+                    dsttotor->push_back(topo[p]->queues_ns_nlp[dest][topo_cfg->HOST_POD_SWITCH(dest)][0]->getRemoteEndpoint());
 
                     uec_src->connectPort(p, *srctotor, *dsttotor, *uec_snk, crt->start);
                     //uec_src->setPaths(path_entropy_size);
                     //uec_snk->setPaths(path_entropy_size);
 
                     //register src and snk to receive packets from their respective TORs. 
-                    assert(topo[p]->switches_lp[topo[p]->HOST_POD_SWITCH(src)]);
-                    assert(topo[p]->switches_lp[topo[p]->HOST_POD_SWITCH(src)]);
-                    topo[p]->switches_lp[topo[p]->HOST_POD_SWITCH(src)]->addHostPort(src,uec_snk->flowId(),uec_src->getPort(p));
-                    topo[p]->switches_lp[topo[p]->HOST_POD_SWITCH(dest)]->addHostPort(dest,uec_src->flowId(),uec_snk->getPort(p));
+                    assert(topo[p]->switches_lp[topo_cfg->HOST_POD_SWITCH(src)]);
+                    assert(topo[p]->switches_lp[topo_cfg->HOST_POD_SWITCH(src)]);
+                    topo[p]->switches_lp[topo_cfg->HOST_POD_SWITCH(src)]->addHostPort(src,uec_snk->flowId(),uec_src->getPort(p));
+                    topo[p]->switches_lp[topo_cfg->HOST_POD_SWITCH(dest)]->addHostPort(dest,uec_src->flowId(),uec_snk->getPort(p));
                     break;
                 }
             default:

@@ -48,7 +48,7 @@ void exit_error(char* progr) {
     exit(1);
 }
 
-void filter_paths(uint32_t src_id, vector<const Route*>& paths, FatTreeTopology* top) {
+void filter_paths(uint32_t src_id, vector<const Route*>& paths, FatTreeTopologyCfg* top) {
     uint32_t num_servers = top->no_of_servers();
     uint32_t num_cores = top->no_of_cores();
     uint32_t num_pods = top->no_of_pods();
@@ -98,6 +98,7 @@ int main(int argc, char **argv) {
     int seed = 13;
     int path_burst = 1;
     int i = 1;
+    uint32_t topo_num_failed = 0;
 
     bool oversubscribed_congestion_control = false;
 
@@ -232,8 +233,7 @@ int main(int argc, char **argv) {
             i++;
         } else if (!strcmp(argv[i],"-failed")){
             // number of failed links (failed to 25% linkspeed)
-            int num_failed = atoi(argv[i+1]);
-            FatTreeTopology::set_failed_links(num_failed);
+            topo_num_failed = atoi(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i],"-paths")){
             path_entropy_size = atoi(argv[i+1]);
@@ -464,16 +464,26 @@ int main(int argc, char **argv) {
         qlf->set_sample_period(timeFromUs(10.0));
     }
 #ifdef FAT_TREE
-    FatTreeTopology* top;
+    unique_ptr<FatTreeTopology> top;
+    unique_ptr<FatTreeTopologyCfg> topo_cfg;
     if (topo_file) {
-        top = FatTreeTopology::load(topo_file, qlf, eventlist, queuesize, qt, snd_type);
+        topo_cfg = FatTreeTopologyCfg::load(topo_file, queuesize, qt, snd_type);
+
+        if (topo_cfg->no_of_nodes() != no_of_nodes) {
+            cerr << "Mismatch between connection matrix (" << no_of_nodes << " nodes) and topology ("
+                    << topo_cfg->no_of_nodes() << " nodes)" << endl;
+            exit(1);
+        }
     } else {
-        FatTreeTopology::set_tiers(tiers);
-        top = new FatTreeTopology(no_of_nodes, linkspeed, queuesize, qlf, 
-                                  &eventlist, NULL, qt, hop_latency,
-                                  switch_latency,
-                                  snd_type);
+        topo_cfg = make_unique<FatTreeTopologyCfg>(tiers, no_of_nodes, linkspeed, queuesize, 
+                                                   hop_latency, switch_latency, qt, snd_type);
     }
+
+    if (topo_num_failed > 0) {
+        topo_cfg->set_failed_links(topo_num_failed);
+    }
+
+    top = make_unique<FatTreeTopology>(topo_cfg.get(), qlf, &eventlist, nullptr);
         
 #endif
 
@@ -658,14 +668,14 @@ int main(int argc, char **argv) {
         case REACTIVE_ECN:
             {
                 Route* srctotor = new Route();
-                srctotor->push_back(top->queues_ns_nlp[src][top->HOST_POD_SWITCH(src)][0]);
-                srctotor->push_back(top->pipes_ns_nlp[src][top->HOST_POD_SWITCH(src)][0]);
-                srctotor->push_back(top->queues_ns_nlp[src][top->HOST_POD_SWITCH(src)][0]->getRemoteEndpoint());
+                srctotor->push_back(top->queues_ns_nlp[src][topo_cfg->HOST_POD_SWITCH(src)][0]);
+                srctotor->push_back(top->pipes_ns_nlp[src][topo_cfg->HOST_POD_SWITCH(src)][0]);
+                srctotor->push_back(top->queues_ns_nlp[src][topo_cfg->HOST_POD_SWITCH(src)][0]->getRemoteEndpoint());
 
                 Route* dsttotor = new Route();
-                dsttotor->push_back(top->queues_ns_nlp[dest][top->HOST_POD_SWITCH(dest)][0]);
-                dsttotor->push_back(top->pipes_ns_nlp[dest][top->HOST_POD_SWITCH(dest)][0]);
-                dsttotor->push_back(top->queues_ns_nlp[dest][top->HOST_POD_SWITCH(dest)][0]->getRemoteEndpoint());
+                dsttotor->push_back(top->queues_ns_nlp[dest][topo_cfg->HOST_POD_SWITCH(dest)][0]);
+                dsttotor->push_back(top->pipes_ns_nlp[dest][topo_cfg->HOST_POD_SWITCH(dest)][0]);
+                dsttotor->push_back(top->queues_ns_nlp[dest][topo_cfg->HOST_POD_SWITCH(dest)][0]->getRemoteEndpoint());
 
 
                 ndpSrc->connect(srctotor, dsttotor, *ndpSnk, crt->start);
@@ -673,10 +683,10 @@ int main(int argc, char **argv) {
                 ndpSnk->set_paths(path_entropy_size);
 
                 //register src and snk to receive packets from their respective TORs. 
-                assert(top->switches_lp[top->HOST_POD_SWITCH(src)]);
-                assert(top->switches_lp[top->HOST_POD_SWITCH(src)]);
-                top->switches_lp[top->HOST_POD_SWITCH(src)]->addHostPort(src,ndpSrc->flow_id(),ndpSrc);
-                top->switches_lp[top->HOST_POD_SWITCH(dest)]->addHostPort(dest,ndpSrc->flow_id(),ndpSnk);
+                assert(top->switches_lp[topo_cfg->HOST_POD_SWITCH(src)]);
+                assert(top->switches_lp[topo_cfg->HOST_POD_SWITCH(src)]);
+                top->switches_lp[topo_cfg->HOST_POD_SWITCH(src)]->addHostPort(src,ndpSrc->flow_id(),ndpSrc);
+                top->switches_lp[topo_cfg->HOST_POD_SWITCH(dest)]->addHostPort(dest,ndpSrc->flow_id(),ndpSnk);
                 break;
             }
         case SINGLE_PATH:

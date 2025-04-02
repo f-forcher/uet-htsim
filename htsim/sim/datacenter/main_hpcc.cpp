@@ -339,8 +339,12 @@ int main(int argc, char **argv) {
         qlf->set_sample_period(timeFromUs(10.0));
     }
 #ifdef FAT_TREE
-    FatTreeTopology* top = new FatTreeTopology(no_of_nodes, linkspeed, queuesize, qlf, 
-                                               &eventlist,NULL,qt,hop_latency,switch_latency,snd_type);
+    unique_ptr<FatTreeTopology> top;
+    unique_ptr<FatTreeTopologyCfg> topo_cfg;
+    topo_cfg = make_unique<FatTreeTopologyCfg>(3, no_of_nodes, linkspeed, queuesize, 
+                                               hop_latency, switch_latency, qt, snd_type);
+
+    top = make_unique<FatTreeTopology>(topo_cfg.get(), qlf, &eventlist, nullptr);
 #endif
 
 #ifdef OV_FAT_TREE
@@ -477,21 +481,21 @@ int main(int argc, char **argv) {
         hpccSnk->setName("HPCC_sink_" + ntoa(src) + "_" + ntoa(dest));
         logfile.writeName(*hpccSnk);
                         
-        ((HostQueue*)top->queues_ns_nlp[src][top->HOST_POD_SWITCH(src)][0])->addHostSender(hpccSrc);
+        ((HostQueue*)top->queues_ns_nlp[src][topo_cfg->HOST_POD_SWITCH(src)][0])->addHostSender(hpccSrc);
 
         if (route_strategy!=SINGLE_PATH && route_strategy!=ECMP_FIB){
             abort();
         } else if (route_strategy==ECMP_FIB) {
             Route* srctotor = new Route();
             
-            srctotor->push_back(top->queues_ns_nlp[src][top->HOST_POD_SWITCH(src)][0]);
-            srctotor->push_back(top->pipes_ns_nlp[src][top->HOST_POD_SWITCH(src)][0]);
-            srctotor->push_back(top->queues_ns_nlp[src][top->HOST_POD_SWITCH(src)][0]->getRemoteEndpoint());
+            srctotor->push_back(top->queues_ns_nlp[src][topo_cfg->HOST_POD_SWITCH(src)][0]);
+            srctotor->push_back(top->pipes_ns_nlp[src][topo_cfg->HOST_POD_SWITCH(src)][0]);
+            srctotor->push_back(top->queues_ns_nlp[src][topo_cfg->HOST_POD_SWITCH(src)][0]->getRemoteEndpoint());
 
             Route* dsttotor = new Route();
-            dsttotor->push_back(top->queues_ns_nlp[dest][top->HOST_POD_SWITCH(dest)][0]);
-            dsttotor->push_back(top->pipes_ns_nlp[dest][top->HOST_POD_SWITCH(dest)][0]);
-            dsttotor->push_back(top->queues_ns_nlp[dest][top->HOST_POD_SWITCH(dest)][0]->getRemoteEndpoint());
+            dsttotor->push_back(top->queues_ns_nlp[dest][topo_cfg->HOST_POD_SWITCH(dest)][0]);
+            dsttotor->push_back(top->pipes_ns_nlp[dest][topo_cfg->HOST_POD_SWITCH(dest)][0]);
+            dsttotor->push_back(top->queues_ns_nlp[dest][topo_cfg->HOST_POD_SWITCH(dest)][0]->getRemoteEndpoint());
 
 
             if (crt->start != TRIGGER_START && start_delta > 0){
@@ -500,10 +504,10 @@ int main(int argc, char **argv) {
             hpccSrc->connect(srctotor, dsttotor, *hpccSnk, crt->start);
 
             //register src and snk to receive packets from their respective TORs. 
-            assert(top->switches_lp[top->HOST_POD_SWITCH(src)]);
-            assert(top->switches_lp[top->HOST_POD_SWITCH(src)]);
-            top->switches_lp[top->HOST_POD_SWITCH(src)]->addHostPort(src,hpccSrc->flow_id(),hpccSrc);
-            top->switches_lp[top->HOST_POD_SWITCH(dest)]->addHostPort(dest,hpccSrc->flow_id(),hpccSnk);
+            assert(top->switches_lp[topo_cfg->HOST_POD_SWITCH(src)]);
+            assert(top->switches_lp[topo_cfg->HOST_POD_SWITCH(src)]);
+            top->switches_lp[topo_cfg->HOST_POD_SWITCH(src)]->addHostPort(src,hpccSrc->flow_id(),hpccSrc);
+            top->switches_lp[topo_cfg->HOST_POD_SWITCH(dest)]->addHostPort(dest,hpccSrc->flow_id(),hpccSnk);
         } else {
             int choice = rand()%net_paths[src][dest]->size();
             routeout = new Route(*(net_paths[src][dest]->at(choice)));

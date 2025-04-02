@@ -178,8 +178,12 @@ int main(int argc, char **argv) {
     FatTreeTopology* top = new FatTreeTopology(no_of_nodes, linkspeed, queuesize, 
                                                &logfile, &eventlist, NULL, RANDOM, SWIFT_SCHEDULER, 0);
     */
-    FatTreeTopology* top = new FatTreeTopology(no_of_nodes, linkspeed, queuesize, 
-                                               NULL, &eventlist, NULL, RANDOM, SWIFT_SCHEDULER, 0);
+    unique_ptr<FatTreeTopology> top;
+    unique_ptr<FatTreeTopologyCfg> topo_cfg;
+    topo_cfg = make_unique<FatTreeTopologyCfg>(3, no_of_nodes, linkspeed, queuesize, 
+                                               RANDOM, SWIFT_SCHEDULER);
+
+    top = make_unique<FatTreeTopology>(topo_cfg.get(), nullptr, &eventlist, nullptr);
 #endif
 
 #ifdef OV_FAT_TREE
