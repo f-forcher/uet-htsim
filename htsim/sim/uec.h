@@ -110,6 +110,7 @@ public:
         int32_t pulls_received;
         int32_t bounces_received;
         int32_t rts_nacks;
+        int32_t _sleek_counter;
     };
     struct NsccStats {
         mem_b inc_fair_bytes;
@@ -201,7 +202,7 @@ public:
     static bool _disable_quick_adapt;
     static uint8_t _qa_gate;
 
-    static bool _enable_fast_loss_recovery;
+    static bool _enable_sleek;
 
     virtual const string& nodename() { return _nodename; }
     virtual void setName(const string& name) override { _name=name; _mp->set_debug_tag(name); }
@@ -250,6 +251,7 @@ public:
     mem_b sendNewPacket(const Route& route);
     mem_b sendRtxPacket(const Route& route);
     void sendRTS();
+    void sendProbe();
     void createSendRecord(UecDataPacket::seq_t seqno, mem_b pkt_size);
     void queueForRtx(UecBasePacket::seq_t seqno, mem_b pkt_size);
     bool validateSendTs(UecBasePacket::seq_t acked_psn, bool rtx_echo);
@@ -274,7 +276,7 @@ public:
     void processAck(const UecAckPacket& pkt);
     void processNack(const UecNackPacket& pkt);
     void processPull(const UecPullPacket& pkt);
-    void fastLossRecovery(uint32_t ooo, UecBasePacket::seq_t cum_ack);
+    void runSleek(uint32_t ooo, UecBasePacket::seq_t cum_ack);
 
     //added for NSCC
     bool can_send_NSCC(mem_b pkt_size);
@@ -399,9 +401,24 @@ private:
     bool _increase = false;
     simtime_picosec _last_dec_time = 0;
     uint32_t _highest_recv_seqno;
+
+    /******** SLEEK parameters *********/
+
+    static float loss_retx_factor;
+    static int min_retx_config ;
     bool _loss_recovery_mode = false;
     uint32_t _recovery_seqno = 0;
-    uint32_t _loss_counter = 0;
+    /******** END SLEEK parameters *********/
+
+    /******** Probe parameters *********/    
+    static int probe_first_trial_time;
+    static int probe_retry_time;
+    simtime_picosec _probe_timer_when = 0;
+    simtime_picosec _probe_seqno = 0; 
+    simtime_picosec _probe_send_time = 0; 
+    EventList::Handle _probe_timer_handle; 
+    /******** END Probe parameters *********/
+
 
     // Connectivity
     PacketFlow _flow;

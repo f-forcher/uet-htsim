@@ -335,9 +335,9 @@ int main(int argc, char **argv) {
             enable_accurate_base_rtt = true;
             cout << "Enable accurate base rtt configuration, each flow uses the accurate end-to-end delay for the current sender/receiver pair as rtt upper bound." << endl;
         }
-        else if (!strcmp(argv[i],"-fastlossrecovery")){
-            UecSrc::_enable_fast_loss_recovery = true;
-            cout << "Using sender fast loss recovery heuristic " << endl;
+        else if (!strcmp(argv[i],"-sleek")){
+            UecSrc::_enable_sleek = true;
+            cout << "Using SLEEK, the sender-based fast loss recovery heuristic " << endl;
         }
         else if (!strcmp(argv[i],"-ecn")){
             // fraction of queuesize, between 0 and 1
@@ -920,7 +920,7 @@ int main(int argc, char **argv) {
     }
 
     cout << "Done" << endl;
-    int new_pkts = 0, rtx_pkts = 0, bounce_pkts = 0, rts_pkts = 0, ack_pkts = 0, nack_pkts = 0, pull_pkts = 0;
+    int new_pkts = 0, rtx_pkts = 0, bounce_pkts = 0, rts_pkts = 0, ack_pkts = 0, nack_pkts = 0, pull_pkts = 0, sleek_pkts = 0;
     for (size_t ix = 0; ix < uec_srcs.size(); ix++) {
         const struct UecSrc::Stats& s = uec_srcs[ix]->stats();
         new_pkts += s.new_pkts_sent;
@@ -930,8 +930,9 @@ int main(int argc, char **argv) {
         ack_pkts += s.acks_received;
         nack_pkts += s.nacks_received;
         pull_pkts += s.pulls_received;
+        sleek_pkts += s._sleek_counter;
     }
-    cout << "New: " << new_pkts << " Rtx: " << rtx_pkts << " RTS: " << rts_pkts << " Bounced: " << bounce_pkts << " ACKs: " << ack_pkts << " NACKs: " << nack_pkts << " Pulls: " << pull_pkts << endl;
+    cout << "New: " << new_pkts << " Rtx: " << rtx_pkts << " RTS: " << rts_pkts << " Bounced: " << bounce_pkts << " ACKs: " << ack_pkts << " NACKs: " << nack_pkts << " Pulls: " << pull_pkts << " sleek_pkts: " << sleek_pkts << endl;
     /*
     list <const Route*>::iterator rt_i;
     int counts[10]; int hop;

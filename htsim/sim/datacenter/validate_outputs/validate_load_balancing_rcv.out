@@ -8,7 +8,7 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [PASS] Tail FCT 208.781 us below the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 168.657 -> 208.781 ratio 1.2379029628180271
-Summary: New: 501760 Rtx: 4887 RTS: 0 Bounced: 0 ACKs: 215257 NACKs: 4887 Pulls: 206126
+Summary: New: 501760 Rtx: 4887 RTS: 0 Bounced: 0 ACKs: 215257 NACKs: 4887 Pulls: 206126 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -18,7 +18,7 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [PASS] Tail FCT 204.105 us below the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 168.743 -> 204.105 ratio 1.2095612855051765
-Summary: New: 501760 Rtx: 148 RTS: 0 Bounced: 0 ACKs: 200029 NACKs: 148 Pulls: 216306
+Summary: New: 501760 Rtx: 148 RTS: 0 Bounced: 0 ACKs: 200029 NACKs: 148 Pulls: 216306 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -28,7 +28,7 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [PASS] Tail FCT 196.215 us below the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 170.001 -> 196.215 ratio 1.154199092946512
-Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 0 Pulls: 234637
+Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 0 Pulls: 234637 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -38,7 +38,7 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [PASS] Tail FCT 209.129 us below the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 168.5 -> 209.129 ratio 1.2411216617210683
-Summary: New: 501760 Rtx: 3073 RTS: 0 Bounced: 0 ACKs: 225768 NACKs: 3073 Pulls: 209528
+Summary: New: 501760 Rtx: 3073 RTS: 0 Bounced: 0 ACKs: 225768 NACKs: 3073 Pulls: 209528 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -48,7 +48,7 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [PASS] Tail FCT 195.608 us below the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 170.128 -> 195.608 ratio 1.1497695852534564
-Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 0 Pulls: 235427
+Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 0 Pulls: 235427 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -58,7 +58,7 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [PASS] Tail FCT 203.384 us below the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 168.902 -> 203.384 ratio 1.2041538880534275
-Summary: New: 501760 Rtx: 199 RTS: 0 Bounced: 0 ACKs: 196594 NACKs: 199 Pulls: 217489
+Summary: New: 501760 Rtx: 199 RTS: 0 Bounced: 0 ACKs: 196594 NACKs: 199 Pulls: 217489 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -68,7 +68,7 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [FAIL] Tail FCT 225.113 us above the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 168.791 -> 225.113 ratio 1.3336789283788828
-Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 215344 NACKs: 0 Pulls: 204127
+Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 215344 NACKs: 0 Pulls: 204127 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -78,7 +78,7 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [PASS] Tail FCT 202.611 us below the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 168.663 -> 202.611 ratio 1.2012771028619198
-Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 199516 NACKs: 0 Pulls: 216222
+Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 199516 NACKs: 0 Pulls: 216222 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -88,7 +88,7 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [PASS] Tail FCT 196.215 us below the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 170.001 -> 196.215 ratio 1.154199092946512
-Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 0 Pulls: 234637
+Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 0 Pulls: 234637 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -98,4 +98,4 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [PASS] Tail FCT 195.608 us below the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 170.128 -> 195.608 ratio 1.1497695852534564
-Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 0 Pulls: 235427
+Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 0 Pulls: 235427 sleek_pkts: 0

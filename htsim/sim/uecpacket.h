@@ -17,6 +17,7 @@
 
 class UecBasePacket : public Packet {
 public:
+    enum PacketType {DATA_PULL = 0, DATA_SPEC = 1, DATA_RTX = 2, DATA_PROBE = 3};    
     typedef uint64_t seq_t;
     typedef uint64_t pull_quanta;  // actual pull fields are typically
                                    // uint16_t, but we'll use 64 bits
@@ -38,8 +39,6 @@ public:
 class UecDataPacket : public UecBasePacket {
     //using Packet::set_route;
 public:
-    
-    enum PacketType {DATA_PULL = 0, DATA_SPEC = 1, DATA_RTX = 2};
     //typedef enum {_500B,_1KB,_2KB,_4KB} packet_size;   // need to handle arbitrary packet sizes at end of messages
 
     inline static UecDataPacket* newpkt(PacketFlow &flow, const Route& route, 
@@ -238,9 +237,12 @@ public:
     inline bool ecn_echo() const {return _ecn_echo;}
     uint64_t bitmap() const {return _sack_bitmap;}
     virtual PktPriority priority() const {return Packet::PRIO_HI;}
+    
+    void set_probe_ack(bool probe_ack){ _is_probe_ack = probe_ack; }
+    inline bool is_probe_ack() const {return _is_probe_ack;}
     inline void set_rtx_echo(bool rtx_bit){_rtx_echo = rtx_bit;};
     inline bool rtx_echo() const {return _rtx_echo;}
-  
+
     virtual ~UecAckPacket(){}
 
 protected:
@@ -261,6 +263,7 @@ protected:
     bool _rtx_echo;
     simtime_picosec _residency_time;
     uint32_t _out_of_order_count;
+    bool _is_probe_ack;
 
     static PacketDB<UecAckPacket> _packetdb;
 };

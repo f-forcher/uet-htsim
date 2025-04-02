@@ -8,7 +8,7 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [FAIL] Tail FCT 224.755 us above the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 168.647 -> 224.755 ratio 1.3326949189727657
-Summary: New: 501760 Rtx: 8012 RTS: 0 Bounced: 0 ACKs: 216753 NACKs: 8012 Pulls: 208082
+Summary: New: 501760 Rtx: 8012 RTS: 0 Bounced: 0 ACKs: 216753 NACKs: 8012 Pulls: 208082 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -18,7 +18,7 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [FAIL] Tail FCT 374.592 us above the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 168.574 -> 374.592 ratio 2.222122035426578
-Summary: New: 501760 Rtx: 1773 RTS: 0 Bounced: 0 ACKs: 217574 NACKs: 1773 Pulls: 205858
+Summary: New: 501760 Rtx: 1773 RTS: 0 Bounced: 0 ACKs: 217574 NACKs: 1773 Pulls: 205858 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -28,7 +28,7 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [PASS] Tail FCT 211.342 us below the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 168.688 -> 211.342 ratio 1.2528573461064214
-Summary: New: 501760 Rtx: 1113 RTS: 0 Bounced: 0 ACKs: 205282 NACKs: 1113 Pulls: 217114
+Summary: New: 501760 Rtx: 1113 RTS: 0 Bounced: 0 ACKs: 205282 NACKs: 1113 Pulls: 217114 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -38,7 +38,7 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [FAIL] Tail FCT 356.935 us above the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 168.702 -> 356.935 ratio 2.11577219001553
-Summary: New: 501760 Rtx: 819 RTS: 0 Bounced: 0 ACKs: 201345 NACKs: 819 Pulls: 216579
+Summary: New: 501760 Rtx: 819 RTS: 0 Bounced: 0 ACKs: 201345 NACKs: 819 Pulls: 216579 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -48,7 +48,7 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [PASS] Tail FCT 207.063 us below the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 170.038 -> 207.063 ratio 1.217745445135793
-Summary: New: 501760 Rtx: 731 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 731 Pulls: 235811
+Summary: New: 501760 Rtx: 731 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 731 Pulls: 235811 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -58,7 +58,7 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [FAIL] Tail FCT 333.29 us above the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 169.962 -> 333.29 ratio 1.960967745731399
-Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 0 Pulls: 235388
+Summary: New: 501760 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 0 Pulls: 235388 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -68,7 +68,7 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [PASS] Tail FCT 219.405 us below the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 168.626 -> 219.405 ratio 1.301133870221674
-Summary: New: 501760 Rtx: 5445 RTS: 0 Bounced: 0 ACKs: 225854 NACKs: 5445 Pulls: 210151
+Summary: New: 501760 Rtx: 5445 RTS: 0 Bounced: 0 ACKs: 225854 NACKs: 5445 Pulls: 210151 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -78,7 +78,7 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [PASS] Tail FCT 208.384 us below the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 170.132 -> 208.384 ratio 1.2248371852443984
-Summary: New: 501760 Rtx: 511 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 511 Pulls: 235937
+Summary: New: 501760 Rtx: 511 RTS: 0 Bounced: 0 ACKs: 501760 NACKs: 511 Pulls: 235937 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -88,4 +88,4 @@ Running ./htsim_uec -tm connection_matrices/perm_1024n_1024c_0u_2000000b.cm -end
 [PASS] Tail FCT 209.713 us below the target of 220 us
 [PASS] Connection count 1024
 FCT Spread 168.62 -> 209.713 ratio 1.2437018147313486
-Summary: New: 501760 Rtx: 974 RTS: 0 Bounced: 0 ACKs: 202856 NACKs: 974 Pulls: 218239
+Summary: New: 501760 Rtx: 974 RTS: 0 Bounced: 0 ACKs: 202856 NACKs: 974 Pulls: 218239 sleek_pkts: 0
