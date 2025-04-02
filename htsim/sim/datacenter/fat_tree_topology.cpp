@@ -31,8 +31,51 @@ void to_lower(string& s) {
         //[](unsigned char c){ return std::tolower(c); });
 }
 
+std::ostream &operator<<(std::ostream &os, FatTreeTopologyCfg const &m) { 
+    os << "FatTreeTopologyCfg"
+       << " NCORE=" << m.NCORE 
+        << " NAGG=" << m.NAGG
+        << " NTOR=" << m.NTOR
+        << " NSRV=" << m.NSRV
+        << " NPOD=" << m.NPOD
+        << " tor_switches_per_pod=" << m._tor_switches_per_pod
+        << " agg_switches_per_pod=" << m._agg_switches_per_pod
+        << " tiers=" << m._tiers
+        << " host_per_pod=" << m._hosts_per_pod
+        << " enabled_ecn=" << m._enable_ecn
+        << " enable_ecn_on_tor_downlink=" << m._enable_ecn_on_tor_downlink
+        << " ecn_low=" << m._ecn_low
+        << " ecn_high=" << m._ecn_high
+        << " num_failed_links=" << m._num_failed_links
+        << " failed_link_ratio=" << m._failed_link_ratio
+        << " no_of_nodes=" << m._no_of_nodes
+        << " hop_latency=" << m._hop_latency
+        << " switch_latency=" << m._switch_latency
+        << " diameter_latency=" << m._diameter_latency
+        << " diameter=" << m._diameter;
+    
+    for (uint32_t tier = 0; tier < m._tiers; tier++) {
+        cout << " tier=" << tier
+            << " link_latency=" << m._link_latencies[tier]
+            << " switch_latencies=" << m._switch_latencies[tier]
+            << " bundlesize=" << m._bundlesize[tier]
+            << " downlink_speeds=" << m._downlink_speeds[tier]
+            << " oversub=" << m._oversub[tier]
+            << " radix_down=" << m._radix_down[tier]
+            << " queue_down=" << m._queue_down[tier];
+    
+        if (tier < 2) {
+            cout << " radix_up=" << m._radix_up[tier]
+                 << " queue_up=" << m._queue_up[tier];
+        }
+    }
+
+    return os;
+}
+
 
 FatTreeTopologyCfg::FatTreeTopologyCfg(queue_type q, queue_type snd):
+                        _from_file(false),
                         _qt(q),
                         _sender_qt(snd),
                         NCORE(0), 
@@ -79,6 +122,7 @@ FatTreeTopologyCfg::FatTreeTopologyCfg(istream& file, mem_b queue_size,
                                        queue_type q, queue_type snd):
                                        FatTreeTopologyCfg(q, snd) {
     read_cfg(file, queue_size);
+    _from_file = true;
     initialize(0u, _no_of_nodes, 0u, 0u, 0u, 0u, q, snd);
 }
 
@@ -326,9 +370,11 @@ void FatTreeTopologyCfg::set_custom_params(uint32_t no_of_nodes) {
     cout << "Agg switches per pod: " << _agg_switches_per_pod << endl;
     cout << "No of core switches: " << no_of_core_switches << endl;
     for (uint32_t tier = TOR_TIER; tier < _tiers; tier++) {
-        cout << "Tier " << tier << " QueueSize Down " << _queue_down[tier] << " bytes" << endl;
+        if (_queue_down[tier] > 0)
+            cout << "Tier " << tier << " QueueSize Down " << _queue_down[tier] << " bytes" << endl;
         if (tier < CORE_TIER)
-            cout << "Tier " << tier << " QueueSize Up " << _queue_up[tier] << " bytes" << endl;
+            if (_queue_up[tier] > 0)
+                cout << "Tier " << tier << " QueueSize Up " << _queue_up[tier] << " bytes" << endl;
     }
 
     // looks like we're OK, lets build it
@@ -372,16 +418,19 @@ void FatTreeTopologyCfg::set_linkspeeds(linkspeed_bps linkspeed) {
 }
 
 void FatTreeTopologyCfg::set_queue_sizes(mem_b queuesize) {
-    if (queuesize != 0) {
-        // all tiers use the same queuesize
-        for (int tier = TOR_TIER; tier <= CORE_TIER; tier++) {
-            _queue_down[tier] = queuesize;
-            if (tier != CORE_TIER)
-                _queue_up[tier] = queuesize;
-        }
-    } else {
-        // the tier queue sizes must have already been set
-        assert(_queue_down[TOR_TIER] != 0);
+    // all tiers use the same queuesize
+    for (int tier = TOR_TIER; tier <= CORE_TIER; tier++) {
+        _queue_down[tier] = queuesize;
+        if (tier != CORE_TIER)
+            _queue_up[tier] = queuesize;
+    }
+
+    for (int tier = TOR_TIER; tier <= CORE_TIER; tier++) {
+        if (_queue_down[tier] > 0)
+            cout << "Tier " << tier << " QueueSize Down " << _queue_down[tier] << " bytes" << endl;
+        if (tier < CORE_TIER)
+            if (_queue_up[tier] > 0)
+                cout << "Tier " << tier << " QueueSize Up " << _queue_up[tier] << " bytes" << endl;
     }
 }
 
@@ -395,9 +444,11 @@ void FatTreeTopologyCfg::set_params(uint32_t no_of_nodes) {
     
     cout << "Set params " << no_of_nodes << endl;
     for (int tier = TOR_TIER; tier <= CORE_TIER; tier++) {
-        cout << "Tier " << tier << " QueueSize Down " << _queue_down[tier] << " bytes" << endl;
+        if (_queue_down[tier] > 0)
+            cout << "Tier " << tier << " QueueSize Down " << _queue_down[tier] << " bytes" << endl;
         if (tier < CORE_TIER)
-            cout << "Tier " << tier << " QueueSize Up " << _queue_up[tier] << " bytes" << endl;
+            if (_queue_up[tier] > 0)
+                cout << "Tier " << tier << " QueueSize Up " << _queue_up[tier] << " bytes" << endl;
     }
     _no_of_nodes = 0;
     int K = 0;
@@ -656,11 +707,38 @@ void FatTreeTopologyCfg::read_cfg(istream& file, mem_b queuesize) {
             exit(1);
         }
     } while (std::getline(file, line));
+
     for (uint32_t tier = 0; tier < _tiers; tier++) {
         if (tiers_done[tier] == false) {
             cerr << "No configuration found for tier " << tier << endl;
             exit(1);
         }
+    }
+
+    cout << "Topology load done\n";
+}
+
+
+void FatTreeTopologyCfg::check_consistency() const {
+
+    if (_no_of_nodes == 0) {
+        cerr << "Missing number of nodes" << endl;
+        exit(1);
+    }
+    if (_tiers == 0) {
+        cerr << "Missing number of tiers" << endl;
+        exit(1);
+    }
+    if (_tiers < 2 || _tiers > 3) {
+        cerr << "Invalid number of tiers: " << _tiers << endl;
+        exit(1);
+    }
+    if (_hosts_per_pod == 0) {
+        cerr << "Missing pod size" << endl;
+        exit(1);
+    }
+
+    for (uint32_t tier = 0; tier < _tiers; tier++) {
         if (_downlink_speeds[tier] == 0) {
             cerr << "Missing downlink_speed_gbps for tier " << tier << endl;
             exit(1);
@@ -686,8 +764,6 @@ void FatTreeTopologyCfg::read_cfg(istream& file, mem_b queuesize) {
             exit(1);
         }
     }
-
-    cout << "Topology load done\n";
 }
 
 
@@ -701,6 +777,10 @@ FatTreeTopology::FatTreeTopology(const FatTreeTopologyCfg* cfg,
                                 _ff(fit),
                                 _cfg(cfg)
                                 {
+    // Only build topology after verifying that things are in order.
+    if (_cfg->_from_file) {
+        _cfg->check_consistency();
+    }
     alloc_vectors();
 
     QueueLogger* queueLogger;

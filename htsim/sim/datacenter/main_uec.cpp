@@ -34,7 +34,8 @@
 #include "main.h"
 
 int DEFAULT_NODES = 128;
-#define DEFAULT_QUEUE_SIZE 35
+uint32_t DEFAULT_TRIMMING_QUEUESIZE_FACTOR = 1;
+uint32_t DEFAULT_NONTRIMMING_QUEUESIZE_FACTOR = 5;
 // #define DEFAULT_CWND 50
 
 EventList eventlist;
@@ -44,10 +45,28 @@ void exit_error(char* progr) {
     exit(1);
 }
 
+simtime_picosec calculate_rtt(FatTreeTopologyCfg* t_cfg, linkspeed_bps host_linkspeed) { 
+    /*
+    Using the host linkspeed here is not very accurate, but hopefully good enough for this usecase.
+    */
+    simtime_picosec rtt = 2 * t_cfg->get_diameter_latency() 
+                + (Packet::data_packet_size() * 8 / speedAsGbps(host_linkspeed) * t_cfg->get_diameter() * 1000) 
+                + (UecBasePacket::get_ack_size() * 8 / speedAsGbps(host_linkspeed) * t_cfg->get_diameter() * 1000);
+    
+    return rtt;
+};
+
+uint32_t calculate_bdp_pkt(FatTreeTopologyCfg* t_cfg, linkspeed_bps host_linkspeed) {
+    simtime_picosec rtt = calculate_rtt(t_cfg, host_linkspeed);
+    uint32_t bdp_pkt = ceil((timeAsSec(rtt) * (host_linkspeed/8)) / (double)Packet::data_packet_size()); 
+
+    return bdp_pkt;
+}
+
 int main(int argc, char **argv) {
     Clock c(timeFromSec(5 / 100.), eventlist);
     bool param_queuesize_set = false;
-    mem_b queuesize = DEFAULT_QUEUE_SIZE;
+    uint32_t queuesize_pkt = 0;
     linkspeed_bps linkspeed = speedFromMbps((double)HOST_NIC);
     int packet_size = 4150;
     uint32_t path_entropy_size = 64;
@@ -80,7 +99,9 @@ int main(int argc, char **argv) {
 
     bool param_ecn_set = false;
     bool ecn = true;
-    mem_b ecn_low = 0.2 * queuesize, ecn_high = 0.8 * queuesize;
+    uint32_t ecn_low = 0;
+    uint32_t ecn_high = 0;
+    uint32_t queue_size_bdp_factor = 0;
     uint32_t topo_num_failed = 0;
 
     bool receiver_driven = true;
@@ -151,6 +172,10 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i],"-target_q_delay")) {
             target_Qdelay = timeFromUs(atof(argv[i+1]));
             cout << "target_q_delay" << atof(argv[i+1]) << " us"<< endl;
+            i++;
+        } else if (!strcmp(argv[i],"-queue_size_bdp_factor")) {
+            queue_size_bdp_factor = atoi(argv[i+1]);
+            cout << "Setting queue size to "<< queue_size_bdp_factor << "x BDP." << endl;
             i++;
         } else if (!strcmp(argv[i],"-sender_cc_algo")) {
             UecSrc::_sender_based_cc = true;
@@ -273,8 +298,8 @@ int main(int argc, char **argv) {
             i++;
         } else if (!strcmp(argv[i],"-q")){
             param_queuesize_set = true;
-            queuesize = atoi(argv[i+1]);
-            cout << "Setting queuesize to " << queuesize << " packets " << endl;
+            queuesize_pkt = atoi(argv[i+1]);
+            cout << "Setting queuesize to " << queuesize_pkt << " packets " << endl;
             i++;
         }
         else if (!strcmp(argv[i],"-sack_threshold")){
@@ -473,11 +498,9 @@ int main(int argc, char **argv) {
         logtime = timeFromUs((uint32_t)end_time) - 1;
     }
 
-    if (!param_queuesize_set || !param_ecn_set){
-        cout << "queuesizes and ecn threshold should be input from the parameters, otherwise, queuesize = BDP of 100Gbps and 12us RTT and ecn_low is 20\% of queuesize and 80\% of queuesize."<< endl;
-        //abort(); We should restore to default values here, not abort
-    }
     assert(trimsize >= 64 && trimsize <= (uint32_t)packet_size);
+
+    cout << "Packet size (MTU) is " << packet_size << endl;
 
     srand(seed);
     srandom(seed);
@@ -600,17 +623,24 @@ int main(int argc, char **argv) {
 
     no_of_nodes = conns->N;
 
-    queuesize = memFromPkt(queuesize);
-    //2 priority queues; 3 hops for incast
-    UecSrc::_min_rto = timeFromUs(15 + queuesize * 6.0 * 8 * 1000000 / linkspeed);
+    if (!param_queuesize_set) {
+        cout << "Automatic queue sizing enabled ";        
+        if (queue_size_bdp_factor==0) {
+            if (disable_trim) {
+                queue_size_bdp_factor = DEFAULT_NONTRIMMING_QUEUESIZE_FACTOR;
+                cout << "non-trimming";
+            } else {
+                queue_size_bdp_factor = DEFAULT_TRIMMING_QUEUESIZE_FACTOR;
+                cout << "trimming";
+            }
+        }
+        cout << " queue-size-to-bdp-factor is " << queue_size_bdp_factor << "xBDP"
+             << endl;
+    }
 
-    cout << "Setting queuesize to " << queuesize << endl;
-    cout << "Setting min RTO to " << timeAsUs(UecSrc::_min_rto) << endl;
-
-    simtime_picosec network_max_unloaded_rtt = 0;
     unique_ptr<FatTreeTopologyCfg> topo_cfg;
     if (topo_file) {
-        topo_cfg = FatTreeTopologyCfg::load(topo_file, queuesize, qt, snd_type);
+        topo_cfg = FatTreeTopologyCfg::load(topo_file, memFromPkt(queuesize_pkt), qt, snd_type);
 
         if (topo_cfg->no_of_nodes() != no_of_nodes) {
             cerr << "Mismatch between connection matrix (" << no_of_nodes << " nodes) and topology ("
@@ -618,30 +648,53 @@ int main(int argc, char **argv) {
             exit(1);
         }
     } else {
-        topo_cfg = make_unique<FatTreeTopologyCfg>(tiers, no_of_nodes, linkspeed, queuesize, 
-                                                   hop_latency, switch_latency, qt, snd_type);
+        topo_cfg = make_unique<FatTreeTopologyCfg>(tiers, no_of_nodes, linkspeed, memFromPkt(queuesize_pkt),
+                                                   hop_latency, switch_latency, 
+                                                   qt, snd_type);
+    }
+
+    simtime_picosec network_max_unloaded_rtt = calculate_rtt(topo_cfg.get(), linkspeed);
+
+    mem_b queuesize = 0;
+    if (!param_queuesize_set) {
+        uint32_t bdp_pkt = calculate_bdp_pkt(topo_cfg.get(), linkspeed);
+        mem_b queuesize_pkt = bdp_pkt * queue_size_bdp_factor;
+        queuesize = memFromPkt(queuesize_pkt);
+        topo_cfg->set_queue_sizes(queuesize);
+    } else {
+        queuesize = memFromPkt(queuesize_pkt);
     }
 
     if (topo_num_failed > 0) {
         topo_cfg->set_failed_links(topo_num_failed);
     }
 
-    if (ecn){
-        ecn_low = memFromPkt(ecn_low);
-        ecn_high = memFromPkt(ecn_high);
-        cout << "Setting ECN for queues with size " << queuesize << ", with parameters low " << ecn_low << " high " << ecn_high <<  " enable on tor downlink " << !receiver_driven << endl;
-        topo_cfg->set_ecn_parameters(true, !receiver_driven, ecn_low,ecn_high);
-    }
-
-
     if (topo_cfg->get_oversubscription_ratio() > 1 && !UecSrc::_sender_based_cc && !force_disable_oversubscribed_cc) {
         UecSink::_oversubscribed_cc = true;
         OversubscribedCC::setOversubscriptionRatio(topo_cfg->get_oversubscription_ratio());
         cout << "Using simple receiver oversubscribed CC. Oversubscription ratio is " << topo_cfg->get_oversubscription_ratio() << endl;
     } 
-    network_max_unloaded_rtt = 2 * topo_cfg->get_diameter_latency() 
-                               + (Packet::data_packet_size() * 8 / speedAsGbps(linkspeed) * topo_cfg->get_diameter() * 1000) 
-                               + (UecBasePacket::get_ack_size() * 8 / speedAsGbps(linkspeed) * topo_cfg->get_diameter() * 1000);
+
+    //2 priority queues; 3 hops for incast
+    UecSrc::_min_rto = timeFromUs(15 + queuesize * 6.0 * 8 * 1000000 / linkspeed);
+    cout << "Setting min RTO to " << timeAsUs(UecSrc::_min_rto) << endl;
+
+    if (ecn){
+        uint32_t bdp_pkt = calculate_bdp_pkt(topo_cfg.get(), linkspeed);
+        if (!param_ecn_set) {
+            ecn_low = memFromPkt(ceil(bdp_pkt * 0.2));
+            ecn_high = memFromPkt(ceil(bdp_pkt * 0.8));
+        } else {
+            ecn_low = memFromPkt(ecn_low);
+            ecn_high = memFromPkt(ecn_high);
+        }
+        cout << "Setting ECN to parameters low " << ecn_low << " high " << ecn_high <<  " enable on tor downlink " << !receiver_driven << endl;
+        topo_cfg->set_ecn_parameters(true, !receiver_driven, ecn_low, ecn_high);
+        assert(ecn_low <= ecn_high);
+        assert(ecn_high <= queuesize);
+    }
+
+    cout << *topo_cfg << endl;
 
     vector<unique_ptr<FatTreeTopology>> topo;
     topo.resize(planes);

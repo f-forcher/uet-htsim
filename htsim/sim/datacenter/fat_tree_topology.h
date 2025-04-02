@@ -33,8 +33,10 @@ typedef enum {UPLINK, DOWNLINK} link_direction;
 
 class FatTreeTopology;
 
+
 class FatTreeTopologyCfg {
 friend class FatTreeTopology;
+friend std::ostream &operator<<(std::ostream &os, FatTreeTopologyCfg const &m);
 public:
     FatTreeTopologyCfg(queue_type q, queue_type snd);
     FatTreeTopologyCfg(istream& file, mem_b queue_size,
@@ -50,6 +52,10 @@ public:
                        queue_type q, queue_type snd);
 
     static unique_ptr<FatTreeTopologyCfg> load(string filename, mem_b queuesize, queue_type q_type, queue_type sender_q_type);
+    /*
+     Check if all settings in the config are correct. Will abort and print an error message if not.
+    */
+    void check_consistency() const;
 
     void set_tier_parameters(int tier, int radix_up, int radix_down, mem_b queue_up, mem_b queue_down, int bundlesize, linkspeed_bps downlink_speed, int oversub);
 
@@ -163,6 +169,8 @@ private:
                     queue_type q, queue_type snd);
     void read_cfg(istream& file, mem_b queuesize);
 
+    bool _from_file;
+
     queue_type _qt;
     queue_type _sender_qt;
 
@@ -220,6 +228,7 @@ private:
     simtime_picosec _diameter_latency;
     uint16_t _diameter;
 };
+
 
 class FatTreeTopology: public Topology{
 public:
