@@ -1231,8 +1231,7 @@ void UecSrc::fast_increase(uint32_t newly_acked_bytes,simtime_picosec delay){
     _increase = false;
 }
 
-
-void UecSrc::multiplicative_decrease(uint32_t newly_acked_bytes){
+void UecSrc::multiplicative_decrease() {
     _increase = false;
     _fi_count = 0;
     simtime_picosec avg_delay = get_avg_delay();
@@ -1321,7 +1320,7 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
             cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " proportional_increase _nscc_cwnd " << _cwnd << endl;
         }
     } else if (skip && delay >= _target_Qdelay) {    
-        multiplicative_decrease(newly_acked_bytes);
+        multiplicative_decrease();
         if (_flow.flow_id() == _debug_flowid || UecSrc::_debug) {
             cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " multiplicative_decrease _nscc_cwnd " << _cwnd << endl;
         }
