@@ -2191,7 +2191,6 @@ void UecSrc::sendRTS() {
     createSendRecord(_highest_sent, _hdr_size);
     auto* p =
         UecRtsPacket::newpkt(_flow, NULL, _highest_sent, _pull_target, _dstaddr);
-    p->set_dst(_dstaddr);
 
     uint16_t ev = _mp->nextEntropy(_highest_sent, (uint64_t)_cwnd/_mss);
     p->set_pathid(ev);
