@@ -231,7 +231,6 @@ UecNIC::UecNIC(id_t src_num, EventList& eventList, linkspeed_bps linkspeed, uint
     _nodename = "uecNIC" + to_string(src_num);
     _control_size = 0;
     _linkspeed = linkspeed;
-    _num_queued_srcs = 0;
     _no_of_ports = ports;
     _ports.resize(_no_of_ports);
     for (uint32_t p = 0; p < _no_of_ports; p++) {
@@ -256,16 +255,15 @@ const Route* UecNIC::requestSending(UecSrc& src) {
     if (_busy_ports == _no_of_ports) {
         // we're already sending on all ports
         /*
-        if (_num_queued_srcs == 0 && _control.empty()) {
+        if (_active_srcs.empty() && _control.empty()) {
             // need to schedule the callback
             eventlist().sourceIsPending(*this, _send_end_time);
         }
         */
-        _num_queued_srcs += 1;
         _active_srcs.push_back(&src);
         return NULL;
     }
-    assert(/*_num_queued_srcs == 0 &&*/ _control.empty());
+    assert(/*_active_srcs.empty() &&*/ _control.empty());
     uint32_t portnum = findFreePort();
     return src.getPortRoute(portnum);
 }
@@ -300,11 +298,9 @@ void UecNIC::startSending(UecSrc& src, mem_b pkt_size, const Route* rt) {
     }
 
     
-    if (_num_queued_srcs > 0) {
+    if (!_active_srcs.empty()) {
         UecSrc* queued_src = _active_srcs.front();
         _active_srcs.pop_front();
-        _num_queued_srcs--;
-        assert(_num_queued_srcs >= 0);
         assert(queued_src == &src);
     }
 
@@ -320,12 +316,11 @@ void UecNIC::cantSend(UecSrc& src) {
              << endl;
     }
 
-    if (_num_queued_srcs == 0 && _control.empty()) {
+    if (_active_srcs.empty() && _control.empty()) {
         // it was an immediate send, so nothing to do if we can't send after all
         return;
     }
-    if (_num_queued_srcs > 0) {
-        _num_queued_srcs--;
+    if (!_active_srcs.empty()) {
 
         UecSrc* queued_src = _active_srcs.front();
         _active_srcs.pop_front();
@@ -333,7 +328,7 @@ void UecNIC::cantSend(UecSrc& src) {
         assert(queued_src == &src);
         assert(_busy_ports < _no_of_ports);
 
-        if (_num_queued_srcs > 0) {
+        if (!_active_srcs.empty()) {
             // give the next src a chance.
             queued_src = _active_srcs.front();
             const Route* route = queued_src->getPortRoute(findFreePort());
@@ -414,14 +409,14 @@ void UecNIC::doNextEvent() {
     if (UecSrc::_debug)
         cout << "NIC " << this << " doNextEvent at " << timeAsUs(eventlist().now()) << endl;
 
-    if (_num_queued_srcs > 0 && !_control.empty()) {
+    if (!_active_srcs.empty() && !_control.empty()) {
         _crt++;
 
         if (_crt >= (_ratio_control + _ratio_data))
             _crt = 0;
 
         if (UecSrc::_debug) {
-            cout << "NIC " << this << " round robin time between srcs " << _num_queued_srcs
+            cout << "NIC " << this << " round robin time between srcs " << _active_srcs.size()
                  << " and control " << _control.size() << " " << _crt;
         }
 
@@ -441,7 +436,7 @@ void UecNIC::doNextEvent() {
         }
     }
 
-    if (_num_queued_srcs > 0) {
+    if (!_active_srcs.empty()) {
         UecSrc* queued_src = _active_srcs.front();
         const Route* route = queued_src->getPortRoute(findFreePort());
         queued_src->timeToSend(*route);

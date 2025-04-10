@@ -72,7 +72,6 @@ private:
     mem_b _control_size;
 
     linkspeed_bps _linkspeed;
-    int _num_queued_srcs;
 
     // data related to the NIC ports
     vector<struct PortData> _ports;
