@@ -115,8 +115,13 @@ def run_experiments(input_filename):
                         print (a)
 
                     items = a.split()
-
-                    actual_connection_count = actual_connection_count + 1
+                    
+                    if "total messages" in str(x):
+                        assert items[9] == 'total'
+                        assert items[10] == 'messages'
+                        actual_connection_count = actual_connection_count + int(items[11])
+                    else:
+                        actual_connection_count = actual_connection_count + 1
 
                     flowname = a[1]
                     fct = float(items[8])

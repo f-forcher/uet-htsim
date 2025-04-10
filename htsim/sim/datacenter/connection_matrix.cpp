@@ -763,6 +763,17 @@ bool ConnectionMatrix::load(istream& file){
                         cerr << "Flow ID zero is not allowed\n";
                         exit(1);
                     }
+                } else if (tokens[i] == "msg") {
+                    try {
+                        c->msgid.emplace(stoi(tokens[i+1]));
+                        i++;
+                        if (c->msgid.value() == 0) {
+                            cerr << "Msg ID zero is not allowed\n";
+                            exit(1);
+                        }
+                    } catch(std::invalid_argument const&) {
+                        c->msgid = {0};
+                    }
                 } else if (tokens[i] == "trigger") {
                     i++;
                     c->trigger = stoi(tokens[i]);

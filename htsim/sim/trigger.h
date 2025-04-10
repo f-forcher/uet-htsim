@@ -34,6 +34,7 @@ public:
     Trigger(EventList& eventlist, triggerid_t id);
     void add_target(TriggerTarget& target);
     virtual void activate() = 0;
+    triggerid_t get_id() { return _id; };
 protected:
     EventList &_eventlist;
     triggerid_t _id;

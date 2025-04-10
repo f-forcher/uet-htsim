@@ -20,6 +20,7 @@ files=(
     "validate_load_balancing_rcv.txt"
     "validate_load_balancing_failed_snd.txt"
     "validate_load_balancing_failed_rcv.txt"
+    "validate_uec_connreuse.txt"
 )
 
 if [ $# -ge 1 ]

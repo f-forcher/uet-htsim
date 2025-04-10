@@ -10,6 +10,7 @@
 #include "eventlist.h"
 #include <list>
 #include <map>
+#include <optional>
 #include <memory>
 
 #define NO_START ((simtime_picosec)0xffffffffffffffff)
@@ -17,6 +18,7 @@
 struct connection{
     int src, dst, size;
     flowid_t flowid; 
+    optional<uint32_t> msgid; 
     triggerid_t send_done_trigger;
     triggerid_t recv_done_trigger;
     triggerid_t trigger;

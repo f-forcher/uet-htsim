@@ -3,9 +3,11 @@
 #define UEC_H
 
 #include <memory>
-#include <tuple>
 #include <list>
+#include <set>
+#include <optional>
 
+#include "uec_base.h"
 #include "eventlist.h"
 #include "trigger.h"
 #include "uecpacket.h"
@@ -25,6 +27,7 @@ class UecPullPacer;
 class UecSink;
 class UecSrc;
 class UecLogger;
+
 
 // UecNIC aggregates UecSrcs that are on the same NIC.  It round
 // robins between active srcs when we're limited by the sending
@@ -96,7 +99,7 @@ private:
     const Route* _route;  // we're only going to support ECMP_HOST for now.
 };
 
-class UecSrc : public EventSource, public TriggerTarget {
+class UecSrc : public EventSource, public TriggerTarget, public UecTransportConnection {
 public:
     struct Stats {
         /* all must be non-negative, but we'll make them signed so we
@@ -153,6 +156,15 @@ public:
     void doNextEvent();
     uint32_t dst() { return _dstaddr; }
     void setDst(uint32_t dst) { _dstaddr = dst; }
+
+    // Functions from UecTransportConnection
+    virtual void continueConnection() override;
+    virtual void startConnection() override;
+    virtual bool hasStarted() override;
+    virtual bool isActivelySending() override;
+    virtual void makeReusable(UecMsgTracker* conn_reuse_tracker) override { _msg_tracker.emplace(conn_reuse_tracker); };
+    virtual void addToBacklog(mem_b size) override;
+
     static void setMinRTO(uint32_t min_rto_in_us) {
         _min_rto = timeFromUs((uint32_t)min_rto_in_us);
     }
@@ -181,6 +193,12 @@ public:
         }
     }
     mem_b configuredMaxWnd() const { return _configured_maxwnd; }
+    /*
+     If a PDC is used, call the same function there. Checks if _all_ msgs are done,
+     include the ones in the various backlog queues.
+     Otherwise, it just returns the status of _done_sending.
+    */
+    bool isTotallyFinished();
 
     const Stats& stats() const { return _stats; }
 
@@ -210,6 +228,7 @@ public:
     void setFlowsize(uint64_t flow_size_in_bytes);
     mem_b flowsize() { return _flow_size; }
     inline PacketFlow* flow() { return &_flow; }
+    optional<UecMsgTracker*> msg_tracker() { return _msg_tracker; };
 
     inline flowid_t flowId() const { return _flow.flow_id(); }
 
@@ -243,8 +262,6 @@ public:
     map<UecDataPacket::seq_t, uint16_t> _rtx_times;
 
     map<UecDataPacket::seq_t, mem_b> _rtx_queue;
-    bool hasStarted();
-    void startFlow();
     bool isSendPermitted();
     void sendIfPermitted();
     mem_b sendPacket(const Route& route);
@@ -308,6 +325,7 @@ public:
     // unlike in the NDP simulator, we maintain all the main quantities in bytes
     mem_b _flow_size;
     bool _done_sending;  // make sure we only trigger once
+    optional<UecMsgTracker*> _msg_tracker;  
     mem_b _backlog;      // how much we need to send, not including retransmissions
     mem_b _rtx_backlog;
     mem_b _cwnd;

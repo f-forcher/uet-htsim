@@ -479,20 +479,22 @@ const string& UecSrcPort::nodename() {
 ////////////////////////////////////////////////////////////////
 
 UecSrc::UecSrc(TrafficLogger* trafficLogger, 
-               EventList& eventList, 
-               unique_ptr<UecMultipath> mp,
+               EventList& eventList,
+			   unique_ptr<UecMultipath> mp, 
                UecNIC& nic, 
                uint32_t no_of_ports, 
                bool rts)
         : EventSource(eventList, "uecSrc"), 
           _mp(move(mp)),
           _nic(nic), 
+          _msg_tracker(),
           _last_event_time(),
           _flow(trafficLogger)
           {
     assert(_mp != nullptr);
-
+    
     _mp->set_debug_tag(_flow.str());
+    
     _node_num = _global_node_count++;
     _nodename = "uecSrc " + to_string(_node_num);
 
@@ -501,7 +503,7 @@ UecSrc::UecSrc(TrafficLogger* trafficLogger,
     for (uint32_t p = 0; p < _no_of_ports; p++) {
         _ports[p] = new UecSrcPort(*this, p);
     }
-        
+
     _rtx_timeout_pending = false;
     _rtx_timeout = timeInf;
     _rto_timer_handle = eventlist().nullHandle();
@@ -677,6 +679,10 @@ mem_b UecSrc::handleAckno(UecDataPacket::seq_t ackno) {
             if (_debug_src) {
                 cout << "found pkt " << ackno << " in rtx queue\n";
             }
+
+            if (_msg_tracker.has_value()) {
+                _msg_tracker.value()->addSAck(ackno);
+            }
         }
         return 0;
     } else {
@@ -695,6 +701,10 @@ mem_b UecSrc::handleAckno(UecDataPacket::seq_t ackno) {
               cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " handleAck ackno " << ackno
                    << endl;
         } 
+
+        if (_msg_tracker.has_value()) {
+            _msg_tracker.value()->addSAck(ackno);
+        }
 
         _tx_bitmap.erase(i);
         // _send_times.erase(send_time);
@@ -751,6 +761,10 @@ mem_b UecSrc::handleCumulativeAck(UecDataPacket::seq_t cum_ack) {
         }
     }
 
+    if (_msg_tracker.has_value()) {
+        _msg_tracker.value()->addCumAck(cum_ack);
+    }
+
     auto i = _tx_bitmap.begin();
     while (i != _tx_bitmap.end()) {
         auto seqno = i->first;
@@ -799,42 +813,82 @@ void UecSrc::handlePull(UecBasePacket::pull_quanta pullno) {
 }
 
 bool UecSrc::checkFinished(UecDataPacket::seq_t cum_ack) {
-    // cum_ack gives the next expected packet
+
     if (_done_sending) {
-        // if (UecSrc::_debug) cout << _nodename << " checkFinished done sending " << " cum_acc "
-        // << cum_ack << " mss " << _mss << " c*m " << cum_ack * _mss << endl;
-        return true;
+        // assert(_backlog == 0);
+        // assert(_rtx_queue.empty());
+        // if (_pdc.has_value()) {
+        //     assert(_pdc->checkFinished());
+        // }
+    } else { 
+        if (_msg_tracker.has_value()) {
+            if (_msg_tracker.value()->checkFinished()) {
+                cout << "Flow " << _name << " flowId " << flowId() << " " << _nodename 
+                    << " finished at " << timeAsUs(eventlist().now()) 
+                    << " total messages " << _msg_tracker.value()->getMsgCompleted()
+                    << " total packets " << cum_ack 
+                    << " RTS " << _stats.rts_pkts_sent 
+                    << " total bytes " << ((mem_b)cum_ack - _stats.rts_pkts_sent) * _mss
+                    << " in_flight now " << _in_flight 
+                    << " fair_inc " << _nscc_overall_stats.inc_fair_bytes
+                    << " prop_inc " << _nscc_overall_stats.inc_prop_bytes
+                    << " fast_inc " << _nscc_overall_stats.inc_fast_bytes 
+                    << " eta_inc " << _nscc_overall_stats.inc_eta_bytes 
+                    << " multi_dec -" << _nscc_overall_stats.dec_multi_bytes 
+                    << " quick_dec -" << _nscc_overall_stats.dec_quick_bytes 
+                    << " nack_dec -" << _nscc_overall_stats.dec_nack_bytes 
+                    << endl;
+                cancelRTO();
+                _done_sending = true;
+            }
+        } else {
+            if ((((int64_t)cum_ack - _stats.rts_pkts_sent) * _mss) >= (int64_t)_flow_size) {
+                cout << "Flow " << _name << " flowId " << flowId() << " " << _nodename 
+                    << " finished at " << timeAsUs(eventlist().now()) 
+                    << " total messages " << 1 
+                    << " total packets " << cum_ack 
+                    << " RTS " << _stats.rts_pkts_sent 
+                    << " total bytes " << ((mem_b)cum_ack - _stats.rts_pkts_sent) * _mss
+                    << " in_flight now " << _in_flight 
+                    << " fair_inc " << _nscc_overall_stats.inc_fair_bytes
+                    << " prop_inc " << _nscc_overall_stats.inc_prop_bytes
+                    << " fast_inc " << _nscc_overall_stats.inc_fast_bytes 
+                    << " eta_inc " << _nscc_overall_stats.inc_eta_bytes 
+                    << " multi_dec -" << _nscc_overall_stats.dec_multi_bytes 
+                    << " quick_dec -" << _nscc_overall_stats.dec_quick_bytes 
+                    << " nack_dec -" << _nscc_overall_stats.dec_nack_bytes 
+                    << endl;
+                _speculating = false;
+                if (_end_trigger) {
+                    _end_trigger->activate();
+                }
+                if (_flow_logger) {
+                    _flow_logger->logEvent(_flow, *this, FlowEventLogger::FINISH, _flow_size, cum_ack);
+                }
+                cancelRTO();
+                _done_sending = true;
+            }
+        }
     }
+
     if (_debug_src)
         cout << _flow.str() << " " << _nodename << " checkFinished "
              << " cum_acc " << cum_ack << " mss " << _mss << " RTS sent " << _stats.rts_pkts_sent
-             << " total bytes " << ((int64_t)cum_ack - _stats.rts_pkts_sent) * _mss << " flow_size "
-             << _flow_size << " done_sending " << _done_sending << endl;
+             << " total bytes " << ((int64_t)cum_ack - _stats.rts_pkts_sent) * _mss 
+             << " flow_size " << _flow_size 
+             << " backlog " << _backlog
+             << " rtx_queue " << _rtx_queue.size()
+             << " done_sending " << _done_sending << endl;
 
-    if ((((int64_t)cum_ack - _stats.rts_pkts_sent) * _mss) >= (int64_t)_flow_size) {
-        cout << "Flow " << _name << " flowId " << flowId() << " " << _nodename << " finished at "
-             << timeAsUs(eventlist().now()) << " total packets " << cum_ack << " RTS "
-             << _stats.rts_pkts_sent << " total bytes " << ((mem_b)cum_ack - _stats.rts_pkts_sent) * _mss
-             << " in_flight now " << _in_flight 
-             << " fair_inc " << _nscc_overall_stats.inc_fair_bytes
-             << " prop_inc " << _nscc_overall_stats.inc_prop_bytes
-             << " fast_inc " << _nscc_overall_stats.inc_fast_bytes 
-             << " eta_inc " << _nscc_overall_stats.inc_eta_bytes 
-             << " multi_dec -" << _nscc_overall_stats.dec_multi_bytes 
-             << " quick_dec -" << _nscc_overall_stats.dec_quick_bytes 
-             << " nack_dec -" << _nscc_overall_stats.dec_nack_bytes 
-             << endl;
-        _speculating = false;
-        if (_end_trigger) {
-            _end_trigger->activate();
-        }
-        if (_flow_logger) {
-            _flow_logger->logEvent(_flow, *this, FlowEventLogger::FINISH, _flow_size, cum_ack);
-        }
-        _done_sending = true;
-        return true;
+    return _done_sending;
+}
+
+bool UecSrc::isTotallyFinished() {
+    if (_msg_tracker.has_value()) {
+        return _msg_tracker.value()->isTotallyFinished();
+    } else {
+        return _done_sending;
     }
-    return false;
 }
 
 bool UecSrc::validateSendTs(UecBasePacket::seq_t acked_psn, bool rtx_echo) {
@@ -1477,6 +1531,7 @@ void UecSrc::runSleek(uint32_t ooo, UecBasePacket::seq_t cum_ack) {
     }
     sendIfPermitted();
 }
+
 void UecSrc::processNack(const UecNackPacket& pkt) {
     _nic.logReceivedCtrl(pkt.size());
     _stats.nacks_received++;
@@ -1588,7 +1643,7 @@ void UecSrc::doNextEvent() {
     } else if(_highest_sent == 0) {
         if (_debug_src)
             cout << _flow.str() << " " << "Starting flow " << _name << endl;
-        startFlow();
+        startConnection();
     }
 
     if (_sender_based_cc && _enable_sleek) {
@@ -1605,11 +1660,56 @@ bool UecSrc::hasStarted() {
     return _last_event_time.has_value();
 }
 
+bool UecSrc::isActivelySending() {
+    bool is_sending = false;
+    /*
+        Cases to consider:
+        1. if we are blocked by the NIC, we are active
+        2. if we still have packets in the backlog or there are packets in the
+          rtx queue, we can be sure that this connection is still being serviced.
+        3. if we are done sending, it's still possible that we exactly hit the 
+          cwnd/credit limit on the last packet, then we need to check if we are
+          blocked by CC. 
+        4. if there nothing to be sent, but the connection is not done yet,
+          we must have a timeout running. If that is not the case, something
+          is wrong (I think), better restart the connection
+    */
+    if (_send_blocked_on_nic) {
+        // 1. 
+        is_sending = true;
+    } else if (!(_backlog == 0 && _rtx_queue.empty())) {
+        // 2.
+        is_sending = true;
+    } else if (!_done_sending) {
+        // 3.
+        // Nothing to send, but the connection is not fully acked yet.
+        // Make sure there is still a timeout around
+        assert(_rtx_timeout_pending);
+        is_sending = false;
+    } else {
+        // 4.
+        // Nothing to send, everything has been send
+        assert(_rtx_timeout_pending==false);
+        is_sending = false;
+    }
+    
+    return is_sending;
+}
+
 void UecSrc::setFlowsize(uint64_t flow_size_in_bytes) {
+    assert(!_msg_tracker.has_value());
     _flow_size = flow_size_in_bytes;
 }
 
-void UecSrc::startFlow() {
+void UecSrc::addToBacklog(mem_b size) {
+    _backlog += size;
+    _flow_size += size;
+    if (_done_sending) {
+        _done_sending = false;
+    }
+}
+
+void UecSrc::startConnection() {
     //_cwnd = _maxwnd;
     _credit = _configured_maxwnd;
 
@@ -1640,7 +1740,12 @@ void UecSrc::startFlow() {
     _pull = INIT_PULL;
     _last_rts = 0;
     // backlog is total amount of data we expect to send, including headers
-    _backlog = ceil(((double)_flow_size) / _mss) * _hdr_size + _flow_size;
+    if (!_msg_tracker.has_value()) {
+        _backlog = ceil(((double)_flow_size) / _mss) * _hdr_size + _flow_size;
+    } else {
+        // In this case, _backlog will be populated directly from the PDC
+    }
+
     _rtx_backlog = 0;
     _send_blocked_on_nic = false;
 
@@ -1685,6 +1790,52 @@ bool UecSrc::isSendPermitted() {
     }
 
     return true;
+}
+
+void UecSrc::continueConnection() {
+    if (_debug_src)
+        cout << "Flow " << _name << " flowId " << flowId() << " " << _nodename << " continue at "
+            << timeAsUs(eventlist().now()) << endl;
+
+    assert(_msg_tracker.has_value());
+    assert(hasStarted());
+    assert(_backlog > 0);
+    assert(_rtx_backlog == 0);
+    assert(_send_blocked_on_nic == false);
+
+    _last_event_time.emplace(eventlist().now());
+
+    if (isSendPermitted()) {
+        uint32_t pkts_sent = 0;
+        while (_send_blocked_on_nic == false && isSendPermitted()) {
+            if (_debug_src) {
+                cout << _flow.str() << " " << "requestSending 0 "<< endl;
+            }
+
+            const Route *route = _nic.requestSending(*this);
+            if (_flow.flow_id() == _debug_flowid){
+                cout << timeAsUs(eventlist().now()) << " flowid " << _flow.flow_id() << " requestSending " << _nic.activeSources()
+                    << endl;
+            }
+            if (route) {
+                // if we're here, there's no NIC queue
+                mem_b sent_bytes = sendNewPacket(*route);
+                if (sent_bytes > 0) {
+                    _nic.startSending(*this, sent_bytes, route);
+                } else {
+                    _nic.cantSend(*this);
+                }
+            } else {
+                _send_blocked_on_nic = true;
+            }
+
+            pkts_sent += 1;
+        }
+        assert(pkts_sent > 0);
+    } else {
+        // We are blocked by CC, make sure that there is a timeout in place
+        assert(_rtx_timeout_pending);
+    }
 }
 
 mem_b UecSrc::credit() const {
@@ -1764,7 +1915,8 @@ mem_b UecSrc::getNextPacketSize(){
         if(_backlog == 0){
             return 0;
         }
-        assert(((mem_b)_highest_sent - _stats.rts_pkts_sent) * _mss < _flow_size);
+        // This assertion does not hold when we have multiple messages
+        // assert(((mem_b)_highest_sent - _stats.rts_pkts_sent) * _mss < _flow_size);
         mem_b full_pkt_size = _mtu;
         if (_backlog < _mtu) {
             full_pkt_size = _backlog;
@@ -1905,11 +2057,20 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
              << _highest_sent * _mss << " backlog " << _backlog << " flow "
              << _flow.str() << endl;
     assert(_backlog > 0);
-    assert(((mem_b)_highest_sent - _stats.rts_pkts_sent) * _mss < _flow_size);
-    mem_b full_pkt_size = _mtu;
-    if (_backlog < _mtu) {
-        full_pkt_size = _backlog;
+    // This assertion does not hold when we have multiple messages
+    // assert(((mem_b)_highest_sent - _stats.rts_pkts_sent) * _mss < _flow_size);
+
+    mem_b full_pkt_size = 0;
+    
+    if (_msg_tracker.has_value()) {
+        full_pkt_size = _msg_tracker.value()->getNextPacket(_highest_sent);
+    } else {
+        full_pkt_size = _mtu;
+        if (_backlog < _mtu) {
+            full_pkt_size = _backlog;
+        }
     }
+    assert(full_pkt_size <= _mtu);
 
     // check we're allowed to send according to state machine
     if (_receiver_based_cc)
@@ -1953,6 +2114,9 @@ mem_b UecSrc::sendNewPacket(const Route& route) {
     _highest_sent++;
     _stats.new_pkts_sent++;
     startRTO(eventlist().now());
+
+    assert(full_pkt_size > 0);
+
     return full_pkt_size;
 }
 
@@ -2020,6 +2184,11 @@ void UecSrc::sendRTS() {
         // a whole window.
         return;
     }
+
+    if (_msg_tracker.has_value()) {
+        _msg_tracker.value()->notifyCtrlSeqno(_highest_sent);
+    }
+
     if (_debug_src)
         cout << timeAsUs(eventlist().now()) << " " << _flow.str() << " " << _nodename << " sendRTS, flow " << _flow.str()
              << " epsn " << _highest_sent << " last RTS " << timeAsUs(_last_rts)
@@ -2265,7 +2434,8 @@ void UecSrc::rtxTimerExpired() {
 }
 
 void UecSrc::activate() {
-    startFlow();
+    cout << _flow.str() << " activate" << endl;
+    startConnection();
 }
 
 void UecSrc::setEndTrigger(Trigger& end_trigger) {
@@ -2437,7 +2607,12 @@ void UecSink::processData(UecDataPacket& pkt) {
 
     _accepted_bytes += pkt.size();
 
+    if (_src->msg_tracker().has_value()) {
+        _src->msg_tracker().value()->addRecvd(pkt.epsn());
+    }
+
     handlePullTarget(pkt.pull_target());
+
     if (_src->flow()->flow_id() == UecSrc::_debug_flowid)
     {
         cout << timeAsUs(_src->eventlist().now()) << " flowid " << _src->flow()->flow_id()
@@ -2497,10 +2672,10 @@ void UecSink::processData(UecDataPacket& pkt) {
         cout << _nodename << " recvd_bytes: " << _recvd_bytes << endl;
     }
 
-    assert(_received_bytes <= _src->flowsize());
     if (_src->debug() && _received_bytes >= _src->flowsize())
         cout << _nodename << " received " << _received_bytes << " at "
              << timeAsUs(EventList::getTheEventList().now()) << endl;
+    assert(_received_bytes <= _src->flowsize());
 
     if (pkt.ar()) {
         // this triggers an immediate ack; also triggers another ack later when the ooo queue drains
@@ -2626,6 +2801,10 @@ void UecSink::processRts(const UecRtsPacket& pkt) {
     if (_src->debug())
         cout << " UecSink " << _nodename << " src " << _src->nodename()
              << " processRts: " << pkt.epsn() << " time " << timeAsNs(getSrc()->eventlist().now()) << endl;
+    
+    if (_src->msg_tracker().has_value()) {
+        _src->msg_tracker().value()->addRecvd(pkt.epsn());
+    }
 
     handlePullTarget(pkt.pull_target());
 

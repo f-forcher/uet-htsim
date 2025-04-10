@@ -113,6 +113,7 @@ set(SOURCE_FILES
     uec_logger.cpp
     uecpacket.cpp
     uec_mp.cpp
+    uec_pdcses.cpp
 )
 
 # Create static library
