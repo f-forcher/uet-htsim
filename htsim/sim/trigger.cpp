@@ -43,7 +43,6 @@ MultiShotTrigger::activate() {
         cout << "Noone left to activate" << endl;
         return;
     }
-    vector <TriggerTarget*>::iterator i;
     cout << "Multishot Trigger " << _id << " fired, " << _targets.size() << " targets\n";
     _eventlist.triggerIsPending(*(_targets[_next]));
     _next++;

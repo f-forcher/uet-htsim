@@ -19,6 +19,7 @@ public:
     virtual void add_switch_loggers(Logfile& log, simtime_picosec sample_period) {
         abort();
     }
+    virtual ~Topology() = default;
 };
 
 #endif
