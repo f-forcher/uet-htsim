@@ -27,6 +27,8 @@ typedef uint32_t triggerid_t;
 class TriggerTarget {
 public:
     virtual void activate() = 0;
+
+    virtual ~TriggerTarget() = default;
 };
 
 class Trigger {
