@@ -46,6 +46,8 @@ public:
      Return the number of completed messages.
     */
     virtual uint32_t getMsgCompleted() = 0;
+
+    virtual ~UecMsgTracker() = default;
 };
 
 
