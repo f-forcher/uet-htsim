@@ -1239,6 +1239,7 @@ void UecSrc::multiplicative_decrease() {
         if (eventlist().now() - _last_dec_time > _base_rtt){
             mem_b before = _cwnd;
             _cwnd *= max(1-_gamma*(avg_delay-_target_Qdelay)/avg_delay, 0.5);/*_max_md_jump instead of 1*/
+            _cwnd = max(_cwnd, _min_cwnd);
             _nscc_overall_stats.dec_multi_bytes += before - _cwnd;
             _nscc_fulfill_stats.dec_multi_bytes += before - _cwnd;
 
