@@ -1166,7 +1166,7 @@ bool UecSrc::quick_adapt(bool is_loss, bool skip, simtime_picosec delay) {
             } 
             
             mem_b before = _cwnd;
-            _cwnd = max(_achieved_bytes, (mem_b)_min_cwnd); //* _qa_scaling;
+            _cwnd = max(_achieved_bytes, _min_cwnd); //* _qa_scaling;
             _nscc_overall_stats.dec_quick_bytes += before - _cwnd;
             _nscc_fulfill_stats.dec_quick_bytes += before - _cwnd;
 
