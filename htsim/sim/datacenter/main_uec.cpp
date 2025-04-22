@@ -667,10 +667,10 @@ int main(int argc, char **argv) {
         uint32_t bdp_pkt = calculate_bdp_pkt(topo_cfg.get(), linkspeed);
         mem_b queuesize_pkt = bdp_pkt * queue_size_bdp_factor;
         queuesize = memFromPkt(queuesize_pkt);
-        topo_cfg->set_queue_sizes(queuesize);
     } else {
         queuesize = memFromPkt(queuesize_pkt);
     }
+    topo_cfg->set_queue_sizes(queuesize);
 
     if (topo_num_failed > 0) {
         topo_cfg->set_failed_links(topo_num_failed);
