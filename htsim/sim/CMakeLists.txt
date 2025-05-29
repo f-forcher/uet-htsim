@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
+include(FetchContent)
 
 project(htsim_project LANGUAGES CXX)
 
@@ -18,6 +19,16 @@ add_compile_options(
 )
 # Optionally enable sanitizers
 # -fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined"
+
+# Fetch GoogleTest
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG v1.15.2
+)
+FetchContent_MakeAvailable(googletest)
+include(GoogleTest)
+enable_testing()
 
 # enable LTO in release builds
 include(CheckIPOSupported)
@@ -126,3 +137,17 @@ add_subdirectory(datacenter)
 # Define executables and link with htsim library
 add_executable(parse_output parse_output.cpp)
 target_link_libraries(parse_output PRIVATE htsim)
+
+# Unit tests.
+set(UNIT_TEST_FILES
+    pipe_test
+)
+
+foreach(UNIT_TEST_FILE ${UNIT_TEST_FILES}) 
+    add_executable(${UNIT_TEST_FILE} ${UNIT_TEST_FILE}.cpp)
+    target_link_libraries(${UNIT_TEST_FILE} PRIVATE htsim gtest_main gmock_main)
+    gtest_discover_tests(${UNIT_TEST_FILE}
+        PROPERTIES LABELS "unit"
+        PROPERTIES TIMEOUT 60
+    )
+endforeach()
