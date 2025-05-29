@@ -404,6 +404,7 @@ void UecPdcSes::addCumAck(UecDataPacket::seq_t cum_ack) {
 
         // Seq numbers of control packets
         if (_ctrl_seq.find(seq_it->first) != _ctrl_seq.end()) {
+            ++seq_it;
             continue;
         }
 
