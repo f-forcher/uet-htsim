@@ -46,6 +46,8 @@ public:
      Return the number of completed messages.
     */
     virtual uint32_t getMsgCompleted() = 0;
+
+    virtual ~UecMsgTracker() = default;
 };
 
 
@@ -75,6 +77,8 @@ public:
     virtual void startConnection() = 0;
     /* Contiue flow after a short break. Is only used when conn_reuse is enabled. */
     virtual void continueConnection() = 0;
+
+    virtual ~UecTransportConnection() = default;
 };
 
 #endif  // UEC_BASE_H
