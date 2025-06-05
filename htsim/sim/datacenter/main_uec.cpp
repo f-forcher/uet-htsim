@@ -112,7 +112,6 @@ int main(int argc, char **argv) {
     RouteStrategy route_strategy = NOT_SET;
     
     int seed = 13;
-    int path_burst = 1;
     int i = 1;
     double pcie_rate = 1.1;
 
@@ -389,10 +388,6 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i],"-paths")){
             path_entropy_size = atoi(argv[i+1]);
             cout << "no of paths " << path_entropy_size << endl;
-            i++;
-        } else if (!strcmp(argv[i],"-path_burst")){
-            path_burst = atoi(argv[i+1]);
-            cout << "path burst " << path_burst << endl;
             i++;
         } else if (!strcmp(argv[i],"-hop_latency")){
             hop_latency = timeFromUs(atof(argv[i+1]));
