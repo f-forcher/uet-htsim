@@ -106,8 +106,8 @@ int main(int argc, char **argv) {
     uint32_t queue_size_bdp_factor = 0;
     uint32_t topo_num_failed = 0;
 
-    bool receiver_driven = true;
-    bool sender_driven = false;
+    bool receiver_driven = false;
+    bool sender_driven = true;
 
     RouteStrategy route_strategy = NOT_SET;
     
@@ -160,6 +160,16 @@ int main(int argc, char **argv) {
             cout << "ports per NIC " << ports << endl;
             assert(planes >= 1 && planes <= 8);
             i++;
+        } else if (!strcmp(argv[i],"-receiver_cc_only")) {
+            UecSrc::_sender_based_cc = false;
+            UecSrc::_receiver_based_cc = true;
+            UecSink::_oversubscribed_cc = false;
+            sender_driven = false;
+            receiver_driven = true;
+            cout << "receiver based CC enabled ONLY" << endl;
+//        } else if (!strcmp(argv[i],"-disable_fd")) {
+//            disable_fair_decrease = true;
+//            cout << "fair_decrease disabled" << endl;
         } else if (!strcmp(argv[i],"-sender_cc_only")) {
             UecSrc::_sender_based_cc = true;
             UecSrc::_receiver_based_cc = false;
@@ -203,6 +213,10 @@ int main(int argc, char **argv) {
             UecSink::_oversubscribed_cc = false;
             sender_driven = true;
             cout << "sender based CC enabled " << endl;
+        } else if (!strcmp(argv[i],"-receiver_cc")) {
+            UecSrc::_receiver_based_cc = true;
+            receiver_driven = true;
+            cout << "receiver based CC enabled " << endl;
         }
         else if (!strcmp(argv[i],"-load_balancing_algo")){
             if (!strcmp(argv[i+1], "bitmap")) {

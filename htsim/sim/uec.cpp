@@ -87,6 +87,8 @@ void UecSrc::initNsccParams(simtime_picosec network_rtt,
                             simtime_picosec target_Qdelay,
                             int8_t qa_gate,
                             bool trimming_enabled){
+    _sender_based_cc = true;
+                            
     _reference_network_linkspeed = speedFromGbps(100);
     _reference_network_rtt = timeFromUs(12u); 
     _reference_network_bdp = timeAsSec(_reference_network_rtt)*(_reference_network_linkspeed/8);
@@ -156,7 +158,6 @@ void UecSrc::initNsccParams(simtime_picosec network_rtt,
 }
 
 void UecSrc::initNscc(mem_b cwnd, simtime_picosec peer_rtt) {
-    _sender_based_cc = true;
     _base_rtt = peer_rtt;
     _base_bdp = timeAsSec(_base_rtt)*(_nic.linkspeed()/8);
     _bdp = _base_bdp;
