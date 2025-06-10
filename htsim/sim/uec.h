@@ -130,7 +130,6 @@ public:
            uint32_t no_of_ports, 
            bool rts = false);
     void delFromSendTimes(simtime_picosec time, UecDataPacket::seq_t seq_no);
-    static void disableFairDecrease();
     /**
      * Initialize global NSCC parameters.
      */
