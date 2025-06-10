@@ -24,11 +24,23 @@ target_include_directories(htsim_dc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # -------------------------------
 # List of Executables and Their Main Source Files.
 add_executable(htsim_tcp main_tcp.cpp)
+set_property(TARGET htsim_tcp PROPERTY EXCLUDE_FROM_ALL TRUE)
+
 add_executable(htsim_ndp main_ndp.cpp)
+set_property(TARGET htsim_ndp PROPERTY EXCLUDE_FROM_ALL TRUE)
+
 add_executable(htsim_roce main_roce.cpp)
+set_property(TARGET htsim_roce PROPERTY EXCLUDE_FROM_ALL TRUE)
+
 add_executable(htsim_swift main_swift.cpp)
+set_property(TARGET htsim_swift PROPERTY EXCLUDE_FROM_ALL TRUE)
+
 add_executable(htsim_hpcc main_hpcc.cpp)
+set_property(TARGET htsim_hpcc PROPERTY EXCLUDE_FROM_ALL TRUE)
+
 add_executable(htsim_eqds main_eqds.cpp)
+set_property(TARGET htsim_eqds PROPERTY EXCLUDE_FROM_ALL TRUE)
+
 add_executable(htsim_uec main_uec.cpp)
 
 # -------------------------------
