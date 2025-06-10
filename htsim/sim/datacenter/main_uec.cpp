@@ -569,6 +569,8 @@ int main(int argc, char **argv) {
     cout << "Linkspeed set to " << linkspeed/1000000000 << "Gbps" << endl;
     logfile.setStartTime(timeFromSec(0));
 
+    vector<unique_ptr<UecNIC>> nics;
+
     UecSinkLoggerSampling* sink_logger = NULL;
     if (log_sink) {
         sink_logger = new UecSinkLoggerSampling(logtime, eventlist);
@@ -741,8 +743,6 @@ int main(int argc, char **argv) {
     vector<PCIeModel*> pcie_models;
     vector<OversubscribedCC*> oversubscribed_ccs;
 
-    vector<UecNIC*> nics;
-
     for (size_t ix = 0; ix < no_of_nodes; ix++){
         auto &pacer = pacers.emplace_back(make_unique<UecPullPacer>(linkspeed, 0.99,
           UecBasePacket::unquantize(UecSink::_credit_per_pull), eventlist, ports));
@@ -754,10 +754,10 @@ int main(int argc, char **argv) {
         if (UecSink::_oversubscribed_cc)
             oversubscribed_ccs.push_back(new OversubscribedCC(eventlist, pacer.get()));
 
-        UecNIC* nic = new UecNIC(ix, eventlist, linkspeed, ports);
-        nics.push_back(nic);
+        auto &nic = nics.emplace_back(make_unique<UecNIC>(ix, eventlist,
+                                                          linkspeed, ports));
         if (log_nic) {
-            nic_logger->monitorNic(nic);
+            nic_logger->monitorNic(nic.get());
         }
     }
 
