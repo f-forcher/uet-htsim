@@ -1,5 +1,6 @@
 // -*- c-basic-offset: 4; indent-tabs-mode: nil -*-
 //#include "config.h"
+#include <cassert>
 #include <sstream>
 #include <string.h>
 
@@ -64,7 +65,7 @@ int main(int argc, char **argv) {
     bool log_traffic = false;
     bool log_switches = false;
     bool log_queue_usage = false;
-    double ecn_thresh = 0.5; // default marking threshold for ECN load balancing
+    const double ecn_thresh = 0.5; // default marking threshold for ECN load balancing
 
     bool ecn = false;
     mem_b ecn_low = 0, ecn_high = 0;
@@ -238,11 +239,6 @@ int main(int argc, char **argv) {
             i++;
         }/* else if (!strcmp(argv[i],"-pci")){
             EqdsSink::_modelPCIbandwidth = true;
-        }
-        else if (!strcmp(argv[i],"-ecn_thresh")){
-            // fraction of queuesize, between 0 and 1
-            ecn_thresh = atof(argv[i+1]); 
-            i++;
         }*/
         else if (!strcmp(argv[i],"-ecn")){
             // fraction of queuesize, between 0 and 1
@@ -424,10 +420,7 @@ int main(int argc, char **argv) {
             fprintf(stderr, "Route Strategy is ECMP ECN.  Must use an ECN queue\n");
             exit(1);
         }
-        if (ecn_thresh <= 0 || ecn_thresh >= 1) {
-            fprintf(stderr, "Route Strategy is ECMP ECN.  ecn_thresh must be between 0 and 1\n");
-            exit(1);
-        }
+        assert(ecn_thresh > 0 && ecn_thresh < 1);
         // no break, fall through
     case ECMP_FIB:
         if (path_entropy_size > 10000) {

@@ -17,7 +17,7 @@ public:
     virtual void notifyCtrlSeqno(UecDataPacket::seq_t seq_no) = 0;
     /*
     * Track received packets. If this sequence number completed the
-    * receiving of a message, it's message id is returned. 
+    * receiving of a message, its message id is returned.
     */
     virtual void addRecvd(UecDataPacket::seq_t seq_no) = 0;
     /*
@@ -54,7 +54,7 @@ public:
 class UecTransportConnection {
 public:
     /*
-     Make the connection reusable and set the a connection tracker.
+     Make the connection reusable and set a connection tracker.
     */
     virtual void makeReusable(UecMsgTracker* conn_reuse_tracker) = 0;
     /*
@@ -75,7 +75,7 @@ public:
      Start sending if it has not done so before.
     */
     virtual void startConnection() = 0;
-    /* Contiue flow after a short break. Is only used when conn_reuse is enabled. */
+    /* Continue flow after a short break. Is only used when conn_reuse is enabled. */
     virtual void continueConnection() = 0;
 
     virtual ~UecTransportConnection() = default;

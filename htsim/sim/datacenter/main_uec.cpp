@@ -1,5 +1,6 @@
 // -*- c-basic-offset: 4; indent-tabs-mode: nil -*-
 //#include "config.h"
+#include <cassert>
 #include <cstdlib>
 #include <memory>
 #include <sstream>
@@ -96,7 +97,7 @@ int main(int argc, char **argv) {
     bool log_traffic = false;
     bool log_switches = false;
     bool log_queue_usage = false;
-    double ecn_thresh = 0.5; // default marking threshold for ECN load balancing
+    const double ecn_thresh = 0.5; // default marking threshold for ECN load balancing
     simtime_picosec target_Qdelay = 0;
 
     bool param_ecn_set = false;
@@ -552,10 +553,7 @@ int main(int argc, char **argv) {
             fprintf(stderr, "Route Strategy is ECMP ECN.  Must use an ECN queue\n");
             exit(1);
         }
-        if (ecn_thresh <= 0 || ecn_thresh >= 1) {
-            fprintf(stderr, "Route Strategy is ECMP ECN.  ecn_thresh must be between 0 and 1\n");
-            exit(1);
-        }
+        assert(ecn_thresh > 0 && ecn_thresh < 1);
         // no break, fall through
     case ECMP_FIB:
         if (path_entropy_size > 10000) {
