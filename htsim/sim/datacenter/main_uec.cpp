@@ -598,9 +598,6 @@ int main(int argc, char **argv) {
 
     //Route* routeout, *routein;
 
-    // scanner interval must be less than min RTO
-    //UecRtxTimerScanner UecRtxScanner(timeFromUs((uint32_t)9), eventlist);
-   
     QueueLoggerFactory *qlf = 0;
     if (log_tor_downqueue || log_tor_upqueue) {
         qlf = new QueueLoggerFactory(&logfile, QueueLoggerFactory::LOGGER_SAMPLING, eventlist);
@@ -926,7 +923,6 @@ int main(int argc, char **argv) {
 
             //uec_snk->set_priority(crt->priority);
                             
-            //UecRtxScanner.registerUec(*UecSrc);
             for (uint32_t p = 0; p < planes; p++) {
                 switch (route_strategy) {
                 case ECMP_FIB:
