@@ -20,6 +20,11 @@ FatTreeSwitch::FatTreeSwitch(EventList& eventlist, string s, switch_type t, uint
     _fib = new RouteTable();
 }
 
+FatTreeSwitch::~FatTreeSwitch() {
+    delete _pipe;
+    delete _fib;
+}
+
 void FatTreeSwitch::receivePacket(Packet& pkt){
     if (pkt.type()==ETH_PAUSE){
         EthPausePacket* p = (EthPausePacket*)&pkt;

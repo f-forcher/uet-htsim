@@ -1069,6 +1069,45 @@ FatTreeTopology::FatTreeTopology(const FatTreeTopologyCfg* cfg,
     }
 }
 
+template<class P> void delete_3d_vector(vector<vector<vector<P*>>>& vec3d) {
+    for (auto& vec1: vec3d) {
+        for (auto& vec2: vec1) {
+            for (auto* pipe: vec2) {
+                delete pipe;
+            }
+        }
+    }
+    vec3d.clear();
+}
+
+FatTreeTopology::~FatTreeTopology() {
+    for (auto* swc: switches_lp) {
+        delete swc;
+    }
+    switches_lp.clear();
+    for (auto* swc: switches_up) {
+        delete swc;
+    }
+    switches_up.clear();
+    for (auto* swc: switches_c) {
+        delete swc;
+    }
+    switches_c.clear();
+
+    delete_3d_vector(pipes_nc_nup);
+    delete_3d_vector(pipes_nup_nlp);
+    delete_3d_vector(pipes_nlp_ns);
+    delete_3d_vector(queues_nc_nup);
+    delete_3d_vector(queues_nup_nlp);
+    delete_3d_vector(queues_nlp_ns);
+
+    delete_3d_vector(pipes_nup_nc);
+    delete_3d_vector(pipes_nlp_nup);
+    delete_3d_vector(pipes_ns_nlp);
+    delete_3d_vector(queues_nup_nc);
+    delete_3d_vector(queues_nlp_nup);
+    delete_3d_vector(queues_ns_nlp);
+}
 
 void FatTreeTopology::alloc_vectors() {
 

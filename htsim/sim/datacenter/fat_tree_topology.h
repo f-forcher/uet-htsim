@@ -229,6 +229,7 @@ private:
     uint16_t _diameter;
 };
 
+template<class P> void delete_3d_vector(vector<vector<vector<P*>>>& vec3d);
 
 class FatTreeTopology: public Topology{
 public:
@@ -236,6 +237,7 @@ public:
                     QueueLoggerFactory* logger_factory,
                     EventList* ev,
                     FirstFit * fit);
+    ~FatTreeTopology() override;
 
     vector <Switch*> switches_lp;
     vector <Switch*> switches_up;

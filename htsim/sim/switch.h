@@ -31,6 +31,7 @@ class Switch : public EventSource, public Drawable, public PacketSink {
  public:
     Switch(EventList& eventlist) : EventSource(eventlist, "none") { _name = "none"; _id = id++;};
     Switch(EventList& eventlist, string s) : EventSource(eventlist, s) { _name= s; _id = id++;}
+    virtual ~Switch() = default;
 
     virtual int addPort(BaseQueue* q);
     virtual void addHostPort(int addr, int flowid, PacketSink* transport) { abort();};
