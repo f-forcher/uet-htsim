@@ -26,8 +26,11 @@ def generate_experiment(messagesize,linkspeed,paths,mode,oversub,failed):
     
     if (mode == "NSCC"):
         print ("!Param -sender_cc_only")
+    if (mode == "RSCC"):
+        print ("!Param -receiver_cc_only")
     elif (mode == "BOTH"):
         print ("!Param -sender_cc")
+        print ("!Param -receiver_cc")
         
     print ("!tailFCT ",int(idealfct*1.2),sep='')
 

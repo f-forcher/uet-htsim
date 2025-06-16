@@ -21,17 +21,20 @@ connection_matrices/test_cr_1f10m1p.cm
 connection_matrices/test_cr_1f1m10p.cm
 !Experiment Single Flow, w/o Conn Reuse, RCCC
 !Binary ./htsim_uec
+!Param -receiver_cc_only
 !Param -end 1000
 !tailFCT 18
 connection_matrices/test_cr_1f1m10p.cm
 !Experiment Single Flow Single Message, w/ Conn Reuse, RCCC
 !Binary ./htsim_uec
+!Param -receiver_cc_only
 !Param -end 1000
 !Param -conn_reuse
 !tailFCT 18
 connection_matrices/test_cr_1f10m1p.cm
 !Experiment Single Flow 10 Messages, w/ Conn Reuse, RCCC
 !Binary ./htsim_uec
+!Param -receiver_cc_only
 !Param -end 1000
 !Param -conn_reuse
 !tailFCT 18

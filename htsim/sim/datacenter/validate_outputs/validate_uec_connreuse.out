@@ -34,7 +34,7 @@ Using binary: ./htsim_uec
 
 Experiment: Single Flow, w/o Conn Reuse, RCCC 
 ==========================================
-Running ./htsim_uec -tm connection_matrices/test_cr_1f1m10p.cm -end 1000 
+Running ./htsim_uec -tm connection_matrices/test_cr_1f1m10p.cm -receiver_cc_only -end 1000 
 [PASS] Tail FCT 17.0107 us below the target of 18 us
 [PASS] Connection count 1
 FCT Spread 17.0107 -> 17.0107 ratio 1.0
@@ -44,7 +44,7 @@ Using binary: ./htsim_uec
 
 Experiment: Single Flow Single Message, w/ Conn Reuse, RCCC 
 ==========================================
-Running ./htsim_uec -tm connection_matrices/test_cr_1f1m10p.cm -end 1000 -conn_reuse 
+Running ./htsim_uec -tm connection_matrices/test_cr_1f1m10p.cm -receiver_cc_only -end 1000 -conn_reuse 
 [PASS] Tail FCT 17.0107 us below the target of 18 us
 [PASS] Connection count 1
 FCT Spread 17.0107 -> 17.0107 ratio 1.0
@@ -54,7 +54,7 @@ Using binary: ./htsim_uec
 
 Experiment: Single Flow 10 Messages, w/ Conn Reuse, RCCC 
 ==========================================
-Running ./htsim_uec -tm connection_matrices/test_cr_1f10m1p.cm -end 1000 -conn_reuse 
+Running ./htsim_uec -tm connection_matrices/test_cr_1f10m1p.cm -receiver_cc_only -end 1000 -conn_reuse 
 [PASS] Tail FCT 17.0107 us below the target of 18 us
 [PASS] Connection count 10
 FCT Spread 17.0107 -> 17.0107 ratio 1.0
@@ -94,7 +94,7 @@ Using binary: ./htsim_uec
 
 Experiment: Single Flow, w/o Conn Reuse, RCCC 
 ==========================================
-Running ./htsim_uec -tm connection_matrices/test_cr_1f1m100p.cm -end 1000 
+Running ./htsim_uec -tm connection_matrices/test_cr_1f1m100p.cm -receiver_cc_only -end 1000 
 [PASS] Tail FCT 46.8907 us below the target of 47 us
 [PASS] Connection count 1
 FCT Spread 46.8907 -> 46.8907 ratio 1.0
@@ -104,7 +104,7 @@ Using binary: ./htsim_uec
 
 Experiment: Single Flow Single Message, w/ Conn Reuse, RCCC 
 ==========================================
-Running ./htsim_uec -tm connection_matrices/test_cr_1f1m100p.cm -end 1000 -conn_reuse 
+Running ./htsim_uec -tm connection_matrices/test_cr_1f1m100p.cm -receiver_cc_only -end 1000 -conn_reuse 
 [PASS] Tail FCT 46.8907 us below the target of 47 us
 [PASS] Connection count 1
 FCT Spread 46.8907 -> 46.8907 ratio 1.0
@@ -114,7 +114,7 @@ Using binary: ./htsim_uec
 
 Experiment: Single Flow 10 Messages, w/ Conn Reuse, RCCC 
 ==========================================
-Running ./htsim_uec -tm connection_matrices/test_cr_1f10m10p.cm -end 1000 -conn_reuse 
+Running ./htsim_uec -tm connection_matrices/test_cr_1f10m10p.cm -receiver_cc_only -end 1000 -conn_reuse 
 [PASS] Tail FCT 46.8907 us below the target of 47 us
 [PASS] Connection count 10
 FCT Spread 46.8907 -> 46.8907 ratio 1.0
