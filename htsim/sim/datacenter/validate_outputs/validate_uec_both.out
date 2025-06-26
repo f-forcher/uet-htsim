@@ -28,27 +28,27 @@ Running ./htsim_uec -tm connection_matrices/incast.cm -end 3000 -sender_cc -rece
 [PASS] Tail FCT 2463.7 us below the target of 2500 us
 [PASS] Connection count 15
 FCT Spread 2368.38 -> 2463.7 ratio 1.0402469198354993
-Summary: New: 7350 Rtx: 757 RTS: 1 Bounced: 0 ACKs: 2579 NACKs: 757 Pulls: 2143 sleek_pkts: 0
+Summary: New: 7350 Rtx: 757 RTS: 1 Bounced: 0 ACKs: 2594 NACKs: 757 Pulls: 2143 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
 Experiment: 128 node incast 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/incast_128.cm -end 30000 -sender_cc -receiver_cc 
-[PASS] Tail FCT 20892.8 us below the target of 23000 us
+[PASS] Tail FCT 20892.1 us below the target of 23000 us
 [PASS] Connection count 127
-FCT Spread 20353.6 -> 20892.8 ratio 1.0264916280166654
-Summary: New: 62230 Rtx: 6226 RTS: 22 Bounced: 0 ACKs: 20638 NACKs: 6216 Pulls: 17987 sleek_pkts: 0
+FCT Spread 20353.6 -> 20892.1 ratio 1.026457236066347
+Summary: New: 62230 Rtx: 6224 RTS: 21 Bounced: 0 ACKs: 20634 NACKs: 6214 Pulls: 17987 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
 Experiment: 1024 node incast 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/incast_1024_100K.cm -end 10000 -sender_cc -receiver_cc -cwnd 50 
-[PASS] Tail FCT 8801.64 us below the target of 8950 us
+[PASS] Tail FCT 8803.24 us below the target of 8950 us
 [PASS] Connection count 1023
-FCT Spread 4388.97 -> 8801.64 ratio 2.0053999002043756
-Summary: New: 25575 Rtx: 26622 RTS: 1023 Bounced: 0 ACKs: 26544 NACKs: 12030 Pulls: 8865 sleek_pkts: 0
+FCT Spread 4393.36 -> 8803.24 ratio 2.0037602199683158
+Summary: New: 25575 Rtx: 26627 RTS: 1023 Bounced: 0 ACKs: 26543 NACKs: 12035 Pulls: 8873 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 

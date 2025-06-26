@@ -2331,6 +2331,10 @@ void UecSrc::rtxTimerExpired() {
     assert(send_record != _tx_bitmap.end());
     mem_b pkt_size = send_record->second.pkt_size;
 
+    // Trigger multipathing feedback for timeout. Unless we save EVs on the sender per packet, we will 
+    // not be able to recover the original timed-out ev.
+    _mp->processEv(UecMultipath::UNKNOWN_EV, UecMultipath::PATH_TIMEOUT);
+
     // update flightsize?
 
     //_send_times.erase(first_entry);

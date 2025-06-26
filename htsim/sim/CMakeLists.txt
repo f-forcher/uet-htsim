@@ -108,6 +108,7 @@ set(SOURCE_FILES
     rng.cpp
     roce.cpp
     rocepacket.cpp
+    buffer_reps.cpp
     route.cpp
     routetable.cpp
     sent_packets.cpp

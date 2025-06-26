@@ -134,8 +134,69 @@ uint16_t UecMpBitmap::nextEntropy(uint64_t seq_sent, uint64_t cur_cwnd_in_pkts) 
     return entropy;
 }
 
+UecMpReps::UecMpReps(uint16_t no_of_paths, bool debug, bool is_trimming_enabled)
+    : UecMultipath(debug),
+      _no_of_paths(no_of_paths),
+      _crt_path(0),
+      _is_trimming_enabled(is_trimming_enabled) {
 
-UecMpReps::UecMpReps(uint16_t no_of_paths, bool debug)
+    circular_buffer_reps = new CircularBufferREPS<uint16_t>(CircularBufferREPS<uint16_t>::repsBufferSize);
+
+    if (_debug)
+        cout << "Multipath"
+            << " REPS"
+            << " _no_of_paths " << _no_of_paths
+            << endl;
+}
+
+void UecMpReps::processEv(uint16_t path_id, PathFeedback feedback) {
+
+    if ((feedback == PATH_TIMEOUT) && !circular_buffer_reps->isFrozenMode() && circular_buffer_reps->explore_counter == 0) {
+        if (_is_trimming_enabled) { // If we have trimming enabled
+            circular_buffer_reps->setFrozenMode(true);
+            circular_buffer_reps->can_exit_frozen_mode = EventList::getTheEventList().now() +  circular_buffer_reps->exit_freeze_after;
+        } else {
+            cout << timeAsUs(EventList::getTheEventList().now()) << "REPS currently requires trimming in this implementation." << endl;
+            exit(EXIT_FAILURE); // If we reach this point, it means we are trying to enter freezing mode without trimming enabled.
+        } // In this version of REPS, we do not enter freezing mode without trimming enabled. Check the REPS paper to implement it also without trimming.
+    }
+
+    if (circular_buffer_reps->isFrozenMode() && EventList::getTheEventList().now() > circular_buffer_reps->can_exit_frozen_mode) {
+        circular_buffer_reps->setFrozenMode(false);
+        circular_buffer_reps->resetBuffer();
+        circular_buffer_reps->explore_counter = 16;
+    }
+
+    if ((feedback == PATH_GOOD) && !circular_buffer_reps->isFrozenMode()) {
+        circular_buffer_reps->add(path_id);
+    } else if (circular_buffer_reps->isFrozenMode() && (feedback == PATH_GOOD)) {
+        circular_buffer_reps->add(path_id);
+    }
+}
+
+uint16_t UecMpReps::nextEntropy(uint64_t seq_sent, uint64_t cur_cwnd_in_pkts) {
+    if (circular_buffer_reps->explore_counter > 0) {
+        circular_buffer_reps->explore_counter--;
+        return rand() % _no_of_paths;
+    }
+
+    if (circular_buffer_reps->isFrozenMode()) {
+        if (circular_buffer_reps->isEmpty()) {
+            return rand() % _no_of_paths;
+        } else {
+            return circular_buffer_reps->remove_frozen();
+        }
+    } else {
+        if (circular_buffer_reps->isEmpty() || circular_buffer_reps->getNumberFreshEntropies() == 0) {
+            return _crt_path = rand() % _no_of_paths;
+        } else {
+            return circular_buffer_reps->remove_earliest_fresh();
+        }
+    }
+}
+
+
+UecMpRepsLegacy::UecMpRepsLegacy(uint16_t no_of_paths, bool debug)
     : UecMultipath(debug),
       _no_of_paths(no_of_paths),
       _crt_path(0) {
@@ -147,7 +208,7 @@ UecMpReps::UecMpReps(uint16_t no_of_paths, bool debug)
             << endl;
 }
 
-void UecMpReps::processEv(uint16_t path_id, PathFeedback feedback) {
+void UecMpRepsLegacy::processEv(uint16_t path_id, PathFeedback feedback) {
     if (feedback == PATH_GOOD){
         _next_pathid.push_back(path_id);
         if (_debug){
@@ -156,7 +217,7 @@ void UecMpReps::processEv(uint16_t path_id, PathFeedback feedback) {
     }
 }
 
-uint16_t UecMpReps::nextEntropy(uint64_t seq_sent, uint64_t cur_cwnd_in_pkts) {
+uint16_t UecMpRepsLegacy::nextEntropy(uint64_t seq_sent, uint64_t cur_cwnd_in_pkts) {
     if (seq_sent < min(cur_cwnd_in_pkts, (uint64_t)_no_of_paths)) {
         _crt_path++;
         if (_crt_path == _no_of_paths) {
@@ -186,7 +247,7 @@ uint16_t UecMpReps::nextEntropy(uint64_t seq_sent, uint64_t cur_cwnd_in_pkts) {
     return _crt_path;
 }
 
-optional<uint16_t> UecMpReps::nextEntropyRecycle() {
+optional<uint16_t> UecMpRepsLegacy::nextEntropyRecycle() {
     if (_next_pathid.empty()) {
         return {};
     } else {
@@ -203,22 +264,22 @@ optional<uint16_t> UecMpReps::nextEntropyRecycle() {
 UecMpMixed::UecMpMixed(uint16_t no_of_paths, bool debug)
     : UecMultipath(debug),
       _bitmap(UecMpBitmap(no_of_paths, debug)),
-      _reps(UecMpReps(no_of_paths, debug))
+      _reps_legacy(UecMpRepsLegacy(no_of_paths, debug))
       {
 }
 
 void UecMpMixed::set_debug_tag(string debug_tag) {
     _bitmap.set_debug_tag(debug_tag);
-    _reps.set_debug_tag(debug_tag);
+    _reps_legacy.set_debug_tag(debug_tag);
 }
 
 void UecMpMixed::processEv(uint16_t path_id, PathFeedback feedback) {
     _bitmap.processEv(path_id, feedback);
-    _reps.processEv(path_id, feedback);
+    _reps_legacy.processEv(path_id, feedback);
 }
 
 uint16_t UecMpMixed::nextEntropy(uint64_t seq_sent, uint64_t cur_cwnd_in_pkts) {
-    auto reps_val = _reps.nextEntropyRecycle();
+    auto reps_val = _reps_legacy.nextEntropyRecycle();
     if (reps_val.has_value()) {
         return reps_val.value();
     } else {

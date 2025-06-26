@@ -45,10 +45,10 @@ Using binary: ./htsim_uec
 Experiment: 1024 node incast 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/incast_1024_100K.cm -sender_cc_only -end 15000 -cwnd 50 
-[FAIL] Tail FCT 10562.2 us above the target of 8950 us
+[FAIL] Tail FCT 10540.1 us above the target of 8950 us
 [PASS] Connection count 1023
-FCT Spread 119.039 -> 10562.2 ratio 88.72890397264763
-Summary: New: 25575 Rtx: 449917 RTS: 0 Bounced: 0 ACKs: 25568 NACKs: 434787 Pulls: 0 sleek_pkts: 0
+FCT Spread 119.039 -> 10540.1 ratio 88.54325053133847
+Summary: New: 25575 Rtx: 445879 RTS: 0 Bounced: 0 ACKs: 25568 NACKs: 430749 Pulls: 0 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
