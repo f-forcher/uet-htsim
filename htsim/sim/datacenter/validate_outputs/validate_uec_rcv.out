@@ -35,7 +35,7 @@ Using binary: ./htsim_uec
 Experiment: 128 node incast 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/incast_128.cm -receiver_cc_only -end 30000 
-[PASS] Tail FCT 20891.4 us below the target of 23000 us
+[PASS] Tail FCT 20890.7 us below the target of 23000 us
 [PASS] Connection count 127
 FCT Spread 20354.6 -> 20891.4 ratio 1.0263724170457784
 Summary: New: 62230 Rtx: 6218 RTS: 38 Bounced: 0 ACKs: 20650 NACKs: 6206 Pulls: 17974 sleek_pkts: 0
@@ -45,7 +45,7 @@ Using binary: ./htsim_uec
 Experiment: 1024 node incast 
 ==========================================
 Running ./htsim_uec -tm connection_matrices/incast_1024_100K.cm -receiver_cc_only -end 10000 -cwnd 50 
-[PASS] Tail FCT 8902.25 us below the target of 8950 us
+[PASS] Tail FCT 8901.87 us below the target of 8950 us
 [PASS] Connection count 1023
 FCT Spread 5468.15 -> 8902.25 ratio 1.6280186168996829
 Summary: New: 25575 Rtx: 33864 RTS: 21666 Bounced: 0 ACKs: 47186 NACKs: 12211 Pulls: 8827 sleek_pkts: 0

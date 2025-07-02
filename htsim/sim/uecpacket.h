@@ -230,6 +230,8 @@ public:
     inline uint8_t rcv_wnd_pen() const {return _rcv_cwnd_pen;}
     inline void set_ooo(uint32_t out_of_order_count) { _out_of_order_count = out_of_order_count;}
     inline uint32_t ooo() const {return _out_of_order_count; }
+    inline void set_is_rts(bool is_rts) { _is_rts = is_rts;}
+    inline bool is_rts() const {return _is_rts; }
 
     inline void set_bitmap(uint64_t bitmap){_sack_bitmap = bitmap;};
     /* inline pull_quanta pullno() const {return _pullno;}*/
@@ -261,6 +263,7 @@ protected:
     bool _rnr;
     bool _ecn_echo;
     bool _rtx_echo;
+    bool _is_rts = false;
     simtime_picosec _residency_time;
     uint32_t _out_of_order_count;
     bool _is_probe_ack;

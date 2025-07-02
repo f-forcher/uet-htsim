@@ -218,6 +218,7 @@ public:
     static bool _disable_quick_adapt;
     static uint8_t _qa_gate;
 
+    static bool update_base_rtt_on_nack;
     static bool _enable_sleek;
 
     virtual const string& nodename() { return _nodename; }
@@ -382,7 +383,7 @@ private:
     void fulfill_adjustment();
     void mark_packet_for_retransmission(UecBasePacket::seq_t psn, uint16_t pktsize);
     void update_delay(simtime_picosec delay, bool update_avg, bool skip);
-    void update_base_rtt(simtime_picosec raw_rtt, uint16_t packet_size);
+    void update_base_rtt(simtime_picosec raw_rtt);
     simtime_picosec get_avg_delay();
     uint16_t get_avg_pktsize();
 

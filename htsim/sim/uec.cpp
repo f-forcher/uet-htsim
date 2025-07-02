@@ -73,6 +73,7 @@ double UecSrc::_qa_threshold = 4 * UecSrc::_target_Qdelay;
 double UecSrc::_eta = 0;
 bool UecSrc::_disable_quick_adapt = false;
 uint8_t UecSrc::_qa_gate = 0;
+bool UecSrc::update_base_rtt_on_nack = true;
 
 /* SLEEK parameters */
 bool UecSrc::_enable_sleek = false;
@@ -962,7 +963,11 @@ void UecSrc::processAck(const UecAckPacket& pkt) {
         send_time = i->second.send_time;
         pkt_size = i->second.pkt_size;
         raw_rtt = eventlist().now() - send_time;
-        update_base_rtt(raw_rtt, pkt_size);
+
+        if (!pkt.is_rts()) {
+            update_base_rtt(raw_rtt);
+        }
+        
         if (raw_rtt >= _base_rtt) {
             update_delay(raw_rtt, true, pkt.ecn_echo());
             delay = raw_rtt - _base_rtt; 
@@ -1393,8 +1398,8 @@ void UecSrc::updateCwndOnNack_NSCC(bool skip, mem_b nacked_bytes, bool last_hop)
 void UecSrc::dontUpdateCwndOnNack(bool skip, mem_b nacked_bytes, bool last_hop) {
 }
 
-void UecSrc::update_base_rtt(simtime_picosec raw_rtt, uint16_t packet_size){
-    if (_base_rtt > raw_rtt && packet_size == _mtu) {
+void UecSrc::update_base_rtt(simtime_picosec raw_rtt){
+    if (_base_rtt > raw_rtt) {
         _base_rtt = raw_rtt;
         _bdp = timeAsUs(raw_rtt) * _nic.linkspeed() / 8000000; 
         _maxwnd = 1.5 * _bdp;
@@ -1570,9 +1575,13 @@ void UecSrc::processNack(const UecNackPacket& pkt) {
 
     auto seqno = i->first;
     simtime_picosec send_time = i->second.send_time;
-
     simtime_picosec raw_rtt = eventlist().now() - send_time;
-    if(raw_rtt > _base_rtt) {
+
+    if (update_base_rtt_on_nack) {
+        update_base_rtt(raw_rtt);
+    }
+    
+    if(raw_rtt >= _base_rtt) {
         update_delay(raw_rtt, false, true);
     }
 
@@ -2833,6 +2842,7 @@ void UecSink::processRts(const UecRtsPacket& pkt) {
         // this code is different from the proposed hardware implementation, as it keeps track of
         // the ACK state of OOO packets.
         UecAckPacket* ack_packet = sack(pkt.path_id(), sackBitmapBase(pkt.epsn()), pkt.epsn(), ecn, pkt.retransmitted());
+        ack_packet->set_is_rts(true);
         _nic.sendControlPacket(ack_packet, NULL, this);
 
         _accepted_bytes = 0;  // careful about this one.
@@ -2862,6 +2872,7 @@ void UecSink::processRts(const UecRtsPacket& pkt) {
 
     UecAckPacket* ack_packet =
         sack(pkt.path_id(), (ecn || pkt.ar()) ? pkt.epsn() : sackBitmapBase(pkt.epsn()), pkt.epsn(), ecn, pkt.retransmitted());
+    ack_packet->set_is_rts(true);
     if (_src->debug())
         cout << " UecSink " << _nodename << " src " << _src->nodename()
              << " send ack now: " << _expected_epsn << " ooo count " << _out_of_order_count

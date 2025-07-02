@@ -355,6 +355,10 @@ int main(int argc, char **argv) {
             enable_accurate_base_rtt = true;
             cout << "Enable accurate base rtt configuration, each flow uses the accurate end-to-end delay for the current sender/receiver pair as rtt upper bound." << endl;
         }
+        else if (!strcmp(argv[i],"-disable_base_rtt_update_on_nack")){
+            UecSrc::update_base_rtt_on_nack = false;
+            cout << "Disables using NACKs to update the base RTT." << endl;
+        }
         else if (!strcmp(argv[i],"-sleek")){
             UecSrc::_enable_sleek = true;
             cout << "Using SLEEK, the sender-based fast loss recovery heuristic " << endl;
@@ -522,8 +526,11 @@ int main(int argc, char **argv) {
     srandom(seed);
     cout << "Parsed args\n";
     Packet::set_packet_size(packet_size);
+
+
     UecSrc::_mtu = Packet::data_packet_size();
     UecSrc::_mss = UecSrc::_mtu - UecSrc::_hdr_size;
+
     if (route_strategy==NOT_SET){
         route_strategy = ECMP_FIB;
         FatTreeSwitch::set_strategy(FatTreeSwitch::ECMP);
