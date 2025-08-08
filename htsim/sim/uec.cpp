@@ -1290,7 +1290,6 @@ void UecSrc::fulfill_adjustment(){
 
     _inc_bytes = 0;
     _received_bytes = 0;
-    _last_adjust_time = eventlist().now();
 
     _nscc_fulfill_stats = {};
 }
@@ -1348,17 +1347,6 @@ void UecSrc::updateCwndOnAck_NSCC(bool skip, simtime_picosec delay, mem_b newly_
         fulfill_adjustment();
         if (_flow.flow_id() == _debug_flowid || UecSrc::_debug) {
             cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " fulfill_adjustment _nscc_cwnd " << _cwnd << endl;
-        }
-    }
-
-    if (eventlist().now() - _last_eta_time > _adjust_period_threshold ) {
-        _cwnd += _eta;
-        _nscc_overall_stats.inc_eta_bytes += _eta;
-        _nscc_fulfill_stats.inc_eta_bytes += _eta;
-
-        _last_eta_time = eventlist().now();
-        if (_flow.flow_id() == _debug_flowid) {
-            cout << timeAsUs(eventlist().now()) <<" flowid " << _flow.flow_id()<< " " << _flow.str() << " eta _nscc_cwnd " << _cwnd << " target_q_delay " <<timeAsUs(_target_Qdelay) << endl;
         }
     }
 

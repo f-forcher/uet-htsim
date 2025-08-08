@@ -38,7 +38,7 @@ Running ./htsim_uec -tm connection_matrices/test_cr_1f1m10p.cm -receiver_cc_only
 [PASS] Tail FCT 17.0107 us below the target of 18 us
 [PASS] Connection count 1
 FCT Spread 17.0107 -> 17.0107 ratio 1.0
-Summary: New: 10 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 4 NACKs: 0 Pulls: 0 sleek_pkts: 0
+Summary: New: 10 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 4 NACKs: 0 Pulls: 18 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -48,7 +48,7 @@ Running ./htsim_uec -tm connection_matrices/test_cr_1f1m10p.cm -receiver_cc_only
 [PASS] Tail FCT 17.0107 us below the target of 18 us
 [PASS] Connection count 1
 FCT Spread 17.0107 -> 17.0107 ratio 1.0
-Summary: New: 10 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 4 NACKs: 0 Pulls: 0 sleek_pkts: 0
+Summary: New: 10 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 4 NACKs: 0 Pulls: 18 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
@@ -58,7 +58,7 @@ Running ./htsim_uec -tm connection_matrices/test_cr_1f10m1p.cm -receiver_cc_only
 [PASS] Tail FCT 17.0107 us below the target of 18 us
 [PASS] Connection count 10
 FCT Spread 17.0107 -> 17.0107 ratio 1.0
-Summary: New: 10 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 4 NACKs: 0 Pulls: 0 sleek_pkts: 0
+Summary: New: 10 Rtx: 0 RTS: 0 Bounced: 0 ACKs: 4 NACKs: 0 Pulls: 18 sleek_pkts: 0
 Using binary: ./htsim_uec
 
 
