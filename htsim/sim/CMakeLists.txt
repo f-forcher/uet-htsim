@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 include(FetchContent)
 
 project(htsim_project LANGUAGES CXX)
+option(ENABLE_TESTS "enable the test suite" OFF)
 
 # Set C++ standard and compiler flags
 set(CMAKE_CXX_STANDARD 17)
@@ -9,7 +10,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) # Ensures GNU extensions are disabled
 set(CMAKE_CXX_FLAGS_RELEASE -O3) # Prevent -DNDEBUG, htsim requires 
                                  # asserts to be enabled.
-
 # Set compiler flags
 add_compile_options(
     -Wall
@@ -22,24 +22,16 @@ add_compile_options(
 # Optionally enable sanitizers
 # -fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined"
 
-# Fetch GoogleTest
-FetchContent_Declare(
-  googletest
-  GIT_REPOSITORY https://github.com/google/googletest.git
-  GIT_TAG v1.15.2
-)
-FetchContent_MakeAvailable(googletest)
-include(GoogleTest)
-enable_testing()
-
-# enable LTO in release builds
-include(CheckIPOSupported)
-check_ipo_supported(RESULT HAVE_IPO)
-if(CMAKE_BUILD_TYPE STREQUAL "Release" OR
-   CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-  if(HAVE_IPO)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
-  endif()
+if ( ENABLE_TESTS ) 
+    # Fetch GoogleTest
+    FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG v1.15.2
+    )
+    FetchContent_MakeAvailable(googletest)
+    include(GoogleTest)
+    enable_testing()
 endif()
 
 # Function to add a symlink creation step for an executable. 
@@ -141,16 +133,24 @@ add_subdirectory(datacenter)
 add_executable(parse_output parse_output.cpp)
 target_link_libraries(parse_output PRIVATE htsim)
 
-# Unit tests.
-set(UNIT_TEST_FILES
-    pipe_test
-)
-
-foreach(UNIT_TEST_FILE ${UNIT_TEST_FILES}) 
-    add_executable(${UNIT_TEST_FILE} ${UNIT_TEST_FILE}.cpp)
-    target_link_libraries(${UNIT_TEST_FILE} PRIVATE htsim gtest_main gmock_main)
-    gtest_discover_tests(${UNIT_TEST_FILE}
-        PROPERTIES LABELS "unit"
-        PROPERTIES TIMEOUT 60
+if ( ENABLE_TESTS )
+    # Unit tests.
+    set(UNIT_TEST_FILES
+        pipe_test
     )
-endforeach()
+
+    foreach(UNIT_TEST_FILE ${UNIT_TEST_FILES}) 
+        add_executable(${UNIT_TEST_FILE} ${UNIT_TEST_FILE}.cpp)
+        target_link_libraries(${UNIT_TEST_FILE} PRIVATE htsim gtest_main gmock_main)
+        gtest_discover_tests(${UNIT_TEST_FILE}
+            PROPERTIES LABELS "unit"
+            PROPERTIES TIMEOUT 60
+        )
+    endforeach()
+endif()
+
+# Always print ENABLE_TESTS status, so folks don't miss it.
+add_custom_target(
+  always_run ALL
+  COMMAND ${CMAKE_COMMAND} -E echo "ENABLE_TESTS=${ENABLE_TESTS}"
+)

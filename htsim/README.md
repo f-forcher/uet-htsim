@@ -27,7 +27,7 @@ Then compile the project from the ```sim/``` folder by running
 
 ```bash
 cmake -S . -B build # To configure the cmake project
-cmake --build build -j4 # To build the project
+cmake --build build --parallel # To build the project
 ```
 
 Consider changing the ```-j``` parameter.
@@ -131,3 +131,12 @@ This public repository aims to enable the public to evaluate and investigate UEC
 Bug fixes and related discussions are welcome in the public repository.
 
 Before creating PRs, please run `sim/datacenter/commit_check.sh` and include its results in the PR.
+
+To enable the tests (will pull `googletest` as a dependency), run
+```bash
+cmake -S . -B build -DENABLE_TESTS=ON
+cmake --build build --parallel # To build the project
+cd build
+ctest
+```
+
