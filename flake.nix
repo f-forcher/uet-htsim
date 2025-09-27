@@ -1,7 +1,11 @@
 {
   description = "A Nix-flake-based C/C++ development environment";
 
-  inputs.nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    rust-overlay.url = "github:oxalica/rust-overlay";
+    flake-utils.url = "github:numtide/flake-utils";
+  };
 
   outputs =
     inputs:
@@ -16,8 +20,12 @@
         f:
         inputs.nixpkgs.lib.genAttrs supportedSystems (
           system:
+          let
+            overlays = [ inputs.rust-overlay.overlays.default ];
+            pkgs = import inputs.nixpkgs { inherit system overlays; };
+          in
           f {
-            pkgs = import inputs.nixpkgs { inherit system; };
+            inherit pkgs;
           }
         );
     in
@@ -51,6 +59,9 @@
 
                     # Python
                     pkgs.uv
+
+                    # Rust
+                    (rust-bin.selectLatestNightlyWith (toolchain: toolchain.default))
                   ]
                   ++ (if system == "aarch64-darwin" then [ ] else [ pkgs.lldb ]);
               };
